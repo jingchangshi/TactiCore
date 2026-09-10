@@ -59,11 +59,12 @@ def test_rqalpha_callback_uses_prior_bars_and_submits_ranked_targets(
 ) -> None:
     universe_file = tmp_path / "universe.csv"
     universe_file.write_text(
-        "symbol,rqalpha_symbol,name,asset_class,region,currency,role,data_source,start_date\n"
-        "A,A.XSHG,A,equity,China,CNY,tradable,test,2020-01-01\n"
-        "B,B.XSHG,B,equity,China,CNY,tradable,test,2020-01-01\n"
-        "C,C.XSHG,C,equity,China,CNY,tradable,test,2020-01-01\n"
-        "BOND,BOND.XSHG,Bond,bond,China,CNY,tradable,test,2020-01-01\n",
+        "symbol,tushare_symbol,rqalpha_symbol,name,asset_class,region,currency,role,"
+        "data_source,start_date\n"
+        "A,A.SH,A.XSHG,A,equity,China,CNY,tradable,test,2020-01-01\n"
+        "B,B.SH,B.XSHG,B,equity,China,CNY,tradable,test,2020-01-01\n"
+        "C,C.SH,C.XSHG,C,equity,China,CNY,tradable,test,2020-01-01\n"
+        "BOND,BOND.SH,BOND.XSHG,Bond,bond,China,CNY,tradable,test,2020-01-01\n",
         encoding="utf-8",
     )
     orders: dict[str, float] = {}

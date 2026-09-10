@@ -14,6 +14,7 @@ dependencies = [
   "plotly>=5,<7",
   "rqalpha>=5.5,<6",
   "tomli>=2,<3",
+  "tushare>=1.4,<2",
   "vectorbt>=0.28,<0.29",
 ]
 
@@ -47,7 +48,7 @@ no_implicit_optional = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = ["rqalpha", "rqalpha.*", "vectorbt", "vectorbt.*"]
+module = ["rqalpha", "rqalpha.*", "tushare", "tushare.*", "vectorbt", "vectorbt.*"]
 ignore_missing_imports = true
 
 [tool.uv.extra-build-dependencies]

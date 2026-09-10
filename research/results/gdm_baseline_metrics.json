@@ -1,0 +1,18 @@
+{
+  "baseline_lookback": 252,
+  "data_sha256": "0ab40b9cf12cb900fa1c3ff53afc35f9963e44e10f67157a007f3fd7e15d8e93",
+  "data_source": "Tushare Pro canonical ETF adjusted close",
+  "evaluation_end": "2026-08-31",
+  "evaluation_start": "2013-06-28",
+  "first_execution": "2013-07-01",
+  "metrics": {
+    "average_holding_days": 124.05699481865285,
+    "cagr": 0.08316746038792222,
+    "calmar": 0.17765884188987213,
+    "max_drawdown": -0.4681301504795151,
+    "sharpe": 0.4912043543386197,
+    "trade_count": 193.0,
+    "turnover": 38.0
+  },
+  "strategy": "Global Dual Momentum"
+}

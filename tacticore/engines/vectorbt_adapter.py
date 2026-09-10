@@ -21,8 +21,12 @@ class ResearchResult:
 
 
 def _calculate_metrics(
-    equity: pd.Series, execution_weights: pd.DataFrame, portfolio: Any
+    equity: pd.Series,
+    execution_weights: pd.DataFrame,
+    portfolio: Any,
+    metric_start: pd.Timestamp,
 ) -> dict[str, float]:
+    equity = equity.loc[metric_start:]
     returns = equity.pct_change().dropna()
     elapsed_years = (equity.index[-1] - equity.index[0]).days / 365.25
     cagr = (equity.iloc[-1] / equity.iloc[0]) ** (1.0 / elapsed_years) - 1.0
@@ -31,12 +35,14 @@ def _calculate_metrics(
     sharpe = float(np.sqrt(252) * returns.mean() / returns.std(ddof=1))
     calmar = float(cagr / abs(max_drawdown)) if max_drawdown < 0 else float("nan")
 
-    targets = execution_weights.dropna(how="all").fillna(0.0)
+    targets = execution_weights.loc[metric_start:].dropna(how="all").fillna(0.0)
     turnover = 0.0
     if not targets.empty:
         turnover = 1.0 + float(targets.diff().abs().sum(axis=1).iloc[1:].sum() / 2.0)
     trades = portfolio.trades.records_readable
-    holding_period = trades["Exit Timestamp"] - trades["Entry Timestamp"]
+    trades = trades.loc[trades["Exit Timestamp"] >= metric_start].copy()
+    effective_entry = trades["Entry Timestamp"].clip(lower=metric_start)
+    holding_period = trades["Exit Timestamp"] - effective_entry
     average_holding_days = float(holding_period.dt.total_seconds().mean() / 86400.0)
     return {
         "cagr": float(cagr),
@@ -49,7 +55,12 @@ def _calculate_metrics(
     }
 
 
-def run_vectorbt(prices: pd.DataFrame, config: GlobalDualMomentumConfig) -> ResearchResult:
+def run_vectorbt(
+    prices: pd.DataFrame,
+    config: GlobalDualMomentumConfig,
+    *,
+    metric_start: pd.Timestamp | None = None,
+) -> ResearchResult:
     """运行月频双动量 baseline；VectorBT 只负责研究探索与指标输出。"""
     targets = build_month_end_targets(prices, config)
     execution_weights = build_execution_weights(prices, targets)
@@ -66,5 +77,14 @@ def run_vectorbt(prices: pd.DataFrame, config: GlobalDualMomentumConfig) -> Rese
         freq="1D",
     )
     equity = portfolio.value(group_by=True)
-    metrics = _calculate_metrics(equity, execution_weights, portfolio)
+    executions = execution_weights.dropna(how="all")
+    if executions.empty:
+        raise ValueError("价格区间不足以生成可执行信号")
+    first_execution = executions.index[0]
+    first_execution_location = int(prices.index.get_indexer(pd.Index([first_execution]))[0])
+    default_metric_start = prices.index[max(first_execution_location - 1, 0)]
+    evaluation_start = metric_start or default_metric_start
+    if evaluation_start not in equity.index:
+        raise ValueError("metric_start 必须是价格数据中的交易日")
+    metrics = _calculate_metrics(equity, execution_weights, portfolio, evaluation_start)
     return ResearchResult(equity, execution_weights, metrics, portfolio)

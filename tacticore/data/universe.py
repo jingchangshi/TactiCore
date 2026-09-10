@@ -4,6 +4,7 @@ import pandas as pd
 
 REQUIRED_COLUMNS = {
     "symbol",
+    "tushare_symbol",
     "rqalpha_symbol",
     "asset_class",
     "region",
@@ -22,6 +23,8 @@ def load_universe(path: str | Path) -> pd.DataFrame:
         raise ValueError(f"universe 缺少字段: {sorted(missing)}")
     if universe["symbol"].duplicated().any():
         raise ValueError("universe 的 symbol 必须唯一")
+    if universe["tushare_symbol"].duplicated().any():
+        raise ValueError("universe 的 tushare_symbol 必须唯一")
     if not universe["role"].isin(["tradable", "reference"]).all():
         raise ValueError("role 只能是 tradable 或 reference")
     return universe.set_index("symbol", drop=False)

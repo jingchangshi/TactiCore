@@ -16,6 +16,8 @@ def test_canonical_universe_is_small_tradable_and_complete() -> None:
     assert set(universe["role"]) == {"tradable"}
     assert {"China", "United States", "Hong Kong", "Japan"} <= set(universe["region"])
     assert {"equity", "gold", "bond", "cash"} <= set(universe["asset_class"])
+    assert universe["tushare_symbol"].str.endswith((".SH", ".SZ")).all()
+    assert set(universe["data_source"]) == {"Tushare Pro"}
 
 
 def test_price_loader_rejects_unsorted_dates(tmp_path: Path) -> None:

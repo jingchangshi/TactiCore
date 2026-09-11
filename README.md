@@ -2,7 +2,7 @@
 
 TactiCore 是一个面向个人投资者的低频、多资产战术配置研究系统，目标是发现稳健、可解释、可执行的配置策略，而不是建设通用量化平台。
 
-当前高层状态：S1 全球双动量已拒绝；S2 多资产趋势 V2B 已采用 RQAlpha 6.3 的原生资金不足部分成交能力关闭主要执行缺口，下一阶段只做粗粒度参数平台与稳健性研究。S2 尚不是生产候选。
+当前高层状态：S1 全球双动量已拒绝；S2 多资产趋势 V2B 已通过经济筛选、RQAlpha 上游执行闭环和粗粒度参数平台检验，保持 200 个有效观测并冻结为 Research Candidate R1。下一阶段只定义前瞻影子验证协议；S2 尚不是生产候选。
 
 ## 基本使用
 
@@ -14,6 +14,9 @@ uv run pytest
 uv run ruff check .
 uv run ruff format --check .
 uv run mypy
+
+# 重现 S2 粗粒度参数平台检验
+uv run python research/experiments/run_s2_parameter_plateau.py
 
 # 重放冻结的 S2 V2B 目标，并启用已采用的 RQAlpha 原生能力
 uv run python research/experiments/run_s2_rqalpha_validation.py \
@@ -30,6 +33,7 @@ RQAlpha 官方 bundle 保存在仓库外的 `~/.rqalpha/bundle`。重建 Tushare
 - [研究账本](docs/RESEARCH_LEDGER.md)
 - [当前状态](docs/CURRENT_STATE.md)
 - [策略目录](docs/STRATEGY_CATALOG.md)
+- [S2 参数平台报告](research/results/S2_PARAMETER_PLATEAU_V1.md)
 - [S2 上游原生执行闭环报告](research/results/S2_RQALPHA_UPSTREAM_EXECUTION_CLOSURE_V1.md)
 
 历史研究证据保存在 `research/results/`，已关闭问题应先查研究账本，不得由后续 Goal 无故重做。

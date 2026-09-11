@@ -171,3 +171,15 @@
 - 数据快照：同 RL-012；评价区间 2013-03-29 至 2026-08-31。
 - 框架/版本：采用 RQAlpha 6.3.x；检查 RQAlpha 6.4.0 标签但不将未发布到 PyPI 的版本纳入依赖。
 - 重开条件：RQAlpha 升级改变该开关、订单/撮合/账户语义，或新执行证据出现实质矛盾。
+
+## RL-015 S2 粗粒度参数平台与稳健性
+
+- 策略：S2 V2B / Research Candidate R1
+- 问题：200 个有效观测的趋势窗口是否处于宽泛、经济稳定的参数平台，而非孤立历史最优点？
+- 状态：CLOSED
+- 范围：仅比较预先声明的 `160/180/200/220/240`；冻结 canonical 数据、资产池、防御资产、有效观测、月末信号、下一观测日执行、`SIGNAL_CHANGE_ONLY`、等额 sleeve、成本、滑点、初始资金和 VectorBT 路径。
+- 结论：五点全样本收益风险差异平滑，四个既有分期均保持正 CAGR 和 Sharpe，3 年/5 年滚动中位数及运营负担相近；决策为 `PASS_S2_PARAMETER_PLATEAU`，保持透明基线 `trend_window = 200`，不选择历史表现最好的邻点。S2 冻结为 Research Candidate R1，但不构成生产批准或真正前瞻样本外证据。
+- 证据：[参数平台报告](../research/results/S2_PARAMETER_PLATEAU_V1.md)、[全样本与运营汇总](../research/results/s2_parameter_plateau_summary.csv)、[固定分期](../research/results/s2_parameter_periods.csv)、[滚动证据](../research/results/s2_parameter_rolling.csv)
+- 数据快照：同 RL-001；评价区间 2013-03-29 至 2026-08-31，前瞻证据截止线为 2026-08-31。
+- 框架/版本：VectorBT 0.28.5；仅使用原生组合记录，参数判定编排保留在一次性实验中。
+- 重开条件：S2 R1 冻结语义或 canonical 数据契约变化，VectorBT 变更使结果不可复现，或未来前瞻影子证据与平台结论发生实质矛盾。

@@ -55,6 +55,18 @@ RQAlpha 用于：
 
 不要重复实现 VectorBT 或 RQAlpha 已承担的能力。
 
+### 2.2 框架能力检查（永久规则）
+
+在编写回测、组合会计、订单、撮合、现金、费用、滑点、交易日历、复权、公司行动或绩效记录等通用能力前，必须先检查当前 VectorBT / RQAlpha 的公开 API、记录接口和文档化扩展机制。
+
+- VectorBT 优先使用 `Portfolio.from_orders`、returns accessor 以及 order、trade、drawdown records；
+- RQAlpha 优先使用官方 bundle、instrument/history/scheduler/order API、analyser 以及 DataSource/Mod 扩展点；
+- 薄适配器可以转换代码、字段或调用协议，但不得接管框架的通用职责；
+- 框架原生能力不能满足具体策略研究问题时，才可增加范围明确的本地计算，并记录为什么不可避免及其口径；
+- 复制框架已有功能一律视为架构漂移，必须在合并前删除或给出不可替代的证据。
+
+决策顺序固定为：检查原生 API → 检查官方扩展点 → 使用薄适配器 → 最后才考虑最小本地实现。TactiCore 拥有策略逻辑，VectorBT / RQAlpha 拥有通用量化基础设施。
+
 ## 3. 数据规则
 
 数据流程：

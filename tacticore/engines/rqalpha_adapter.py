@@ -23,11 +23,14 @@ def build_rqalpha_config(
             "accounts": {"STOCK": strategy.initial_cash},
             "data_bundle_path": str(bundle_path),
         },
+        "extra": {"log_level": "error"},
         "mod": {
             "sys_analyser": {"enabled": True, "output_file": None},
             "sys_simulation": {
                 "enabled": True,
                 "matching_type": "current_bar",
+                "volume_limit": True,
+                "volume_percent": 0.25,
                 "slippage_model": "PriceRatioSlippage",
                 "slippage": strategy.slippage,
             },
@@ -41,22 +44,31 @@ def build_rqalpha_config(
 
 
 def build_callbacks(
-    strategy: GlobalDualMomentumConfig, universe_path: str | Path
+    strategy: GlobalDualMomentumConfig,
+    universe_path: str | Path,
+    target_recorder: list[dict[str, Any]] | None = None,
 ) -> tuple[Callable[[Any], None], Callable[[Any, Any], None]]:
     """构造可交给 rqalpha.run_func 的 init 与月度调仓函数。"""
     universe = load_universe(universe_path)
     source_to_rqalpha = universe["rqalpha_symbol"].to_dict()
-    required = set(strategy.risk_symbols) | {strategy.fallback_symbol}
-    missing = required.difference(source_to_rqalpha)
+    required_symbols = tuple(dict.fromkeys((*strategy.risk_symbols, strategy.fallback_symbol)))
+    missing = set(required_symbols).difference(source_to_rqalpha)
     if missing:
         raise ValueError(f"RQAlpha 映射缺少策略资产: {sorted(missing)}")
 
     def rebalance(context: Any, bar_dict: Any) -> None:
-        from rqalpha.api import history_bars, order_target_percent
+        from rqalpha.api import history_bars, instruments, order_target_percent
 
-        del context, bar_dict
+        del bar_dict
+        listed_symbols = {
+            symbol
+            for symbol in required_symbols
+            if instruments(source_to_rqalpha[symbol]).listing_at(context.now)
+        }
         momentum: dict[str, float] = {}
         for symbol in strategy.risk_symbols:
+            if symbol not in listed_symbols:
+                continue
             closes = history_bars(
                 source_to_rqalpha[symbol],
                 strategy.lookback_trading_days + 1,
@@ -64,19 +76,35 @@ def build_callbacks(
                 "close",
                 skip_suspended=True,
                 include_now=False,
+                adjust_type="pre",
             )
             if closes is not None and len(closes) == strategy.lookback_trading_days + 1:
                 momentum[symbol] = float(closes[-1] / closes[0] - 1.0)
         selected = select_assets(pd.Series(momentum, dtype=float), strategy)
+        selected = [symbol for symbol in selected if symbol in listed_symbols]
+        if not selected:
+            return
         target = 1.0 / len(selected)
-        for symbol in required:
+        if target_recorder is not None:
+            target_recorder.append(
+                {
+                    "rebalance_date": pd.Timestamp(context.now).normalize(),
+                    "targets": {symbol: target for symbol in selected},
+                }
+            )
+        order_symbols = [
+            symbol
+            for symbol in required_symbols
+            if symbol in listed_symbols and symbol not in selected
+        ] + selected
+        for symbol in order_symbols:
             order_target_percent(source_to_rqalpha[symbol], target if symbol in selected else 0.0)
 
     def init(context: Any) -> None:
         from rqalpha.api import scheduler, update_universe
 
         del context
-        update_universe([source_to_rqalpha[symbol] for symbol in required])
+        update_universe([source_to_rqalpha[symbol] for symbol in required_symbols])
         scheduler.run_monthly(rebalance, tradingday=1)
 
     return init, rebalance
@@ -88,6 +116,7 @@ def run_rqalpha(
     start_date: str,
     end_date: str,
     bundle_path: str | Path,
+    target_recorder: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """在本地已有中国市场 bundle 时运行权威事件驱动验证。"""
     from rqalpha import run_func
@@ -95,7 +124,7 @@ def run_rqalpha(
     bundle = Path(bundle_path)
     if not bundle.is_dir():
         raise FileNotFoundError(f"RQAlpha bundle 目录不存在: {bundle}")
-    init, _ = build_callbacks(strategy, universe_path)
+    init, _ = build_callbacks(strategy, universe_path, target_recorder)
     config = build_rqalpha_config(start_date, end_date, strategy, bundle)
     result = run_func(init=init, config=config)
     if result is None:

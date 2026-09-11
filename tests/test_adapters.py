@@ -38,6 +38,8 @@ def test_rqalpha_config_is_daily_stock_account(
     assert config["base"]["accounts"] == {"STOCK": strategy_config.initial_cash}
     assert config["base"]["data_bundle_path"] == str(tmp_path / "bundle")
     assert config["mod"]["sys_simulation"]["slippage"] == strategy_config.slippage
+    assert config["mod"]["sys_simulation"]["volume_limit"] is True
+    assert config["mod"]["sys_simulation"]["volume_percent"] == 0.25
     assert config["mod"]["sys_transaction_cost"]["cn_stock_min_commission"] == 0
 
 
@@ -68,7 +70,8 @@ def test_rqalpha_callback_uses_prior_bars_and_submits_ranked_targets(
         encoding="utf-8",
     )
     orders: dict[str, float] = {}
-    history_calls: list[tuple[str, int, bool]] = []
+    order_calls: list[tuple[str, float]] = []
+    history_calls: list[tuple[str, int, bool, str]] = []
     scheduled: list[tuple[Any, int]] = []
 
     def history_bars(
@@ -79,9 +82,10 @@ def test_rqalpha_callback_uses_prior_bars_and_submits_ranked_targets(
         *,
         skip_suspended: bool,
         include_now: bool,
+        adjust_type: str,
     ) -> np.ndarray:
         del frequency, field, skip_suspended
-        history_calls.append((symbol, count, include_now))
+        history_calls.append((symbol, count, include_now, adjust_type))
         end = {"A.XSHG": 1.3, "B.XSHG": 1.2, "C.XSHG": 0.9}[symbol]
         return np.linspace(1.0, end, count)
 
@@ -90,19 +94,42 @@ def test_rqalpha_callback_uses_prior_bars_and_submits_ranked_targets(
         def run_monthly(callback: Any, tradingday: int) -> None:
             scheduled.append((callback, tradingday))
 
+    class InstrumentStub:
+        def __init__(self, symbol: str) -> None:
+            self.symbol = symbol
+
+        def listing_at(self, now: pd.Timestamp) -> bool:
+            return now >= pd.Timestamp("2020-01-01") and self.symbol != "C.XSHG"
+
     monkeypatch.setattr(rqalpha.api, "history_bars", history_bars)
-    monkeypatch.setattr(
-        rqalpha.api, "order_target_percent", lambda symbol, weight: orders.update({symbol: weight})
-    )
+    monkeypatch.setattr(rqalpha.api, "instruments", InstrumentStub)
+
+    def record_order(symbol: str, weight: float) -> None:
+        order_calls.append((symbol, weight))
+        orders[symbol] = weight
+
+    monkeypatch.setattr(rqalpha.api, "order_target_percent", record_order)
     monkeypatch.setattr(rqalpha.api, "scheduler", SchedulerStub(), raising=False)
     monkeypatch.setattr(rqalpha.api, "update_universe", lambda symbols: None)
 
     from tacticore.engines.rqalpha_adapter import build_callbacks
 
-    init, rebalance = build_callbacks(strategy_config, universe_file)
+    target_records: list[dict[str, Any]] = []
+    init, rebalance = build_callbacks(strategy_config, universe_file, target_records)
     init(None)
-    rebalance(None, None)
+    rebalance(type("Context", (), {"now": pd.Timestamp("2021-01-04")})(), None)
 
     assert scheduled == [(rebalance, 1)]
-    assert all(count == 4 and not include_now for _, count, include_now in history_calls)
-    assert orders == {"A.XSHG": 0.5, "B.XSHG": 0.5, "C.XSHG": 0.0, "BOND.XSHG": 0.0}
+    assert all(
+        count == 4 and not include_now and adjust_type == "pre"
+        for _, count, include_now, adjust_type in history_calls
+    )
+    assert {symbol for symbol, *_ in history_calls} == {"A.XSHG", "B.XSHG"}
+    assert orders == {"A.XSHG": 0.5, "B.XSHG": 0.5, "BOND.XSHG": 0.0}
+    assert order_calls == [("BOND.XSHG", 0.0), ("A.XSHG", 0.5), ("B.XSHG", 0.5)]
+    assert target_records == [
+        {
+            "rebalance_date": pd.Timestamp("2021-01-04"),
+            "targets": {"A": 0.5, "B": 0.5},
+        }
+    ]

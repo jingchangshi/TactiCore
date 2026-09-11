@@ -124,14 +124,16 @@ def decision(
         )
     )
     window_pass = relative.loc[variants.dimension.eq("window")].sum() >= 2
-    target_pass = relative.loc[variants.dimension.eq("target")].sum() >= 2
+    target_variants = variants.loc[
+        variants.vol_window.eq(20) & variants.target_volatility.isin(TARGETS)
+    ]
+    target_pass = relative.loc[target_variants.index].sum() >= 2
     central = variants.loc[(variants.vol_window == 20) & (variants.target_volatility == 0.10)].iloc[
         0
     ]
     central_scale_pass = 0.40 < central.average_scale < 0.95
     target_scale_pass = (
-        (variants.loc[variants.dimension.eq("target"), "average_scale"] > 0.40)
-        & (variants.loc[variants.dimension.eq("target"), "average_scale"] < 0.95)
+        (target_variants.average_scale > 0.40) & (target_variants.average_scale < 0.95)
     ).sum() >= 2
     central_periods = periods.loc[periods.series.eq("S10A_20_10")]
     period_pass = (

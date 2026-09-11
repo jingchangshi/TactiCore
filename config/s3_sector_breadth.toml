@@ -1,0 +1,10 @@
+[china_sector_breadth]
+momentum_lookback = 120
+breadth_threshold = 0.50
+min_eligible_sectors = 8
+rebalance_frequency = "monthly"
+execution_policy = "SIGNAL_CHANGE_ONLY"
+fallback_symbol = "511010.SS"
+fees = 0.001
+slippage = 0.0005
+initial_cash = 1000000.0

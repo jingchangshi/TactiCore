@@ -219,3 +219,16 @@
 - 数据快照：价格 SHA-256 `337c28cc52c04f8b5257a8feffb7d1c508248cab10595466c8c69d758556a4a6`；日历 SHA-256 `13f4240ee6531415e3ea7638d9691af01290e97da3607446246d3dc8f96e51e6`。
 - 框架/版本：Tushare Pro；VectorBT 0.28.5。
 - 重开条件：仅当 S3A V1 语义、universe 契约或 canonical 数据契约改变时作为新版本研究；不得以本轮收益结果或更优参数重开。
+
+## RL-019 S3B 行业趋势广度状态过滤基线
+
+- 策略：S3B China Sector Breadth Regime Filter V1
+- 问题：严格多数行业处于正 120 有效观测趋势时持有广泛行业篮子，能否改善同机制 ungated basket？
+- 状态：REJECTED
+- 范围：复用 RL-018 的冻结 universe/data；120 observation、严格 `breadth > 0.50`、至少 8 eligible、月频、`SIGNAL_CHANGE_ONLY`、511010.SS 防御。
+- 假设来源：在已观察 S3A 失败及行业等权更强后提出，属于 historical follow-up hypothesis，不是 OOS。
+- 结论：最大回撤相对 ungated 改善 8.52pp，但 CAGR 低 2.64pp（超过预声明 2pp 上限），Sharpe/Calmar 也未提高，决策 `REJECT_S3B_BREADTH_BASELINE`。
+- 证据：[S3B 报告](../research/results/S3B_SECTOR_BREADTH_BASELINE_V1.md)、[状态](../research/results/s3b_sector_breadth_states_v1.csv)、[比较](../research/results/s3b_sector_breadth_comparison_v1.csv)。
+- 数据快照：复用 RL-018；价格 SHA-256 `337c28cc52c04f8b5257a8feffb7d1c508248cab10595466c8c69d758556a4a6`。
+- 框架/版本：VectorBT 0.28.5。
+- 重开条件：仅当 S3B 语义、universe 或 canonical 契约作为新版本变化；不得调 threshold/lookback 重开。

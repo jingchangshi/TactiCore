@@ -40,3 +40,13 @@
 - 尚未证明：任何不同的 S3 hypothesis、PIT universe、执行或生产可交易性；本拒绝不泛化为“行业轮动无效”。
 - 下一步：停止 S3A V1；新的经济 hypothesis 必须使用新版本，而非参数微调。
 - Theme Rotation：未启动。
+
+## S3B Sector Breadth Regime Filter V1
+
+状态：`REJECT_S3B_BREADTH_BASELINE`。它是由 S3A 负面证据触发的新历史 hypothesis screen，不是 S3A 参数调整。
+
+- 信号：11 个冻结行业 ETF 的 120 有效观测动量正负号；严格超过 50% breadth 且至少 8 个 eligible 为 RISK_ON。
+- 组合：RISK_ON 等权全部 eligible 行业；RISK_OFF 或 UNAVAILABLE 为 511010.SS；月末信号、下一观测日执行、`SIGNAL_CHANGE_ONLY`。
+- 历史筛选：最大回撤较同机制 ungated basket 改善 8.52pp，但 CAGR sacrifice 2.64pp，且 Sharpe/Calmar 未改善。
+- 尚未证明：任何其他 breadth 规则、OOS、执行或生产可交易性。
+- 下一步：停止 S3B，选择新的独立 economic hypothesis；Theme Rotation 未启动。

@@ -1,4 +1,4 @@
-# Goal: S2 Research Candidate R1 Freeze + Prospective Shadow Protocol V1
+# Goal: S3A China Sector Rotation — Tradable Universe + Transparent Baseline V1
 
 Repository:
 
@@ -11,89 +11,92 @@ Role:
 ```text
 Principal Quant Research Engineer
 +
-Research Architecture Reviewer
+Strategy Research Reviewer
 +
-Research Reproducibility Owner
+Repository Architecture Maintainer
 ```
 
 ---
 
 # 0. Why This Work Exists
 
-TactiCore 当前已经完成一条较完整的 S2 历史研究闭环。
-
-预期已有阶段包括：
-
-```text
-canonical data semantics             CLOSED
-S2 signal credibility                CLOSED
-VectorBT economic screening          PASS
-RQAlpha authoritative execution      PASS
-RQAlpha upstream execution closure   PASS
-coarse parameter plateau             PASS
-```
-
-当前预期候选状态：
+TactiCore 已完成 S2 的历史研究闭环并将：
 
 ```text
 S2 Research Candidate R1
 ```
 
-当前真正缺失的不是更多历史研究，而是：
-
-> 在历史数据已经被多次观察后，如何从一个明确时间点开始，以完全冻结的候选语义持续积累真正 prospective evidence。
-
-本 Goal 的目标是：
+冻结为：
 
 ```text
-1. 冻结 S2 Research Candidate R1
-2. 冻结 historical / prospective 边界
-3. 建立轻量 prospective shadow protocol
-4. 固定数据 vintage 和 decision record 规则
-5. 固定未来 review eligibility
-6. 防止未来研究过程中隐形修改 R1
-7. 将 S2 转为 PROSPECTIVE_SHADOW_ACTIVE
-8. 为下一阶段解锁 S3 research
+FROZEN
++
+PROSPECTIVE_SHADOW_ACTIVE
 ```
 
-本 Goal 不以获得新的策略收益结果为目的。
+S2 现在等待真实未来市场数据，不能通过更多历史 backtest 加速。
 
-当前日期尚未提供足够的 prospective observation。
-
-因此：
+因此当前主动研究主线转向：
 
 ```text
-NO prospective PASS/REJECT decision
+S3 China Sector / Theme Rotation
 ```
 
-应该是正常结果。
+但 S3 不能一开始就变成 DailyETF 式的复杂系统。
+
+本 Goal 只回答一个有限问题：
+
+> 一个基于真实可交易 A 股行业 ETF、简单中期相对动量、绝对动量过滤和月频低换手执行的透明行业轮动 baseline，是否存在足够明确的经济证据，值得进入下一阶段稳健性研究？
+
+本 Goal 是：
+
+```text
+hypothesis
+→ tradable universe
+→ canonical data
+→ transparent signal
+→ VectorBT economic screen
+→ advance / reject
+```
+
+不是：
+
+```text
+production strategy
+theme intelligence
+multi-factor ranking
+market regime engine
+AI scoring
+risk-budget platform
+parameter optimizer
+RQAlpha execution closure
+```
 
 ---
 
 # 1. Repository First
 
-必须首先读取最新 remote `main`。
+首先重新读取最新 remote `main`。
 
 不要依据：
 
 ```text
-本 Goal 中写出的预期状态
-上一轮对话
-Codex 的上一轮完成报告
-旧的 CURRENT_STATE
-旧的 goal.md
+本 Prompt 中的预期 HEAD
+上一轮 Codex 报告
+旧对话
+CURRENT_STATE 的单一描述
 记忆
 ```
 
-直接继续实现。
+直接实现。
 
-首先读取根级：
+第一步必须读取：
 
 ```text
 AGENTS.md
 ```
 
-并遵守其中的文档路由与 authority order。
+并按其中 routing contract 继续。
 
 至少读取：
 
@@ -107,29 +110,29 @@ docs/RESEARCH_RULES.md
 docs/RESEARCH_LEDGER.md
 docs/CURRENT_STATE.md
 docs/STRATEGY_CATALOG.md
+docs/LESSONS_FROM_DAILYETF.md
 docs/goal.md
 
 config/strategy.toml
 config/universe.csv
 
-data/canonical/README.md
 data/canonical/provenance.json
 
-tacticore/data/prices.py
 tacticore/data/tushare.py
 tacticore/data/universe.py
-
-tacticore/strategies/multi_asset_trend.py
+tacticore/data/prices.py
 
 tacticore/engines/vectorbt_adapter.py
 tacticore/engines/rqalpha_adapter.py
 
-research/experiments/download_tushare_data.py
-research/experiments/run_s2_parameter_plateau.py
-research/experiments/run_s2_rqalpha_validation.py
+tacticore/strategies/global_dual_momentum.py
+tacticore/strategies/multi_asset_trend.py
 
+research/shadow/s2_r1/candidate_manifest.json
+research/shadow/s2_r1/README.md
+
+research/results/S2_R1_PROSPECTIVE_PROTOCOL_V1.md
 research/results/S2_PARAMETER_PLATEAU_V1.md
-research/results/S2_RQALPHA_UPSTREAM_EXECUTION_CLOSURE_V1.md
 ```
 
 并检查相关 tests。
@@ -141,15 +144,12 @@ starting HEAD
 recent commits
 working tree
 dependency versions
-canonical historical cutoff
-canonical price hash
-trading-calendar hash
-strategy config
-universe
-S2 current lifecycle state
+S2 R1 candidate state
+S2 frozen file hashes
+current S3 implementation state
 ```
 
-如果实际仓库状态与本 Goal 矛盾：
+如果仓库事实与本 Prompt 冲突：
 
 ```text
 repository evidence wins
@@ -157,275 +157,30 @@ repository evidence wins
 
 ---
 
-# 2. Respect AGENTS.md Routing
+# 2. Protect S2 R1 Before Doing Anything Else
 
-不要修改已经稳定的根级 `AGENTS.md`，除非发现真实路由错误。
+这是本 Goal 的硬约束。
 
-预期本 Goal：
-
-```text
-AGENTS.md = unchanged
-```
-
-不得将：
+首先运行已有 candidate integrity 验证：
 
 ```text
-S2 R1 当前状态
-candidate hash
-prospective 日期
-未来 promotion threshold
-当前收益指标
+uv run python research/experiments/run_s2_r1_shadow.py \
+  --verify-candidate
 ```
 
-加入 AGENTS.md。
+必须成功。
 
-AGENTS.md 仍只负责：
+保存验证结果。
 
-```text
-bootstrap
-+
-routing
-+
-authority
-+
-architecture-drift protection
-```
-
----
-
-# 3. Previously Closed Questions Stay Closed
-
-首先读取：
-
-```text
-docs/RESEARCH_LEDGER.md
-```
-
-特别确认已有 S2 closed entries。
-
-不得重新研究：
-
-```text
-Tushare fund_daily / fund_adj 语义
-historical canonical data credibility
-missing-value policy
-UNAVAILABLE vs NEGATIVE_SIGNAL
-200 valid-observation semantics
-month-end lookahead
-V1 missing-row issue
-V1 vs V2A
-V2A vs V2B
-general S2 signal credibility
-historical rolling 3Y / 5Y
-historical cost sensitivity
-RQAlpha 5.6.5 execution failure
-RQAlpha 6.3 native partial-fill closure
-160 / 180 / 200 / 220 / 240 parameter plateau
-```
-
-尤其不要重新运行参数搜索。
-
-预期：
-
-```text
-RL-015
-S2 coarse parameter plateau
-=
-CLOSED
-```
-
-如果确实需要重开一个关闭条目，必须同时指出：
-
-```text
-ledger ID
-new contradictory evidence
-exact bounded scope
-```
-
-否则禁止重开。
-
----
-
-# 4. Confirm the Research Frontier
-
-预期当前状态是：
-
-```text
-S1
-REJECTED
-
-S2 V1
-REJECTED
-
-S2 V2B
-historical economic screen: PASS
-execution architecture: PASS
-parameter plateau: PASS
-
-S2 Research Candidate R1
-FROZEN CANDIDATE TO BE FORMALIZED
-
-S3
-not yet active
-```
-
-预期 S2 R1 语义：
-
-```text
-trend_window = 200 valid observations
-
-signal day itself must have a valid price
-
-monthly review
-
-month-end close generates signal
-
-execution no earlier than next canonical observation day
-
-SIGNAL_CHANGE_ONLY
-
-equal sleeves among eligible risk assets
-
-negative-trend sleeve → existing fallback asset
-
-existing risk universe
-
-existing canonical missing-data semantics
-
-existing fee / slippage assumptions
-
-RQAlpha 6.3 native
-partial_fill_on_insufficient_cash = true
-```
-
-必须从源码、配置和研究产物重新确认。
-
-不要从本 Prompt 复制这些事实而不验证。
-
----
-
-# 5. Historical / Prospective Boundary
-
-当前历史研究数据预计截止：
-
-```text
-2026-08-31
-```
-
-必须从：
-
-```text
-data/canonical/provenance.json
-```
-
-实际确认。
-
-一旦确认，将其定义为：
-
-```text
-historical_cutoff
-```
-
-真正 prospective 数据必须满足：
-
-```text
-date > historical_cutoff
-```
-
-预期：
-
-```text
-prospective_start = 2026-09-01
-```
-
-任何：
-
-```text
-2012–2026-08
-2013–2026
-2023–2026
-rolling historical window
-```
-
-均不得再称为：
-
-```text
-untouched OOS
-true prospective
-forward evidence
-```
-
-它们只能称为：
-
-```text
-historical evidence
-historical robustness
-```
-
----
-
-# 6. Create a Machine-Readable Candidate Manifest
-
-新增：
+然后读取：
 
 ```text
 research/shadow/s2_r1/candidate_manifest.json
 ```
 
-其唯一作用是：
+确认所有 frozen inputs。
 
-> 机器可验证地冻结 S2 Research Candidate R1 的身份和输入边界。
-
-不要建设 candidate registry、数据库或 lifecycle framework。
-
-Manifest 至少包含：
-
-```text
-candidate_id
-candidate_version
-strategy_family
-strategy_version
-
-freeze_commit
-freeze_timestamp
-
-historical_cutoff
-prospective_start
-
-strategy_semantics
-
-execution_semantics
-
-framework_versions
-
-data_contract
-
-file_hashes
-```
-
-建议结构类似：
-
-```json
-{
-  "candidate_id": "S2_R1",
-  "strategy": "multi_asset_trend_v2b",
-  "historical_cutoff": "2026-08-31",
-  "prospective_start": "2026-09-01",
-  "trend_window": 200,
-  "rebalance_frequency": "monthly",
-  "execution_policy": "SIGNAL_CHANGE_ONLY",
-  "allocation": "equal_sleeves",
-  "rqalpha_partial_fill_on_insufficient_cash": true
-}
-```
-
-实际字段必须基于当前仓库事实生成。
-
----
-
-# 7. Manifest Must Freeze Important Files by Hash
-
-至少记录 SHA-256：
+尤其是：
 
 ```text
 config/strategy.toml
@@ -436,1407 +191,1837 @@ data/canonical/trading_calendar.csv
 data/canonical/provenance.json
 
 tacticore/strategies/multi_asset_trend.py
-
 tacticore/engines/rqalpha_adapter.py
 ```
 
-如果当前执行闭环还依赖其他明确文件，可以加入。
-
-不要把整个仓库做 hash registry。
-
-范围只限：
-
-> 能改变 R1 经济语义、数据输入或执行语义的关键文件。
-
-同时记录：
-
-```text
-git commit SHA
-```
-
-Git commit 与文件 hash 两者都保留。
-
 ---
 
-# 8. Candidate Versioning Rule
+# 3. S3 Must Not Modify S2 Frozen Inputs
 
-在 prospective 阶段：
-
-如果以下任意内容发生实质变化：
+禁止为了 S3 修改：
 
 ```text
-trend window
-valid-observation definition
-signal timing
-execution timing
-SIGNAL_CHANGE_ONLY policy
-asset universe
-fallback asset
-allocation rule
-canonical missing-data policy
-cost assumption
-RQAlpha execution policy
-```
+config/strategy.toml
+config/universe.csv
 
-则不得继续称为：
-
-```text
-S2_R1
-```
-
-必须建立新的 candidate version，例如：
-
-```text
-S2_R2
-```
-
-或者：
-
-```text
-S2_R1B
-```
-
-但优先保持简单顺序版本：
-
-```text
-R1
-R2
-R3
-```
-
-不得修改旧 manifest 来“保持最新”。
-
-旧 candidate 保持历史可复现。
-
----
-
-# 9. Add a Permanent Prospective Research Rule
-
-对：
-
-```text
-docs/RESEARCH_RULES.md
-```
-
-做一个小而永久的修改。
-
-新增类似：
-
-```text
-Prospective Candidate / Preregistration Rule
-```
-
-永久规则至少表达：
-
-在任何真正 prospective 结果产生之前，必须冻结：
-
-```text
-candidate semantics
-historical cutoff
-prospective start
-evaluation protocol
-review eligibility
-reopen / invalidation conditions
-```
-
-一旦 prospective observation 已经产生：
-
-```text
-不得依据看到的结果修改原 candidate
-```
-
-如果需要改变：
-
-```text
-create a new candidate version
-```
-
-不得：
-
-```text
-retroactively change old target decisions
-backfill a new strategy into an old prospective period
-silently replace old data vintages
-```
-
-这一规则是永久研究方法。
-
-因此应该进入：
-
-```text
-RESEARCH_RULES.md
-```
-
-不要将 S2 的具体 200 日参数或具体日期写成通用规则。
-
----
-
-# 10. Do NOT Change ARCHITECTURE Unless Necessary
-
-本 Goal 正常情况下没有新的系统所有权边界。
-
-因此预期：
-
-```text
-docs/ARCHITECTURE.md
-=
-unchanged
-```
-
-Prospective shadow 是：
-
-```text
-Evidence / Decision
-```
-
-阶段的一种研究模式，而不是新的平台层。
-
-不要因为本 Goal 新增：
-
-```text
-Prospective Layer
-Shadow Engine
-Candidate Management Layer
-Research Registry Layer
-```
-
-如果没有真实架构需求。
-
-只有发现现有 ARCHITECTURE 确实无法表达 responsibility boundary 时才做最小修订。
-
----
-
-# 11. Prospective Data Vintage Policy
-
-当前：
-
-```text
-data/canonical/
-```
-
-中的 historical dataset 已经承载过去全部研究证据。
-
-不要在 prospective 阶段简单：
-
-```text
-download 2012 → current_date
-↓
-overwrite data/canonical/*
-```
-
-然后把它当作原来的历史输入。
-
-这会混淆：
-
-```text
-what was frozen then
-vs
-what the vendor returns today
-```
-
-定义最小 prospective data policy。
-
-历史基线：
-
-```text
-data/canonical/
-```
-
-继续代表截至 historical cutoff 的冻结历史研究数据。
-
-新的 prospective 数据写入 candidate-specific 目录，例如：
-
-```text
-research/shadow/s2_r1/vintages/
-```
-
-未来每次数据拉取形成类似：
-
-```text
-research/shadow/s2_r1/vintages/2026-09-30/
-research/shadow/s2_r1/vintages/2026-10-30/
-...
-```
-
-实际日期按交易日决定。
-
-不要在本 Goal 生成不存在的未来数据目录。
-
-只定义规则和代码路径。
-
----
-
-# 12. Reuse Existing Tushare Capability
-
-优先复用：
-
-```text
-research/experiments/download_tushare_data.py
-tacticore/data/tushare.py
-```
-
-现有 downloader 已支持：
-
-```text
---start-date
---end-date
---output-dir
-```
-
-不要建立：
-
-```text
-DataProvider
-DataLake
-PITDatabase
-DataWarehouse
-IncrementalMarketDataPlatform
-```
-
-如现有 downloader 足够，则直接复用。
-
-如确有一个非常小的 candidate-specific wrapper 能显著降低操作错误，可以增加，但必须保持薄。
-
-例如未来允许：
-
-```text
-uv run python research/experiments/run_s2_r1_shadow.py \
-  --as-of YYYY-MM-DD \
-  --prospective-data-dir ...
-```
-
-但这个 runner：
-
-```text
-不是 scheduler
-不是 daemon
-不是 service
-不是 production pipeline
-```
-
----
-
-# 13. Historical Data Must Not Be Mutated
-
-Prospective experiment 必须保护：
-
-```text
 data/canonical/etf_adjusted_close.csv
 data/canonical/trading_calendar.csv
 data/canonical/provenance.json
+
+tacticore/strategies/multi_asset_trend.py
 ```
 
-在 S2 R1 生命周期中保持 historical freeze。
-
-未来 signal 计算的逻辑输入应概念上是：
+也不要无必要修改：
 
 ```text
-frozen historical data
-        +
-prospective delta available as-of decision date
-        ↓
-candidate signal
+tacticore/engines/rqalpha_adapter.py
 ```
 
-而不是：
+原因：
+
+这些文件已经属于 S2 R1 frozen identity。
+
+S3 必须拥有独立输入。
+
+推荐新增：
 
 ```text
-today's freshly redownloaded entire history
-        ↓
-reconstructed old candidate
+config/s3_sector_rotation.toml
+config/s3_sector_universe.csv
 ```
 
-如果 prospective delta 与 historical range 重叠：
-
-默认拒绝覆盖。
-
-除非：
+而不是把 S3 section 追加到：
 
 ```text
-overlapping values are byte/semantically identical
-```
-
-且该行为被明确测试。
-
-任何 vendor historical correction：
-
-```text
-不得静默改写 old candidate history
-```
-
-应记录为新的数据事件，后续另行决定是否建立新 candidate。
-
----
-
-# 14. Create Prospective Protocol Documentation
-
-新增：
-
-```text
-research/shadow/s2_r1/README.md
-```
-
-或者：
-
-```text
-research/shadow/s2_r1/PROTOCOL.md
-```
-
-二选一即可。
-
-不要重复创建多个相似文档。
-
-该协议必须明确：
-
-```text
-candidate identity
-historical cutoff
-prospective start
-data-vintage policy
-signal generation time
-decision freeze time
-execution observation time
-record schema
-review eligibility
-candidate invalidation rules
-what is NOT allowed
+config/strategy.toml
 ```
 
 ---
 
-# 15. Signal / Decision Timeline
+# 4. S3 Scope: Sector First, Themes Later
 
-协议应明确：
-
-对于每个正常 monthly review：
+虽然长期策略家族叫：
 
 ```text
-月末交易日收盘
-        ↓
-仅使用截至该时点已知数据
-        ↓
-S2 R1 计算 signal
-        ↓
-生成 desired target
-        ↓
-冻结 Shadow Decision Record
-        ↓
-下一 canonical observation day
-        ↓
-观察 / 回放 RQAlpha execution semantics
-        ↓
-记录 execution evidence
-        ↓
-未来继续累计 portfolio evidence
+S3 China Sector / Theme Rotation
 ```
 
-关键要求：
-
-> decision record 必须在其 outcome 被未来数据揭示之前形成。
-
-不能在未来数据已知后：
+本轮只实现：
 
 ```text
-backfill
-reconstruct
-rewrite
+S3A China Sector Rotation
 ```
 
-旧 decision。
+不要加入 Theme ETF。
 
----
-
-# 16. Prospective Record Schema
-
-建立一个最小 append-only schema。
-
-可以选择：
+原因：
 
 ```text
-research/shadow/s2_r1/observations.csv
+行业 ETF
+→ 相对清晰的经济分类
+→ 较容易定义互斥 universe
+→ 可以直接检验行业领导持续性
 ```
 
-或者：
+而 Theme ETF 经常存在：
 
 ```text
-JSONL
+AI
+半导体
+机器人
+算力
+新能源
+创新药
+高端制造
 ```
 
-优先使用简单、Git diff 友好的格式。
+之间的大量成分重叠。
 
-不要建数据库。
-
-字段至少覆盖：
-
-## Identity
+如果一开始混合行业和主题，则无法区分：
 
 ```text
-candidate_id
-protocol_version
-```
-
-## Data Vintage
-
-```text
-record_generated_at
-data_as_of
-vintage_identifier
-historical_manifest_hash
-prospective_data_hash
-```
-
-## Signal
-
-```text
-signal_date
-eligible_assets
-trend_states
-```
-
-## Decision
-
-```text
-target_changed
-desired_targets
-action_required
-```
-
-## Execution
-
-在执行信息真正可获得以后记录：
-
-```text
-execution_date
-execution_status
-realized_weights
-cash_weight
-target_deviation
-```
-
-## Portfolio Evidence
-
-可以包含：
-
-```text
-portfolio_value
-drawdown
-turnover
-```
-
-但不要为了这些字段复制 RQAlpha 的 portfolio accounting。
-
-尽量引用或压缩框架原生结果。
-
----
-
-# 17. Do Not Pretend Future Data Exists
-
-当前 Goal 的正常结果可以只有：
-
-```text
-manifest
-protocol
-record schema
-manual prospective runner
-tests
-documentation
-```
-
-不要为了让 CSV 非空而：
-
-```text
-生成 synthetic prospective market data
-把 2026-08 的历史数据当 prospective
-把 2026-09-01 之后尚未到月末的数据硬凑成月度结果
-```
-
-如果截至实际执行 Goal 时：
-
-```text
-尚未形成第一个符合协议的 prospective month-end decision
-```
-
-则：
-
-```text
-observations = empty/header-only
-```
-
-是正确状态。
-
----
-
-# 18. Optional Minimal Manual Shadow Runner
-
-如果实现价值明确，可增加：
-
-```text
-research/experiments/run_s2_r1_shadow.py
-```
-
-其职责必须严格限定为：
-
-```text
-load candidate manifest
-
-verify hashes / candidate identity
-
-load frozen historical data
-
-load one candidate-specific prospective vintage
-
-validate no forbidden historical mutation
-
-combine data in memory
-
-generate S2 R1 signal as-of supplied date
-
-generate a shadow decision artifact
-
-optionally summarize execution evidence
-when such evidence already exists
-```
-
-不得：
-
-```text
-automatically change strategy
-download unknown additional providers
-schedule itself
-send notifications
-place broker orders
-maintain database
-run continuously
-```
-
----
-
-# 19. Runner Must Be As-Of Driven
-
-如果增加 runner，要求显式参数：
-
-```text
---as-of
-```
-
-而不是默认读取：
-
-```text
-today
-latest available file
-```
-
-来决定研究时点。
-
-这样可以保证：
-
-```text
-reproducible
-+
-auditable
-+
-no hidden wall-clock dependency
-```
-
-示例：
-
-```text
-uv run python research/experiments/run_s2_r1_shadow.py \
-  --as-of 2026-09-30 \
-  --vintage-dir research/shadow/s2_r1/vintages/2026-09-30
-```
-
-如果 `--as-of`：
-
-```text
-<= historical_cutoff
-```
-
-应拒绝 prospective mode。
-
-如果数据中包含：
-
-```text
-as-of 之后的观测
-```
-
-不得使用。
-
----
-
-# 20. No Same-Close Execution
-
-继续保护已经关闭的时点语义：
-
-```text
-month-end close
-    ↓
-signal
-    ↓
-next canonical observation
-    ↓
-execution
-```
-
-Prospective runner 不得为了方便改成：
-
-```text
-same-close execution
-```
-
-这属于 R1 candidate semantic drift。
-
----
-
-# 21. Prospectively Freeze Review Eligibility
-
-必须在结果出现前定义：
-
-> 什么情况下才有资格进行正式 prospective review。
-
-不要定义历史收益最大化阈值。
-
-首先冻结 evidence quantity floor。
-
-建议：
-
-## Interim Review
-
-不得早于：
-
-```text
-12 calendar months
-```
-
-并且应有实际 prospective decision history。
-
-Interim review 仅用于：
-
-```text
-integrity
-execution
-operational burden
-qualitative consistency
-```
-
-不能凭 12 个月结果宣布生产有效。
-
-## Production-Candidate Eligibility
-
-建议同时满足：
-
-```text
->= 18 calendar months
-
-AND
-
->= 10 genuine target-change execution events
-```
-
-后才允许进入：
-
-```text
-production-candidate review
-```
-
-这里的 10 个事件应基于当前历史低频特征进行解释，但不得根据未来结果调整。
-
-如果实际仓库证据支持更合理的预注册数量，可以调整一次。
-
-但必须在本 Goal 完成时永久冻结。
-
----
-
-# 22. Do Not Predefine a Profit Target
-
-Prospective protocol 不应包含类似：
-
-```text
-CAGR > 8%
-Sharpe > 1
-return > benchmark by X%
-```
-
-这种短样本下容易数据挖掘的 promotion rule。
-
-正式 future review 应综合：
-
-```text
-return/risk consistency
-drawdown
-signal behavior
-execution deviation
-turnover
-maintenance burden
-unexpected failure modes
-```
-
-相对 historical expectation 判断。
-
-本 Goal 重点冻结：
-
-```text
-what will be observed
-when it may be reviewed
-what changes are forbidden
-```
-
-而不是预测未来必须达到哪个收益数字。
-
----
-
-# 23. Early Invalidation Conditions
-
-允许 prospective candidate 在最短 review period 前被标记为：
-
-```text
-INVALIDATED
-```
-
-但只允许清晰结构性原因。
-
-例如：
-
-```text
-candidate manifest integrity failure
-
-strategy implementation no longer matches manifest
-
-canonical data semantics changed
-
-universe instrument became unusable
-in a way that invalidates candidate semantics
-
-RQAlpha native execution semantics became incompatible
-
-material implementation bug
-that means the prospective decision was not actually R1
-```
-
-不要因为：
-
-```text
-连续三个月亏损
-某个月回撤大
-短期跑输 benchmark
-```
-
-就提前优化或修改 R1。
-
-短期市场结果不是协议违规。
-
----
-
-# 24. Candidate Integrity Failure vs Strategy Failure
-
-必须严格区分：
-
-```text
-CANDIDATE_INVALIDATED
+真实行业轮动 alpha
 ```
 
 和：
 
 ```text
-STRATEGY_PERFORMANCE_WEAK
+重复暴露同一热门因子
 ```
 
-前者表示：
+所以本 Goal：
 
 ```text
-无法继续证明我们运行的是被冻结的 R1
+NO theme ETF
 ```
 
-后者表示：
-
-```text
-R1 确实按协议运行，
-但未来表现可能不佳
-```
-
-不要混为一谈。
+Theme extension 必须是后续独立研究问题。
 
 ---
 
-# 25. Existing Historical Canonical Remains Historical Evidence
+# 5. Economic Hypothesis
 
-不要修改现有 historical research artifacts。
+在看回测结果之前，把 S3A V1 的经济假设写入报告：
 
-特别不要因为建立 prospective protocol 就重新生成：
+> A 股行业收益存在数月尺度的相对趋势持续性。使用中期价格动量选择领先行业，同时过滤负绝对动量，并以月频、有限持仓和防御资产承接未使用风险预算，可能形成比静态行业暴露更好的风险调整后收益，同时保持较低交易频率。
+
+重要：
+
+这只是 hypothesis。
+
+不要写成：
 
 ```text
-S2_PARAMETER_PLATEAU_V1
-S2_RQALPHA_UPSTREAM_EXECUTION_CLOSURE_V1
-historical rolling evidence
-cost sensitivity evidence
+sector momentum works
 ```
 
-这些已经属于 frozen historical evidence。
+直到真实数据支持。
 
 ---
 
-# 26. Add Research Ledger Entries
+# 6. Universe Design Must Precede Return Inspection
 
-对：
+Universe 是 S3 最大的潜在数据挖掘来源之一。
 
-```text
-docs/RESEARCH_LEDGER.md
-```
+因此：
 
-只追加，不重写历史。
+> 先冻结 universe selection rule，再运行收益回测。
 
-建议新增两个轻量条目。
-
-## RL-016 S2 Research Candidate R1 Freeze
-
-记录：
+不得根据：
 
 ```text
-candidate ID
-freeze commit
-historical cutoff
-frozen semantics
-manifest path
-frozen hashes
-status
-reopen / replacement rule
+历史 CAGR
+历史 Sharpe
+2024–2026 热门行业
+当前市场叙事
+某 ETF 回测最好
 ```
 
-状态可为：
-
-```text
-CLOSED
-```
-
-因为“R1 是什么”在本 Goal 完成后应该已经关闭。
+决定是否纳入。
 
 ---
 
-## RL-017 S2 Prospective Shadow Protocol V1
+# 7. S3A Universe Requirements
 
-记录：
-
-```text
-question
-protocol start
-historical cutoff
-review eligibility
-record location
-candidate integrity rules
-current state
-```
-
-如果尚未积累足够未来数据：
-
-状态建议：
+建立：
 
 ```text
-ACTIVE
+config/s3_sector_universe.csv
 ```
 
-因为 prospective evidence 正在等待时间积累。
+目标：
 
-不要创建 ledger 状态机代码。
+```text
+约 10–15 个
+广义、尽量非重叠的 A 股行业 ETF
+```
+
+最低：
+
+```text
+8 个有效行业
+```
+
+否则不足以形成有意义的 cross-sectional sector rotation。
+
+每个行业原则上只选择一个代表 ETF。
+
+允许的类别示例：
+
+```text
+银行
+证券
+消费
+医药
+科技/电子
+通信
+军工
+新能源
+汽车
+机械/高端制造
+电力设备
+煤炭
+有色
+化工
+农业
+```
+
+但具体分类必须由实际基金 metadata 和可交易性决定。
+
+不要为了凑够类别强行加入主题产品。
 
 ---
 
-# 27. CURRENT_STATE After This Goal
+# 8. Universe Selection Rule
 
-完成后：
+Universe selection 不得使用收益数据。
+
+预先采用类似规则：
+
+1. 中国境内交易所挂牌 ETF；
+2. 当前可交易；
+3. 普通 long-only ETF；
+4. 主要跟踪 A 股行业或明确行业指数；
+5. 排除：
+
+   * 宽基指数；
+   * 海外指数；
+   * 商品；
+   * 债券；
+   * 货币；
+   * 杠杆；
+   * 反向；
+   * Smart Beta；
+   * 高频策略型产品；
+   * 主题重叠严重产品；
+6. 一个 broad sector 最多一个代表 ETF；
+7. 优先拥有更长真实交易历史的产品；
+8. 同一行业存在多个合理候选时，使用明确 deterministic rule；
+9. 不使用 backtest performance 作为 tie-break。
+
+如果两个基金在 metadata 层面都满足条件：
+
+优先：
 
 ```text
-docs/CURRENT_STATE.md
+更早上市
 ```
 
-应保持很短。
-
-预期变为：
+若上市日相同：
 
 ```text
-Current candidate:
-S2 Research Candidate R1
+固定代码顺序
+```
 
-Candidate state:
-FROZEN
+不要使用历史收益挑选。
 
-Prospective state:
-PROSPECTIVE_SHADOW_ACTIVE
+---
 
-Historical cutoff:
+# 9. Universe Evidence
+
+生成：
+
+```text
+research/results/s3_sector_universe_v1.csv
+```
+
+至少记录：
+
+```text
+sector
+symbol
+tushare_symbol
+rqalpha_symbol
+fund_name
+list_date
+role
+selection_reason
+```
+
+并在主报告解释：
+
+```text
+为什么纳入
+为什么排除
+选择是否使用了收益数据
+```
+
+正常答案：
+
+```text
+NO return data used for universe selection
+```
+
+---
+
+# 10. Minimum Historical Coverage Gate
+
+不要为了研究一个几乎只有最近两三年数据的 universe 而制造虚假的长期结论。
+
+S3A baseline 启动前要求：
+
+```text
+至少 8 个 sector ETF
+```
+
+拥有足以支持：
+
+```text
+120-observation momentum
++
+至少约 5 年评价期
+```
+
+的历史数据。
+
+如果无法满足：
+
+```text
+BLOCK_S3A_UNIVERSE_COVERAGE
+```
+
+停止。
+
+不要通过：
+
+```text
+降低到 3 个行业
+加入大量主题 ETF
+使用指数替代交易 ETF
+缩短到极短历史
+```
+
+绕过。
+
+---
+
+# 11. Independent Canonical Dataset
+
+S3 使用独立 historical canonical dataset。
+
+推荐：
+
+```text
+data/canonical/s3_sector_rotation_v1/
+```
+
+其中仍使用熟悉的：
+
+```text
+etf_adjusted_close.csv
+trading_calendar.csv
+provenance.json
+```
+
+但不得修改 S2 root canonical 文件。
+
+历史截止日期本轮固定：
+
+```text
 2026-08-31
-
-Latest decisive evidence:
-parameter plateau passed
-candidate + protocol frozen
-
-Current blocker:
-insufficient future prospective observations
-
-Next S2 action:
-accumulate evidence without changing R1
-
-Next active research direction:
-S3 transparent baseline / hypothesis research
 ```
 
-不要把完整 protocol 复制进 CURRENT_STATE。
+理由：
 
-链接相应 manifest、protocol 和 ledger。
+```text
+避免 partial September
++
+与当前历史研究边界一致
++
+不消费 S2 prospective observations
+```
+
+这只是 S3 V1 historical research cutoff。
 
 ---
 
-# 28. Update STRATEGY_CATALOG
+# 12. Reuse Existing Tushare Data Code
 
-更新：
+现有：
 
 ```text
-docs/STRATEGY_CATALOG.md
+tacticore/data/tushare.py
 ```
 
-S2 生命周期应表示：
+已经能够接受 universe DataFrame。
+
+不要复制 downloader。
+
+只在必要时最小修改：
 
 ```text
-economic screening          PASS
-execution closure           PASS
-parameter plateau           PASS
-Research Candidate R1       FROZEN
-prospective shadow          ACTIVE
-production candidate        NO
+research/experiments/download_tushare_data.py
 ```
 
-同时修正 S3 unlock condition。
-
-旧逻辑类似：
+增加类似：
 
 ```text
-S3 waits until S2 next robustness decision
+--universe
 ```
 
-参数 robustness 已经完成。
+参数。
 
-完成本 Goal 后：
+默认仍保持：
 
 ```text
-S3 may become the next active research family
-while frozen S2 R1 continues accumulating prospective evidence.
+config/universe.csv
 ```
 
-但明确：
+以保证已有用法不变。
 
-> 本 Goal 不实现 S3。
-
----
-
-# 29. Why S3 Should Unlock After Protocol Freeze
-
-Prospective evidence 的积累受：
+S3 调用类似：
 
 ```text
-calendar time
+uv run python research/experiments/download_tushare_data.py \
+  --universe config/s3_sector_universe.csv \
+  --start-date <appropriate-history-start> \
+  --end-date 20260831 \
+  --output-dir data/canonical/s3_sector_rotation_v1
 ```
 
-限制。
-
-不能要求：
+不要增加：
 
 ```text
-Codex
-Agent
-more backtests
-```
-
-加速真实未来市场。
-
-因此不应该：
-
-```text
-freeze whole TactiCore development
-for 12–18 months
-```
-
-正确模型是：
-
-```text
-                  S2 R1
-                    │
-               candidate frozen
-                    │
-              shadow protocol
-                    │
-                    ▼
-          prospective evidence
-          accumulates over time
-                    │
-                    │
-          ┌─────────┴──────────┐
-          │                    │
-          ▼                    ▼
-   future S2 review       S3 active research
-```
-
-S2 R1 与 S3 在此阶段不是互相污染的参数竞争。
-
-因为：
-
-```text
-S2 R1 is immutable
+ProviderRegistry
+SectorDataProvider
+DataWarehouse
+DataLake
+CacheManager
+DataService
 ```
 
 ---
 
-# 30. Do NOT Start S3 in This Goal
+# 13. Preserve Existing Data Semantics
 
-即使 `STRATEGY_CATALOG.md` 被修改为允许下一 Goal 开始 S3，本 Goal 也必须停止。
-
-禁止顺手：
+继续遵循已关闭规则：
 
 ```text
-设计 S3 signal
-下载新的行业数据
-增加 sector universe
-建立 rotation strategy
-运行 S3 backtest
+fund_daily.close × fund_adj.adj_factor
 ```
 
-Goal completion 后：
+作为历史研究价格。
+
+缺失：
 
 ```text
-next active research direction = S3
+UNKNOWN
 ```
 
-即可。
+不得：
+
+```text
+forward fill
+interpolate
+zero fill
+guess
+```
+
+每个 sector ETF 独立按有效 observation 计算 momentum。
+
+signal date 自身必须存在真实价格。
 
 ---
 
-# 31. Tests
+# 14. Add S3A Independent Strategy Config
 
-增加最少、但高价值的测试。
-
-如果增加 manifest / runner，至少保护：
-
-### Candidate identity
+新增：
 
 ```text
-candidate_id == S2_R1
-trend_window == current frozen baseline
-historical_cutoff matches frozen canonical
-prospective_start > historical_cutoff
+config/s3_sector_rotation.toml
 ```
 
-### File integrity
+不要修改 S2 frozen `strategy.toml`。
 
-测试 manifest 中关键文件 hash 能与仓库当前 frozen inputs 对应。
+V1 只允许一个透明 baseline。
 
-### Strategy freeze
-
-确保 prospective runner 没有自行修改：
+预声明：
 
 ```text
-trend_window
-universe
-fallback
-fees
-slippage
+momentum_lookback = 120
+top_k = 3
+absolute_momentum_threshold = 0.0
+
+rebalance_frequency = monthly
+execution_policy = SIGNAL_CHANGE_ONLY
+
+fallback_symbol = 511010.SS
+
+fees = 0.001
+slippage = 0.0005
+initial_cash = 1000000
+```
+
+120 个有效交易 observation 大致代表中期趋势。
+
+这不是“最优参数”。
+
+本 Goal：
+
+```text
+NO parameter search
+```
+
+---
+
+# 15. Do Not Import S2's 200-Day Parameter Into S3
+
+不要因为 S2 的：
+
+```text
+trend_window = 200
+```
+
+已经通过历史研究，就默认：
+
+```text
+sector rotation should use 200
+```
+
+S2 与 S3 是不同经济假设。
+
+S3A V1 使用单一 transparent momentum horizon。
+
+后续只有 baseline 值得继续研究时，才能独立进行：
+
+```text
+coarse parameter plateau
+```
+
+---
+
+# 16. Strategy Implementation
+
+新增：
+
+```text
+tacticore/strategies/china_sector_rotation.py
+```
+
+只实现 S3A 自有经济语义。
+
+不要把逻辑放进：
+
+```text
+vectorbt_adapter.py
+```
+
+VectorBT adapter 不应该知道 sector momentum。
+
+---
+
+# 17. Exact S3A V1 Signal
+
+在每个月最后 canonical observation day：
+
+对于每一个 sector ETF：
+
+### Availability
+
+要求：
+
+```text
+signal day 有真实价格
+```
+
+且至少拥有足够有效 observation 来计算：
+
+```text
+120-observation momentum
+```
+
+否则：
+
+```text
+UNAVAILABLE
+```
+
+不得设置 momentum = 0。
+
+---
+
+### Momentum
+
+定义单一 trailing total-price momentum：
+
+```text
+momentum =
+current adjusted close
+/
+lookback adjusted close
+- 1
+```
+
+使用该 ETF 自身有效 observations。
+
+不要加入：
+
+```text
+20d momentum
+60d momentum
+volatility-adjusted momentum
+RSI
+MACD
+breadth
+fund flow
+technical score
+fundamental score
+macro score
+```
+
+---
+
+### Absolute Filter
+
+只有：
+
+```text
+momentum > 0
+```
+
+才进入 ranking。
+
+否则：
+
+```text
+NEGATIVE_SIGNAL
+```
+
+与：
+
+```text
+UNAVAILABLE
+```
+
+保持不同状态。
+
+---
+
+### Relative Ranking
+
+对所有：
+
+```text
+AVAILABLE
++
+positive momentum
+```
+
+sector ETF：
+
+按 momentum 降序。
+
+tie-break 必须 deterministic，例如：
+
+```text
+symbol ascending
+```
+
+---
+
+# 18. Portfolio Construction
+
+最多选择：
+
+```text
+top_k = 3
+```
+
+每个 risk sleeve 固定：
+
+```text
+1 / top_k
+```
+
+即：
+
+```text
+1/3
+```
+
+如果有 3 个 positive sector：
+
+```text
+1/3
+1/3
+1/3
+```
+
+如果只有 2 个：
+
+```text
+sector A = 1/3
+sector B = 1/3
+fallback = 1/3
+```
+
+如果只有 1 个：
+
+```text
+sector A = 1/3
+fallback = 2/3
+```
+
+如果没有：
+
+```text
+fallback = 100%
+```
+
+这样避免：
+
+> 市场只剩一个正趋势行业时，自动把全部风险预算集中到一个 sector。
+
+---
+
+# 19. Target Invariants
+
+每个 target 必须：
+
+```text
+weight >= 0
+weight <= 1
+sum(weights) == 1
+```
+
+且单个 sector：
+
+```text
+weight <= 1/3
+```
+
+除 fallback 外。
+
+---
+
+# 20. Execution Timing
+
+继续遵循永久规则：
+
+```text
+month-end close
+        ↓
+signal
+        ↓
+next canonical observation day
+        ↓
+execution
+```
+
+严禁：
+
+```text
+same-close execution
+```
+
+---
+
+# 21. SIGNAL_CHANGE_ONLY
+
+S3A V1 使用：
+
+```text
 SIGNAL_CHANGE_ONLY
 ```
 
-### Data boundary
-
-确保：
+如果 top-3 / fallback target 与上月完全一致：
 
 ```text
-prospective dates <= historical_cutoff
+不要机械重平衡
 ```
 
-不会被接受为 prospective observation。
+原因：
 
-### No future leakage
+排名没有改变意味着没有新经济信号。
 
-对于：
+不要为了恢复严格 1/3 权重每月产生额外订单。
 
-```text
---as-of X
-```
-
-只允许使用：
-
-```text
-date <= X
-```
-
-的数据。
-
-### Historical mutation protection
-
-如果 prospective vintage 与 historical range 有冲突且值不同：
-
-```text
-fail
-```
-
-不要静默覆盖。
-
-### Empty prospective period
-
-没有合法未来 signal 时：
-
-```text
-no fabricated observation
-```
-
-应是有效结果，而不是测试失败。
+这是低维护 baseline。
 
 ---
 
-# 32. Do Not Test Framework Internals
+# 22. Reuse VectorBT
 
-不要 unit-test：
+使用已有：
 
 ```text
-VectorBT accounting
-RQAlpha matching
-RQAlpha partial fill algorithm
-Tushare internal API behavior
+tacticore.engines.vectorbt_adapter.run_target_weights
 ```
 
-只测试：
+把策略生成的 execution weights 交给 VectorBT。
+
+不要新增：
 
 ```text
-TactiCore candidate freeze
-protocol integrity
-data boundary
-as-of semantics
-record construction
+sector_backtester.py
+rotation_engine.py
+portfolio_simulator.py
+reference_engine.py
+```
+
+VectorBT 继续拥有：
+
+```text
+portfolio simulation
+orders
+trades
+accounting
+records
 ```
 
 ---
 
-# 33. Expected File Changes
+# 23. Baselines / Benchmarks
 
-合理的目标 diff 应接近：
+S3A 至少比较两个 benchmark。
 
-```text
-research/shadow/s2_r1/candidate_manifest.json
-research/shadow/s2_r1/README.md
+## Benchmark A — Broad Market
 
-research/experiments/run_s2_r1_shadow.py   # only if useful
-
-tests/test_s2_r1_shadow.py
-
-research/results/S2_R1_PROSPECTIVE_PROTOCOL_V1.md
-
-docs/RESEARCH_RULES.md
-docs/RESEARCH_LEDGER.md
-docs/CURRENT_STATE.md
-docs/STRATEGY_CATALOG.md
-docs/goal.md
-README.md                                  # only if a short discoverability link helps
-```
-
-正常情况下：
+优先：
 
 ```text
-AGENTS.md       unchanged
-ARCHITECTURE.md unchanged
-strategy code   unchanged
-VectorBT adapter unchanged
-RQAlpha adapter unchanged
+510300.SS
 ```
 
-如果大量 core source 被修改：
+buy-and-hold。
+
+目的：
+
+```text
+是否值得承担 sector-selection complexity
+```
+
+---
+
+## Benchmark B — Sector Equal Weight
+
+建立一个非常简单、experiment-local 的：
+
+```text
+availability-aware equal-weight sector basket
+```
+
+目的：
+
+> 区分 sector universe 本身的 beta 与 rotation selection 是否增加价值。
+
+不要把它建设成新的 strategy package。
+
+它只用于：
+
+```text
+research comparison
+```
+
+---
+
+# 24. Evaluation Start
+
+避免在只有少数 sector ETF 有历史的早期阶段宣称完成 cross-sectional rotation。
+
+预声明 coverage gate：
+
+评价期开始必须满足：
+
+```text
+data-eligible sectors >= 8
+```
+
+并已经拥有足够的 120-observation warm-up。
+
+评价 start 应由这一规则确定。
+
+报告实际：
+
+```text
+evaluation_start
+evaluation_end
+eligible-sector count distribution
+```
+
+不要事后选择表现最好的开始日期。
+
+---
+
+# 25. Economic Screen Metrics
+
+S3A V1 至少报告：
+
+```text
+CAGR
+Max Drawdown
+Sharpe
+Calmar
+worst year
+
+turnover
+trade count
+average holding days
+
+target-change months
+annualized target-change months
+
+sector coverage
+average eligible sector count
+minimum eligible sector count
+
+fallback usage
+```
+
+不要只看 CAGR。
+
+---
+
+# 26. Rotation-Specific Evidence
+
+至少另外回答：
+
+```text
+哪些行业最常被选中？
+
+持仓是否严重集中在少数行业？
+
+top-3 实际变化频率是多少？
+
+fallback 被使用多少月份？
+
+是否存在单一行业贡献绝大部分收益？
+
+early / late period 的 sector breadth 是否明显不同？
+```
+
+这些是 diagnostics。
+
+不要因此增加复杂 scoring。
+
+---
+
+# 27. Do Not Run Parameter Search
+
+本 Goal 禁止：
+
+```text
+60 / 80 / 100 / 120 / 160 / 200
+```
+
+批量搜索。
+
+禁止：
+
+```text
+top_k = 1..10
+```
+
+搜索。
+
+禁止：
+
+```text
+best Sharpe
+best CAGR
+grid search
+Bayesian optimization
+```
+
+只有：
+
+```text
+lookback = 120
+top_k = 3
+threshold = 0
+```
+
+的 transparent V1 baseline。
+
+---
+
+# 28. Predeclare Economic Advance Gate
+
+在运行收益结果前实现并写入报告。
+
+S3A V1 只有满足以下全部基础条件才允许：
+
+```text
+ADVANCE_S3A_BASELINE_TO_ROBUSTNESS
+```
+
+### Data / Coverage
+
+```text
+>= 8 sector ETFs
+
+AND
+
+>= 8 data-eligible sectors
+in at least 80% of evaluated month-end observations
+```
+
+---
+
+### Absolute Economic Floor
+
+```text
+after-cost CAGR > 0
+
+Sharpe >= 0.40
+
+Max Drawdown better than -40%
+
+annualized target-change months <= 10
+```
+
+---
+
+### Rotation Value
+
+相对于 availability-aware sector equal-weight benchmark：
+
+在：
+
+```text
+CAGR
+Max Drawdown
+Sharpe
+Calmar
+```
+
+四项中至少：
+
+```text
+2 项更优
+```
+
+且不能通过明显恶化其余风险指标获得。
+
+Broad-market benchmark：
+
+```text
+510300.SS
+```
+
+作为重要 contextual comparison，但不要求 S3 必须 CAGR 超过沪深300才能进入下一阶段。
+
+因为 S3 的目标是：
+
+```text
+risk-adjusted allocation value
+```
+
+而不只是 raw CAGR。
+
+---
+
+# 29. Decision Outcomes
+
+本 Goal 必须最终给出一个主要决策。
+
+## A. ADVANCE_S3A_BASELINE_TO_ROBUSTNESS
+
+条件：
+
+```text
+数据覆盖成立
+经济 floor 成立
+rotation 相对 equal-weight 有明确价值
+低频约束成立
+```
+
+表示：
+
+> S3A transparent baseline 值得继续研究。
+
+不表示：
+
+```text
+production candidate
+```
+
+下一 Goal 才考虑：
+
+```text
+universe robustness
++
+coarse parameter plateau
++
+historical regime stability
+```
+
+---
+
+## B. REJECT_S3A_BASELINE
+
+如果：
+
+```text
+baseline 本身缺乏经济价值
+drawdown 过大
+risk-adjusted evidence weak
+rotation 不优于简单 sector equal-weight
+维护/换手明显不符合低频使命
+```
+
+则：
+
+```text
+REJECT_S3A_BASELINE
+```
+
+禁止马上改成：
+
+```text
+lookback 93
+top_k 4
+weighted momentum
+multi-factor
+```
+
+来救结果。
+
+---
+
+## C. BLOCK_S3A_UNIVERSE_COVERAGE
+
+如果无法形成：
+
+```text
+>= 8
+```
+
+个具有合理历史长度的行业 ETF universe：
+
+停止 baseline。
+
+这代表：
+
+```text
+data/universe blocker
+```
+
+不是策略失败。
+
+---
+
+## D. REVISE_S3A_SEMANTICS
+
+只允许在发现：
+
+```text
+明确 lookahead
+目标权重数学错误
+availability 定义错误
+ETF 分类冲突
+benchmark 方法错误
+```
+
+等具体方法缺陷时使用。
+
+不得因为收益不好使用 REVISE。
+
+---
+
+# 30. Expected Implementation
+
+合理新增文件大致为：
+
+```text
+config/s3_sector_rotation.toml
+config/s3_sector_universe.csv
+
+data/canonical/s3_sector_rotation_v1/
+    etf_adjusted_close.csv
+    trading_calendar.csv
+    provenance.json
+
+tacticore/strategies/china_sector_rotation.py
+
+research/experiments/run_s3_sector_baseline.py
+
+research/results/S3_SECTOR_BASELINE_V1.md
+research/results/s3_sector_universe_v1.csv
+research/results/s3_sector_targets_v1.csv
+research/results/s3_sector_benchmark_comparison_v1.csv
+
+tests/test_china_sector_rotation.py
+tests/test_s3_sector_baseline.py
+```
+
+不要机械创建全部文件。
+
+只有存在明确证据价值时才保留 CSV。
+
+---
+
+# 31. Downloader Change
+
+允许对：
+
+```text
+research/experiments/download_tushare_data.py
+```
+
+做一个很小的通用化：
+
+新增：
+
+```text
+--universe
+```
+
+默认值保持现有：
+
+```text
+config/universe.csv
+```
+
+S1/S2 旧调用必须继续工作。
+
+不要修改：
+
+```text
+tacticore/data/tushare.py
+```
+
+除非实际发现它无法处理 S3 ETF。
+
+不要提前泛化。
+
+---
+
+# 32. S2 R1 Must Continue Passing
+
+完成 S3 代码以后，再次执行：
+
+```text
+uv run python research/experiments/run_s2_r1_shadow.py \
+  --verify-candidate
+```
+
+必须仍然：
+
+```text
+PASS
+```
+
+这是本 Goal 的强制 regression gate。
+
+如果失败：
 
 ```text
 STOP
 ```
 
-重新检查是否发生 architecture drift。
+找到被 S3 误改的 frozen input。
+
+不要更新 S2 manifest hash 来“修复”。
 
 ---
 
-# 34. Completion Report Artifact
+# 33. Do Not Touch S2 Candidate
 
-新增：
+禁止：
 
 ```text
-research/results/S2_R1_PROSPECTIVE_PROTOCOL_V1.md
+更新 S2 manifest hash
+修改 S2 strategy
+修改 S2 historical cutoff
+更新 S2 config
+改变 S2 universe
+重新跑 S2 parameter optimization
 ```
 
-必须记录：
+S3 是独立 strategy family。
+
+S2 R1 必须继续等待 prospective evidence。
+
+---
+
+# 34. No RQAlpha Yet
+
+本 Goal 不运行 S3 RQAlpha execution validation。
+
+当前研究顺序：
 
 ```text
-starting HEAD
-candidate freeze commit
-candidate ID
+hypothesis
+ ↓
+VectorBT economic screen
+ ↓
+robustness
+ ↓
+only then authoritative execution
+```
+
+不要因为 RQAlpha 已经存在就提前进入 execution engineering。
+
+如果 baseline 被拒绝：
+
+RQAlpha 工作价值为零。
+
+---
+
+# 35. No Production Infrastructure
+
+禁止：
+
+```text
+scheduler
+cron
+daemon
+dashboard
+web UI
+broker
+notification
+live trading
+daily report
+position recommendation
+```
+
+S3A V1 只是 historical research baseline。
+
+---
+
+# 36. No DailyETF Reimplementation
+
+读取：
+
+```text
+docs/LESSONS_FROM_DAILYETF.md
+```
+
+继承：
+
+```text
+研究知识
+风险意识
+数据陷阱
+轮动思想
+```
+
+不要继承：
+
+```text
+多因子评分平台
+数据 provider framework
+研究治理 plane
+自研 backtest
+日报系统
+复杂状态机
+```
+
+尤其禁止一开始加入：
+
+```text
+资金流
+政策事件
+新闻情绪
+估值
+拥挤度
+宏观
+技术指标组合
+```
+
+那些都可以成为未来增量假设。
+
+第一步必须先知道：
+
+> 单纯价格型 sector rotation 是否有基础 alpha。
+
+---
+
+# 37. Tests
+
+至少覆盖：
+
+### Universe
+
+```text
+sector symbols unique
+sector category unique
+fallback not counted as sector
+>= 8 sector ETFs
+```
+
+### Momentum
+
+```text
+uses only data <= signal_date
+uses valid observations
+requires signal-day price
+UNAVAILABLE != NEGATIVE_SIGNAL
+```
+
+### Ranking
+
+```text
+descending momentum
+deterministic tie-break
+only positive assets ranked
+```
+
+### Portfolio
+
+```text
+top_k <= 3
+sector weight <= 1/3
+fallback receives unused sleeves
+weights sum to 1
+```
+
+### Timing
+
+```text
+month-end signal
+next observation execution
+no same-close execution
+```
+
+### Low Touch
+
+```text
+unchanged target
+→ no new execution target
+```
+
+### Regression
+
+```text
+S2 frozen hashes unchanged
+S2 candidate verify still passes
+```
+
+---
+
+# 38. Do Not Test Framework Internals
+
+不要测试：
+
+```text
+VectorBT accounting internals
+Tushare server behavior
+RQAlpha matching
+```
+
+只测试：
+
+```text
+TactiCore-owned economic semantics
+data boundary
+target generation
+benchmark construction
+experiment reproducibility
+```
+
+---
+
+# 39. Documents
+
+## AGENTS.md
+
+正常：
+
+```text
+UNCHANGED
+```
+
+S3 不需要新 routing。
+
+---
+
+## ARCHITECTURE.md
+
+正常：
+
+```text
+UNCHANGED
+```
+
+这仍然是：
+
+```text
+data
+→ strategy semantics
+→ VectorBT research
+→ evidence / decision
+```
+
+没有新 architecture layer。
+
+---
+
+## RESEARCH_RULES.md
+
+正常：
+
+```text
+UNCHANGED
+```
+
+本 Goal 没有产生新的永久方法。
+
+不要把：
+
+```text
+120 days
+top 3
+sector list
+```
+
+写进 permanent rules。
+
+---
+
+## LESSONS_FROM_DAILYETF.md
+
+正常：
+
+```text
+UNCHANGED
+```
+
+除非确实发现一个以前不存在且值得永久保留的通用经验。
+
+---
+
+# 40. Update Research Ledger
+
+向：
+
+```text
+docs/RESEARCH_LEDGER.md
+```
+
+追加：
+
+```text
+RL-018 S3A Transparent Sector Rotation Baseline
+```
+
+记录：
+
+```text
+strategy
+question
+status
+scope
+universe rule
+signal semantics
 historical cutoff
-prospective start
-manifest path
-manifest hash
-frozen input hashes
-protocol version
-data vintage policy
-decision timing policy
-review eligibility
-candidate invalidation rules
-files changed
-tests
-what remains unproven
-next active research direction
+decision
+evidence
+data hashes
+framework version
+reopen condition
 ```
 
-不要伪造 prospective performance。
-
-如果尚无未来 month-end observation，应明确写：
+如果：
 
 ```text
-No prospective performance conclusion exists yet.
+ADVANCE
+```
+
+状态可以：
+
+```text
+CLOSED
+```
+
+因为 V1 baseline screen 已完成。
+
+后续 robustness 是新问题。
+
+如果 data blocker：
+
+可以记录：
+
+```text
+ACTIVE
+```
+
+并明确 blocker。
+
+---
+
+# 41. Update STRATEGY_CATALOG
+
+S2 保持：
+
+```text
+Research Candidate R1
+FROZEN
+PROSPECTIVE_SHADOW_ACTIVE
+```
+
+不要改写。
+
+扩充 S3：
+
+```text
+S3 China Sector / Theme Rotation
+
+S3A Sector Rotation V1
+hypothesis
+universe
+baseline semantics
+historical screen result
+decision
+remaining unproven items
+next stage
+```
+
+如果 baseline advance：
+
+写：
+
+```text
+economic baseline: PASS
+robustness: pending
+execution validation: not started
+production candidate: no
+```
+
+Theme Rotation：
+
+仍然：
+
+```text
+not started
 ```
 
 ---
 
-# 35. docs/goal.md
+# 42. Update CURRENT_STATE
 
-用本 Goal 替换已经完成的旧 Goal。
+完成后 CURRENT_STATE 应表达两条并行但职责不同的线：
 
-不要无限累积多个完成 Goal。
+```text
+S2 R1:
+FROZEN / PROSPECTIVE_SHADOW_ACTIVE
+waiting for future evidence
 
-完成时可在文末增加：
+S3:
+current active research family
+```
+
+如果 S3A PASS：
+
+```text
+current S3 decision:
+ADVANCE_S3A_BASELINE_TO_ROBUSTNESS
+
+next unique active research direction:
+S3A universe robustness + coarse parameter plateau
+```
+
+如果 REJECT：
+
+写实际下一方向。
+
+不要让 CURRENT_STATE 变成历史日志。
+
+---
+
+# 43. Replace docs/goal.md
+
+当前完成的 S2 prospective Goal 已经是历史执行任务。
+
+用本 Goal 替换：
+
+```text
+docs/goal.md
+```
+
+完成时可以保留：
 
 ```text
 Status: completed
-
-Decision:
-ACTIVATE_S2_R1_PROSPECTIVE_SHADOW
+Decision: <actual result>
 ```
 
-以及权威结果指针：
+永久事实必须进入：
 
 ```text
-research/results/S2_R1_PROSPECTIVE_PROTOCOL_V1.md
-```
-
-但所有永久规则和状态必须已经写入各自权威文档。
-
----
-
-# 36. Decision at End of This Goal
-
-正常成功决策：
-
-```text
-ACTIVATE_S2_R1_PROSPECTIVE_SHADOW
-```
-
-条件：
-
-```text
-candidate identity frozen
-manifest reproducible
-historical cutoff explicit
-prospective data cannot overwrite historical baseline
-protocol preregistered
-as-of semantics explicit
-record schema ready
-review eligibility frozen
-candidate-version rule documented
-tests pass
-```
-
-然后：
-
-```text
-S2 Research Candidate R1
-→ PROSPECTIVE_SHADOW_ACTIVE
-```
-
-并：
-
-```text
-next active research family
-→ S3
+RESEARCH_LEDGER
+STRATEGY_CATALOG
+research/results
+CURRENT_STATE
 ```
 
 ---
 
-# 37. Alternative Decision: REVISE_PROTOCOL
+# 44. Main Research Report
 
-只有发现协议本身无法做到：
-
-```text
-reproducible candidate identity
-historical/prospective separation
-as-of correctness
-```
-
-时允许：
+生成：
 
 ```text
-REVISE_S2_R1_PROSPECTIVE_PROTOCOL
+research/results/S3_SECTOR_BASELINE_V1.md
 ```
 
-必须指出：
+结构至少包括：
 
 ```text
-one concrete blocker
-one bounded next fix
+1. Research Question
+2. Predeclared Hypothesis
+3. Universe Selection Rule
+4. Final Frozen Universe
+5. Data Provenance
+6. Missing / Availability Semantics
+7. Exact Signal Definition
+8. Portfolio Construction
+9. Execution Timing
+10. Benchmarks
+11. Predeclared Advance Gate
+12. Full-Sample Metrics
+13. Benchmark Comparison
+14. Coverage Evidence
+15. Turnover / Maintenance Evidence
+16. Sector Selection Diagnostics
+17. Known Biases / Limitations
+18. Decision
+19. What This Does NOT Prove
+20. Next ONE Research Direction
 ```
-
-不得以“未来数据还没来”为理由 REVISE。
-
-等待未来数据是正常状态。
 
 ---
 
-# 38. Architecture Drift Audit
+# 45. Explicit Bias Disclosure
 
-完成前逐项回答：
+S3A V1 使用当前明确选择的 tradable ETF universe。
+
+因此必须说明可能存在：
 
 ```text
-Did we modify S2 R1 economic semantics?
-
-Did we rerun a CLOSED historical investigation?
-
-Did we search for a new optimal parameter?
-
-Did we overwrite the historical canonical dataset?
-
-Did we build a data platform?
-
-Did we build a scheduler / daemon?
-
-Did we build a candidate registry?
-
-Did we build a governance framework?
-
-Did we duplicate VectorBT capability?
-
-Did we duplicate RQAlpha capability?
-
-Did we put transient candidate data into AGENTS.md?
-
-Did we change ARCHITECTURE without a real architecture change?
-
-Did we fabricate prospective evidence?
-
-Did we use data after the stated as-of date?
-
-Did we start S3 inside this Goal?
+survivorship bias
+fund-launch bias
+limited historical sector breadth
+ETF tracking differences
+industry overlap
+current-universe selection bias
 ```
 
-Normal answers应为：
+不要在 V1 为了解决全部偏差建设 PIT universe engine。
+
+如果 baseline 根本没有经济价值：
+
+没有必要建设它。
+
+如果 baseline advance：
+
+下一阶段再专门验证：
+
+```text
+universe robustness / PIT sensitivity
+```
+
+---
+
+# 46. Important Interpretation Rule
+
+如果 S3A 表现良好：
+
+不能说：
+
+```text
+行业轮动已验证
+```
+
+只能说：
+
+```text
+transparent sector rotation baseline
+has enough historical economic evidence
+to justify robustness research
+```
+
+如果表现不好：
+
+不要说：
+
+```text
+行业轮动无效
+```
+
+只能说：
+
+```text
+this predeclared S3A V1 hypothesis
+failed the economic screen
+```
+
+不同 hypothesis 必须成为新版本，而不是偷偷修改 V1。
+
+---
+
+# 47. Architecture Drift Audit
+
+提交前逐项回答：
+
+```text
+Did we modify any S2 R1 frozen input?
+
+Did we update the S2 manifest to hide such a modification?
+
+Did we put S3 into config/strategy.toml?
+
+Did we put S3 ETFs into config/universe.csv?
+
+Did we mix themes into the sector baseline?
+
+Did we choose ETFs based on historical return?
+
+Did we run parameter optimization?
+
+Did we implement custom backtesting?
+
+Did we duplicate VectorBT?
+
+Did we start RQAlpha validation before economic screening?
+
+Did we build a data/provider platform?
+
+Did we build production infrastructure?
+
+Did we recreate DailyETF complexity?
+
+Did we modify AGENTS.md without a routing problem?
+
+Did we modify ARCHITECTURE.md without a responsibility change?
+
+Did we modify RESEARCH_RULES.md merely to record S3 parameters?
+
+Did we claim S3 is production-ready?
+```
+
+正常答案：
 
 ```text
 NO
 ```
 
-任何无法解释的 YES 必须在提交前修正。
-
 ---
 
-# 39. Validation
+# 48. Validation
 
-执行仓库当前正式检查。
-
-预期至少：
+运行当前仓库全部正式验证：
 
 ```text
 uv sync --extra dev
@@ -1850,223 +2035,241 @@ uv run ruff format --check .
 uv run mypy
 ```
 
-如果新增 shadow runner：
+运行 S3 historical experiment。
 
-运行能够验证 candidate manifest / frozen historical state 的安全模式。
+运行前记录：
 
-例如：
+```text
+data hashes
+universe hash
+config hash
+```
+
+运行后确保结果可复现。
+
+然后再次：
 
 ```text
 uv run python research/experiments/run_s2_r1_shadow.py \
   --verify-candidate
 ```
 
-如果不存在未来 month-end data：
-
-不要强迫生成 observation。
-
-验证：
-
-```text
-candidate verification succeeds
-prospective record count may remain zero
-```
+必须通过。
 
 ---
 
-# 40. Do Not Add CI in This Goal
+# 49. Git Diff Audit
 
-当前如果仍无 GitHub Actions gate，不在本 Goal 处理。
-
-Prospective protocol 是当前研究主线。
-
-不要把它扩展成：
-
-```text
-CI modernization
-release automation
-branch protection
-deployment
-```
-
-这些可以以后独立维护。
-
----
-
-# 41. Commit and Push
-
-完成全部验证后：
+提交前：
 
 ```text
 git status
 git diff
 ```
 
-人工检查完整 diff。
-
-确认：
+特别检查：
 
 ```text
-no token
-no credentials
-no temporary environment
-no generated framework cache
-no unintended canonical overwrite
+config/strategy.toml
+config/universe.csv
+data/canonical/etf_adjusted_close.csv
+data/canonical/trading_calendar.csv
+data/canonical/provenance.json
+tacticore/strategies/multi_asset_trend.py
+tacticore/engines/rqalpha_adapter.py
 ```
 
-形成一个 coherent commit。
-
-建议 commit intent：
-
-```text
-freeze S2 R1 and activate prospective shadow protocol
-```
-
-随后 push 当前分支。
+这些 S2 R1 frozen files 不得发生变化。
 
 ---
 
-# 42. Final Report
+# 50. Commit and Push
 
-最终报告必须给出：
+全部完成后创建一个 coherent commit。
+
+建议 intent：
+
+```text
+establish S3 sector rotation transparent baseline
+```
+
+随后：
+
+```text
+git push
+```
+
+不要混入无关重构。
+
+---
+
+# 51. Final Report
+
+最终报告必须包括：
 
 ```text
 starting HEAD
 ending HEAD
 commit SHA
 
-files added
-files modified
+S2 R1 integrity before
+S2 R1 integrity after
 
-candidate ID
-historical cutoff
-prospective start
+S3 universe size
+sector list
+selection rule
+data range
+data hashes
 
-candidate manifest hash
+signal semantics
+lookback
+top_k
+fallback semantics
 
-frozen strategy/config/universe/data hashes
+evaluation range
 
-protocol version
+CAGR
+Max Drawdown
+Sharpe
+Calmar
+worst year
+turnover
+trade count
+average holding period
+target-change months
+fallback usage
 
-review eligibility
+510300 benchmark comparison
+sector equal-weight benchmark comparison
 
-tests executed
-
-prospective observations currently available
+final decision
 ```
 
 并明确回答：
 
 ```text
 Was S2 R1 modified?
-YES / NO
-
-Were historical CLOSED questions reopened?
-YES / NO
-
-Was historical canonical data overwritten?
-YES / NO
-
-Was any future evidence fabricated?
-YES / NO
-
-Was a new generic platform/framework created?
-YES / NO
-
-Is S2 R1 now prospective-shadow active?
-YES / NO
-
-Is S2 a production candidate?
 NO
 
-Is S3 implemented in this Goal?
+Did S2 candidate verification still pass?
+YES
+
+Were themes included?
 NO
 
-Is S3 unlocked as the next active research family?
-YES / NO
+Was historical return used to construct the universe?
+NO
+
+Was parameter optimization performed?
+NO
+
+Was RQAlpha S3 validation performed?
+NO
+
+Was any generic infrastructure added?
+NO
+
+Is S3 production-ready?
+NO
 ```
 
 ---
 
-# 43. Expected Final Repository State
+# 52. Expected Next Direction
 
-成功以后：
+如果：
+
+```text
+ADVANCE_S3A_BASELINE_TO_ROBUSTNESS
+```
+
+下一 Goal 应围绕：
+
+```text
+S3A Universe Robustness
++
+Coarse Parameter Plateau
+```
+
+重点回答：
+
+```text
+结果是否依赖少数 ETF？
+是否依赖当前幸存 universe？
+120 日是否处于稳定参数平台？
+top-3 是否具有结构稳定性？
+不同市场阶段是否仍然成立？
+```
+
+而不是：
+
+```text
+加新闻
+加资金流
+加技术指标
+加宏观
+加 AI
+```
+
+如果：
+
+```text
+REJECT_S3A_BASELINE
+```
+
+则停止这一 baseline。
+
+下一步重新选择经济 hypothesis，而不是微调参数。
+
+---
+
+# 53. Expected Architecture After This Goal
 
 ```text
                          TactiCore
-
-                   ┌─────────────────┐
-                   │ Stable Contract │
-                   │   AGENTS.md     │
-                   └────────┬────────┘
-                            │
-             ┌──────────────┼──────────────┐
-             │              │              │
-             ▼              ▼              ▼
-       Architecture      Rules          Ledger
-             │              │              │
-             └──────────────┼──────────────┘
-                            │
-                            ▼
-                    Historical Research
-                            │
-                  S2 V2B fully reviewed
-                            │
-                            ▼
-                S2 Research Candidate R1
-                         FROZEN
-                            │
-                    2026-08-31 cutoff
-                            │
-════════════════════════════╪════════════════════════════
- Historical                 │                  Prospective
-                            │
-                            ▼
-               Shadow Protocol V1
-                            │
-                     preregistered
-                            │
-                            ▼
-                PROSPECTIVE_SHADOW_ACTIVE
-                      /             \
-                     /               \
-                    ▼                 ▼
-           future S2 evidence      S3 research
-                    │
-                    ▼
-          production-candidate gate
-                    │
-                    ▼
-             tradability review
-                    │
-                    ▼
-        low-frequency decision product
+                             │
+               ┌─────────────┴─────────────┐
+               │                           │
+               ▼                           ▼
+          S2 Research                  S3 Research
+          Candidate R1
+               │                           │
+            FROZEN                  Sector Baseline V1
+               │                           │
+     Prospective Shadow               Tushare data
+               │                           │
+       future evidence             transparent momentum
+               │                           │
+               │                       VectorBT
+               │                           │
+               │                    economic screen
+               │                     /           \
+               │                  PASS          REJECT
+               │                   │
+               │                   ▼
+               │          robustness research
+               │
+               └──────── no semantic coupling ────────
 ```
 
----
-
-# 44. Final Principle
+关键原则：
 
 ```text
-Do not manufacture more historical evidence
-when the real missing variable is future time.
+S2 waits for time.
+S3 continues research.
 
-Freeze before observing.
+S3 must not mutate S2.
 
-Record before outcome.
+Sector before theme.
 
-Never rewrite an old candidate
-to improve its future record.
+Simple price hypothesis before
+complex factor intelligence.
 
-Historical canonical stays frozen.
+Economic evidence before infrastructure.
 
-Future vintages are append-only evidence.
+VectorBT before RQAlpha.
 
-S2 R1 waits for the market.
-
-TactiCore continues research through S3.
-
-Strategy research > infrastructure engineering.
+Robustness before production.
 ```
 
 ---
@@ -2075,6 +2278,6 @@ Strategy research > infrastructure engineering.
 
 Status: completed
 
-Decision: `ACTIVATE_S2_R1_PROSPECTIVE_SHADOW`
+Decision: `REJECT_S3A_BASELINE`
 
-权威结果：[S2 R1 前瞻影子协议报告](../research/results/S2_R1_PROSPECTIVE_PROTOCOL_V1.md)。
+权威结果：[S3A 中国行业轮动透明基线 V1](../research/results/S3_SECTOR_BASELINE_V1.md)。

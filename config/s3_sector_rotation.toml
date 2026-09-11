@@ -1,0 +1,10 @@
+[china_sector_rotation]
+momentum_lookback = 120
+top_k = 3
+absolute_momentum_threshold = 0.0
+rebalance_frequency = "monthly"
+execution_policy = "SIGNAL_CHANGE_ONLY"
+fallback_symbol = "511010.SS"
+fees = 0.001
+slippage = 0.0005
+initial_cash = 1000000.0

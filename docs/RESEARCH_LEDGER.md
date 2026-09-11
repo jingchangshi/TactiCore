@@ -207,3 +207,15 @@
 - 数据快照：historical cutoff 2026-08-31；前瞻数据仅接受严格晚于该日期的 candidate-specific vintage。
 - 框架/版本：不新增框架；决策沿用冻结策略语义，执行证据沿用 RQAlpha 6.3.x 原生结果。
 - 重开条件：只在 manifest/协议无法保持身份、历史/前瞻隔离或 as-of 正确性时有界修订协议；不得因短期表现重开或优化 R1。
+
+## RL-018 S3A 透明行业轮动基线
+
+- 策略：S3A China Sector Rotation V1
+- 问题：预声明的 120 有效观测、top-3、月频正动量行业 ETF 轮动是否值得进入稳健性研究？
+- 状态：REJECTED
+- 范围：11 个按非收益 metadata 规则选取的 A 股行业 ETF；独立 Tushare canonical，截止 2026-08-31；`SIGNAL_CHANGE_ONLY`、1/3 固定 sleeve、511010.SS 防御、VectorBT 经济筛选。
+- 结论：覆盖门槛和低触达约束成立，但 after-cost CAGR 5.81%、Sharpe 0.363、最大回撤 -52.43% 未达预声明 floor，且相对行业等权的 CAGR/回撤/Sharpe/Calmar 均不优，决策 `REJECT_S3A_BASELINE`。不得通过参数微调重开。
+- 证据：[S3A 报告](../research/results/S3_SECTOR_BASELINE_V1.md)、[universe](../research/results/s3_sector_universe_v1.csv)、[benchmark 比较](../research/results/s3_sector_benchmark_comparison_v1.csv)。
+- 数据快照：价格 SHA-256 `337c28cc52c04f8b5257a8feffb7d1c508248cab10595466c8c69d758556a4a6`；日历 SHA-256 `13f4240ee6531415e3ea7638d9691af01290e97da3607446246d3dc8f96e51e6`。
+- 框架/版本：Tushare Pro；VectorBT 0.28.5。
+- 重开条件：仅当 S3A V1 语义、universe 契约或 canonical 数据契约改变时作为新版本研究；不得以本轮收益结果或更优参数重开。

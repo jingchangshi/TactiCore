@@ -31,4 +31,12 @@
 
 ## S3 China Sector / Theme Rotation
 
-状态：可作为下一活动研究家族；S2 R1 已冻结，前瞻 evidence 可与 S3 的独立研究并行积累。本 Goal 未实现 S3。
+状态：S3A Sector Rotation V1 已完成透明经济筛选并被 `REJECT_S3A_BASELINE`；Theme Rotation 未启动。S2 R1 继续独立积累前瞻 evidence。
+
+- S3A 假设：A 股行业中期相对动量加正绝对动量过滤，月频 top-3 固定 sleeve 与防御资产可能提供风险调整配置价值。
+- Universe：11 个按 long-only、境内、明确 A 股行业、最早上市且不使用收益数据的 ETF；不混入 Theme ETF。
+- 基线：120 个有效观测动量、`top_k=3`、月末信号/下一观测日执行、`SIGNAL_CHANGE_ONLY`、511010.SS 防御。
+- 历史筛选：覆盖与低触达成立，但 CAGR 5.81%、最大回撤 -52.43%、Sharpe 0.363，且不优于 availability-aware 行业等权；经济 baseline：REJECTED。
+- 尚未证明：任何不同的 S3 hypothesis、PIT universe、执行或生产可交易性；本拒绝不泛化为“行业轮动无效”。
+- 下一步：停止 S3A V1；新的经济 hypothesis 必须使用新版本，而非参数微调。
+- Theme Rotation：未启动。

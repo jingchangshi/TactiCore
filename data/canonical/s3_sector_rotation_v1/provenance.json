@@ -1,0 +1,571 @@
+{
+  "adjustment_type": "后复权（原始收盘价 × fund_adj 复权因子，将因子变化视为分红再投资）",
+  "calendar_requests": [
+    {
+      "end_date": "20260831",
+      "exchange": "SSE",
+      "fields": "exchange,cal_date,is_open,pretrade_date",
+      "start_date": "20110101"
+    },
+    {
+      "end_date": "20260831",
+      "exchange": "SZSE",
+      "fields": "exchange,cal_date,is_open,pretrade_date",
+      "start_date": "20110101"
+    }
+  ],
+  "dataset": "TactiCore S1 ETF 后复权收盘价",
+  "download_timestamp": "2026-09-11T14:18:40+00:00",
+  "end_date": "20260831",
+  "files": {
+    "etf_adjusted_close.csv": {
+      "rows": 3771,
+      "sha256": "337c28cc52c04f8b5257a8feffb7d1c508248cab10595466c8c69d758556a4a6"
+    },
+    "trading_calendar.csv": {
+      "rows": 5722,
+      "sha256": "13f4240ee6531415e3ea7638d9691af01290e97da3607446246d3dc8f96e51e6"
+    }
+  },
+  "lookahead_control": {
+    "data_availability": "trade_date 收盘价只在该交易日收盘后可用",
+    "strategy_execution": "月末收盘生成信号，下一交易日执行"
+  },
+  "metadata_request": {
+    "fields": "ts_code,name,management,fund_type,list_date,delist_date",
+    "market": "E",
+    "status": "L"
+  },
+  "quality_checks": {
+    "日期唯一且递增": true,
+    "有效价格均为正数": true,
+    "缺失值未填零或猜测": true,
+    "行情日期均属于对应交易所交易日": true,
+    "逐标的结果": {
+      "159997.SZ": {
+        "上市后区间缺失日期": [],
+        "上市后区间缺失观测": 0,
+        "复权因子变化次数": 0,
+        "复权因子重复日期": 0,
+        "日线重复日期": 0,
+        "非交易日行情": 0,
+        "非正复权价格": 0
+      },
+      "510150.SS": {
+        "上市后区间缺失日期": [
+          "2013-12-23",
+          "2014-05-09",
+          "2014-05-13",
+          "2014-05-23",
+          "2016-04-08",
+          "2016-05-25",
+          "2016-06-14",
+          "2017-02-03",
+          "2017-05-05",
+          "2017-05-11",
+          "2017-07-03",
+          "2017-09-01",
+          "2017-09-22",
+          "2021-05-28"
+        ],
+        "上市后区间缺失观测": 14,
+        "复权因子变化次数": 1,
+        "复权因子重复日期": 0,
+        "日线重复日期": 0,
+        "非交易日行情": 0,
+        "非正复权价格": 0
+      },
+      "510660.SS": {
+        "上市后区间缺失日期": [],
+        "上市后区间缺失观测": 0,
+        "复权因子变化次数": 0,
+        "复权因子重复日期": 0,
+        "日线重复日期": 0,
+        "非交易日行情": 0,
+        "非正复权价格": 0
+      },
+      "511010.SS": {
+        "上市后区间缺失日期": [],
+        "上市后区间缺失观测": 0,
+        "复权因子变化次数": 6,
+        "复权因子重复日期": 0,
+        "日线重复日期": 0,
+        "非交易日行情": 0,
+        "非正复权价格": 0
+      },
+      "512000.SS": {
+        "上市后区间缺失日期": [],
+        "上市后区间缺失观测": 0,
+        "复权因子变化次数": 1,
+        "复权因子重复日期": 0,
+        "日线重复日期": 0,
+        "非交易日行情": 0,
+        "非正复权价格": 0
+      },
+      "512200.SS": {
+        "上市后区间缺失日期": [],
+        "上市后区间缺失观测": 0,
+        "复权因子变化次数": 1,
+        "复权因子重复日期": 0,
+        "日线重复日期": 0,
+        "非交易日行情": 0,
+        "非正复权价格": 0
+      },
+      "512400.SS": {
+        "上市后区间缺失日期": [],
+        "上市后区间缺失观测": 0,
+        "复权因子变化次数": 2,
+        "复权因子重复日期": 0,
+        "日线重复日期": 0,
+        "非交易日行情": 0,
+        "非正复权价格": 0
+      },
+      "512660.SS": {
+        "上市后区间缺失日期": [],
+        "上市后区间缺失观测": 0,
+        "复权因子变化次数": 0,
+        "复权因子重复日期": 0,
+        "日线重复日期": 0,
+        "非交易日行情": 0,
+        "非正复权价格": 0
+      },
+      "512700.SS": {
+        "上市后区间缺失日期": [],
+        "上市后区间缺失观测": 0,
+        "复权因子变化次数": 5,
+        "复权因子重复日期": 0,
+        "日线重复日期": 0,
+        "非交易日行情": 0,
+        "非正复权价格": 0
+      },
+      "512980.SS": {
+        "上市后区间缺失日期": [],
+        "上市后区间缺失观测": 0,
+        "复权因子变化次数": 0,
+        "复权因子重复日期": 0,
+        "日线重复日期": 0,
+        "非交易日行情": 0,
+        "非正复权价格": 0
+      },
+      "515210.SS": {
+        "上市后区间缺失日期": [],
+        "上市后区间缺失观测": 0,
+        "复权因子变化次数": 5,
+        "复权因子重复日期": 0,
+        "日线重复日期": 0,
+        "非交易日行情": 0,
+        "非正复权价格": 0
+      },
+      "515220.SS": {
+        "上市后区间缺失日期": [],
+        "上市后区间缺失观测": 0,
+        "复权因子变化次数": 6,
+        "复权因子重复日期": 0,
+        "日线重复日期": 0,
+        "非交易日行情": 0,
+        "非正复权价格": 0
+      }
+    },
+    "配置上市日期与 Tushare 元数据一致": true
+  },
+  "source": "Tushare Pro",
+  "start_date": "20110101",
+  "symbols": [
+    {
+      "adjustment_type": "后复权（原始收盘价 × fund_adj 复权因子，将因子变化视为分红再投资）",
+      "data_timestamp": "2026-08-31",
+      "download_timestamp": "2026-09-11T14:18:40+00:00",
+      "first_observation": "2011-02-25",
+      "metadata": {
+        "delist_date": null,
+        "fund_type": "股票型",
+        "list_date": "20110225",
+        "management": "招商基金管理有限公司",
+        "name": "招商上证消费80ETF"
+      },
+      "request_parameters": {
+        "fund_adj": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,adj_factor",
+          "page_size": 2000,
+          "start_date": "20110101",
+          "ts_code": "510150.SH"
+        },
+        "fund_daily": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,close",
+          "page_size": 5000,
+          "start_date": "20110101",
+          "ts_code": "510150.SH"
+        }
+      },
+      "rows": 3757,
+      "source": "Tushare Pro",
+      "symbol": "510150.SS",
+      "tushare_symbol": "510150.SH"
+    },
+    {
+      "adjustment_type": "后复权（原始收盘价 × fund_adj 复权因子，将因子变化视为分红再投资）",
+      "data_timestamp": "2026-08-31",
+      "download_timestamp": "2026-09-11T14:18:40+00:00",
+      "first_observation": "2013-05-08",
+      "metadata": {
+        "delist_date": null,
+        "fund_type": "股票型",
+        "list_date": "20130508",
+        "management": "华夏基金管理有限公司",
+        "name": "华夏上证医药卫生ETF"
+      },
+      "request_parameters": {
+        "fund_adj": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,adj_factor",
+          "page_size": 2000,
+          "start_date": "20110101",
+          "ts_code": "510660.SH"
+        },
+        "fund_daily": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,close",
+          "page_size": 5000,
+          "start_date": "20110101",
+          "ts_code": "510660.SH"
+        }
+      },
+      "rows": 3239,
+      "source": "Tushare Pro",
+      "symbol": "510660.SS",
+      "tushare_symbol": "510660.SH"
+    },
+    {
+      "adjustment_type": "后复权（原始收盘价 × fund_adj 复权因子，将因子变化视为分红再投资）",
+      "data_timestamp": "2026-08-31",
+      "download_timestamp": "2026-09-11T14:18:40+00:00",
+      "first_observation": "2016-09-14",
+      "metadata": {
+        "delist_date": null,
+        "fund_type": "股票型",
+        "list_date": "20160914",
+        "management": "华宝基金管理有限公司",
+        "name": "华宝中证全指证券公司ETF"
+      },
+      "request_parameters": {
+        "fund_adj": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,adj_factor",
+          "page_size": 2000,
+          "start_date": "20110101",
+          "ts_code": "512000.SH"
+        },
+        "fund_daily": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,close",
+          "page_size": 5000,
+          "start_date": "20110101",
+          "ts_code": "512000.SH"
+        }
+      },
+      "rows": 2417,
+      "source": "Tushare Pro",
+      "symbol": "512000.SS",
+      "tushare_symbol": "512000.SH"
+    },
+    {
+      "adjustment_type": "后复权（原始收盘价 × fund_adj 复权因子，将因子变化视为分红再投资）",
+      "data_timestamp": "2026-08-31",
+      "download_timestamp": "2026-09-11T14:18:40+00:00",
+      "first_observation": "2016-08-08",
+      "metadata": {
+        "delist_date": null,
+        "fund_type": "股票型",
+        "list_date": "20160808",
+        "management": "国泰基金管理有限公司",
+        "name": "国泰中证军工ETF"
+      },
+      "request_parameters": {
+        "fund_adj": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,adj_factor",
+          "page_size": 2000,
+          "start_date": "20110101",
+          "ts_code": "512660.SH"
+        },
+        "fund_daily": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,close",
+          "page_size": 5000,
+          "start_date": "20110101",
+          "ts_code": "512660.SH"
+        }
+      },
+      "rows": 2444,
+      "source": "Tushare Pro",
+      "symbol": "512660.SS",
+      "tushare_symbol": "512660.SH"
+    },
+    {
+      "adjustment_type": "后复权（原始收盘价 × fund_adj 复权因子，将因子变化视为分红再投资）",
+      "data_timestamp": "2026-08-31",
+      "download_timestamp": "2026-09-11T14:18:40+00:00",
+      "first_observation": "2017-07-26",
+      "metadata": {
+        "delist_date": null,
+        "fund_type": "股票型",
+        "list_date": "20170726",
+        "management": "南方基金管理股份有限公司",
+        "name": "南方中证银行ETF"
+      },
+      "request_parameters": {
+        "fund_adj": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,adj_factor",
+          "page_size": 2000,
+          "start_date": "20110101",
+          "ts_code": "512700.SH"
+        },
+        "fund_daily": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,close",
+          "page_size": 5000,
+          "start_date": "20110101",
+          "ts_code": "512700.SH"
+        }
+      },
+      "rows": 2210,
+      "source": "Tushare Pro",
+      "symbol": "512700.SS",
+      "tushare_symbol": "512700.SH"
+    },
+    {
+      "adjustment_type": "后复权（原始收盘价 × fund_adj 复权因子，将因子变化视为分红再投资）",
+      "data_timestamp": "2026-08-31",
+      "download_timestamp": "2026-09-11T14:18:40+00:00",
+      "first_observation": "2017-09-01",
+      "metadata": {
+        "delist_date": null,
+        "fund_type": "股票型",
+        "list_date": "20170901",
+        "management": "南方基金管理股份有限公司",
+        "name": "南方中证申万有色金属ETF"
+      },
+      "request_parameters": {
+        "fund_adj": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,adj_factor",
+          "page_size": 2000,
+          "start_date": "20110101",
+          "ts_code": "512400.SH"
+        },
+        "fund_daily": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,close",
+          "page_size": 5000,
+          "start_date": "20110101",
+          "ts_code": "512400.SH"
+        }
+      },
+      "rows": 2183,
+      "source": "Tushare Pro",
+      "symbol": "512400.SS",
+      "tushare_symbol": "512400.SH"
+    },
+    {
+      "adjustment_type": "后复权（原始收盘价 × fund_adj 复权因子，将因子变化视为分红再投资）",
+      "data_timestamp": "2026-08-31",
+      "download_timestamp": "2026-09-11T14:18:40+00:00",
+      "first_observation": "2017-09-25",
+      "metadata": {
+        "delist_date": null,
+        "fund_type": "股票型",
+        "list_date": "20170925",
+        "management": "南方基金管理股份有限公司",
+        "name": "南方中证全指房地产ETF"
+      },
+      "request_parameters": {
+        "fund_adj": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,adj_factor",
+          "page_size": 2000,
+          "start_date": "20110101",
+          "ts_code": "512200.SH"
+        },
+        "fund_daily": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,close",
+          "page_size": 5000,
+          "start_date": "20110101",
+          "ts_code": "512200.SH"
+        }
+      },
+      "rows": 2167,
+      "source": "Tushare Pro",
+      "symbol": "512200.SS",
+      "tushare_symbol": "512200.SH"
+    },
+    {
+      "adjustment_type": "后复权（原始收盘价 × fund_adj 复权因子，将因子变化视为分红再投资）",
+      "data_timestamp": "2026-08-31",
+      "download_timestamp": "2026-09-11T14:18:40+00:00",
+      "first_observation": "2018-01-19",
+      "metadata": {
+        "delist_date": null,
+        "fund_type": "股票型",
+        "list_date": "20180119",
+        "management": "广发基金管理有限公司",
+        "name": "广发中证传媒ETF"
+      },
+      "request_parameters": {
+        "fund_adj": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,adj_factor",
+          "page_size": 2000,
+          "start_date": "20110101",
+          "ts_code": "512980.SH"
+        },
+        "fund_daily": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,close",
+          "page_size": 5000,
+          "start_date": "20110101",
+          "ts_code": "512980.SH"
+        }
+      },
+      "rows": 2089,
+      "source": "Tushare Pro",
+      "symbol": "512980.SS",
+      "tushare_symbol": "512980.SH"
+    },
+    {
+      "adjustment_type": "后复权（原始收盘价 × fund_adj 复权因子，将因子变化视为分红再投资）",
+      "data_timestamp": "2026-08-31",
+      "download_timestamp": "2026-09-11T14:18:40+00:00",
+      "first_observation": "2020-03-02",
+      "metadata": {
+        "delist_date": null,
+        "fund_type": "股票型",
+        "list_date": "20200302",
+        "management": "国泰基金管理有限公司",
+        "name": "国泰中证钢铁ETF"
+      },
+      "request_parameters": {
+        "fund_adj": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,adj_factor",
+          "page_size": 2000,
+          "start_date": "20110101",
+          "ts_code": "515210.SH"
+        },
+        "fund_daily": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,close",
+          "page_size": 5000,
+          "start_date": "20110101",
+          "ts_code": "515210.SH"
+        }
+      },
+      "rows": 1579,
+      "source": "Tushare Pro",
+      "symbol": "515210.SS",
+      "tushare_symbol": "515210.SH"
+    },
+    {
+      "adjustment_type": "后复权（原始收盘价 × fund_adj 复权因子，将因子变化视为分红再投资）",
+      "data_timestamp": "2026-08-31",
+      "download_timestamp": "2026-09-11T14:18:40+00:00",
+      "first_observation": "2020-03-02",
+      "metadata": {
+        "delist_date": null,
+        "fund_type": "股票型",
+        "list_date": "20200302",
+        "management": "国泰基金管理有限公司",
+        "name": "国泰中证煤炭ETF"
+      },
+      "request_parameters": {
+        "fund_adj": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,adj_factor",
+          "page_size": 2000,
+          "start_date": "20110101",
+          "ts_code": "515220.SH"
+        },
+        "fund_daily": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,close",
+          "page_size": 5000,
+          "start_date": "20110101",
+          "ts_code": "515220.SH"
+        }
+      },
+      "rows": 1579,
+      "source": "Tushare Pro",
+      "symbol": "515220.SS",
+      "tushare_symbol": "515220.SH"
+    },
+    {
+      "adjustment_type": "后复权（原始收盘价 × fund_adj 复权因子，将因子变化视为分红再投资）",
+      "data_timestamp": "2026-08-31",
+      "download_timestamp": "2026-09-11T14:18:40+00:00",
+      "first_observation": "2020-03-20",
+      "metadata": {
+        "delist_date": null,
+        "fund_type": "股票型",
+        "list_date": "20200320",
+        "management": "天弘基金管理有限公司",
+        "name": "天弘中证电子ETF"
+      },
+      "request_parameters": {
+        "fund_adj": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,adj_factor",
+          "page_size": 2000,
+          "start_date": "20110101",
+          "ts_code": "159997.SZ"
+        },
+        "fund_daily": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,close",
+          "page_size": 5000,
+          "start_date": "20110101",
+          "ts_code": "159997.SZ"
+        }
+      },
+      "rows": 1565,
+      "source": "Tushare Pro",
+      "symbol": "159997.SZ",
+      "tushare_symbol": "159997.SZ"
+    },
+    {
+      "adjustment_type": "后复权（原始收盘价 × fund_adj 复权因子，将因子变化视为分红再投资）",
+      "data_timestamp": "2026-08-31",
+      "download_timestamp": "2026-09-11T14:18:40+00:00",
+      "first_observation": "2013-03-25",
+      "metadata": {
+        "delist_date": null,
+        "fund_type": "债券型",
+        "list_date": "20130325",
+        "management": "国泰基金管理有限公司",
+        "name": "国泰上证5年期国债ETF"
+      },
+      "request_parameters": {
+        "fund_adj": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,adj_factor",
+          "page_size": 2000,
+          "start_date": "20110101",
+          "ts_code": "511010.SH"
+        },
+        "fund_daily": {
+          "end_date": "20260831",
+          "fields": "ts_code,trade_date,close",
+          "page_size": 5000,
+          "start_date": "20110101",
+          "ts_code": "511010.SH"
+        }
+      },
+      "rows": 3266,
+      "source": "Tushare Pro",
+      "symbol": "511010.SS",
+      "tushare_symbol": "511010.SH"
+    }
+  ]
+}

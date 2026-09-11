@@ -20,12 +20,15 @@ def main() -> None:
     parser.add_argument(
         "--output-dir", type=Path, default=ROOT / "data/canonical", help="规范化数据输出目录"
     )
+    parser.add_argument(
+        "--universe", type=Path, default=ROOT / "config/universe.csv", help="标的 universe CSV"
+    )
     args = parser.parse_args()
 
     token = os.environ.get("TUSHARE_TOKEN")
     if not token:
         raise RuntimeError("环境变量 TUSHARE_TOKEN 未设置")
-    universe = load_universe(ROOT / "config/universe.csv")
+    universe = load_universe(args.universe)
     dataset = download_tushare_dataset(ts.pro_api(token), universe, args.start_date, args.end_date)
     write_tushare_dataset(dataset, args.output_dir)
     print(f"已写入 {args.output_dir}")

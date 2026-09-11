@@ -36,5 +36,6 @@ RQAlpha 官方 bundle 保存在仓库外的 `~/.rqalpha/bundle`。重建 Tushare
 - [S2 参数平台报告](research/results/S2_PARAMETER_PLATEAU_V1.md)
 - [S2 上游原生执行闭环报告](research/results/S2_RQALPHA_UPSTREAM_EXECUTION_CLOSURE_V1.md)
 - [S2 R1 前瞻影子协议](research/shadow/s2_r1/README.md)
+- [S3A 行业轮动基线报告](research/results/S3_SECTOR_BASELINE_V1.md)
 
 历史研究证据保存在 `research/results/`，已关闭问题应先查研究账本，不得由后续 Goal 无故重做。

@@ -1,0 +1,13 @@
+symbol,tushare_symbol,rqalpha_symbol,name,asset_class,region,currency,role,data_source,start_date,sector,selection_reason
+510150.SS,510150.SH,510150.XSHG,招商上证消费80ETF,equity,China,CNY,tradable,Tushare Pro,2011-02-25,消费,普通A股消费行业ETF；同类候选按最早上市日优先
+510660.SS,510660.SH,510660.XSHG,华夏上证医药卫生ETF,equity,China,CNY,tradable,Tushare Pro,2013-05-08,医药,普通A股医药卫生行业ETF；同类候选按最早上市日优先
+512000.SS,512000.SH,512000.XSHG,华宝中证全指证券公司ETF,equity,China,CNY,tradable,Tushare Pro,2016-09-14,证券,普通A股证券行业ETF；同类候选按最早上市日优先
+512660.SS,512660.SH,512660.XSHG,国泰中证军工ETF,equity,China,CNY,tradable,Tushare Pro,2016-08-08,军工,普通A股军工行业ETF；同类候选按最早上市日优先
+512700.SS,512700.SH,512700.XSHG,南方中证银行ETF,equity,China,CNY,tradable,Tushare Pro,2017-07-26,银行,普通A股银行行业ETF；同类候选按最早上市日优先
+512400.SS,512400.SH,512400.XSHG,南方中证申万有色金属ETF,equity,China,CNY,tradable,Tushare Pro,2017-09-01,有色,普通A股有色金属行业ETF；同类候选按最早上市日优先
+512200.SS,512200.SH,512200.XSHG,南方中证全指房地产ETF,equity,China,CNY,tradable,Tushare Pro,2017-09-25,房地产,普通A股房地产行业ETF；同类候选按最早上市日优先
+512980.SS,512980.SH,512980.XSHG,广发中证传媒ETF,equity,China,CNY,tradable,Tushare Pro,2018-01-19,传媒,普通A股传媒行业ETF；同类候选按最早上市日优先
+515210.SS,515210.SH,515210.XSHG,国泰中证钢铁ETF,equity,China,CNY,tradable,Tushare Pro,2020-03-02,钢铁,普通A股钢铁行业ETF；同类候选按最早上市日优先
+515220.SS,515220.SH,515220.XSHG,国泰中证煤炭ETF,equity,China,CNY,tradable,Tushare Pro,2020-03-02,煤炭,普通A股煤炭行业ETF；同类候选按最早上市日优先
+159997.SZ,159997.SZ,159997.XSHE,天弘中证电子ETF,equity,China,CNY,tradable,Tushare Pro,2020-03-20,电子,普通A股电子行业ETF；同类候选按最早上市日优先
+511010.SS,511010.SH,511010.XSHG,国债ETF,bond,China,CNY,tradable,Tushare Pro,2013-03-25,,策略预声明防御资产；不计入行业ETF universe

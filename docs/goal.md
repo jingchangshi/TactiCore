@@ -2707,7 +2707,7 @@ Batch: BATCH_01_DIVERSE_TRANSPARENT_BASELINES
 
 Protocol Freeze SHA: ae218d70b73adac1922a0c761cd74ab6e02bf955 (V2; R1 S27 comparator correction disclosed)
 
-Results SHA: pending Commit B
+Results SHA: 92f682f42f2fc8931d0c0791d17fce9efa0c9d6a (corrected V2 batch results)
 
 Decisions: S3C REJECT_S3C_BASELINE; S4A REJECT_S4A_BASELINE; S8A REJECT_S8A_BASELINE; S27A ADVANCE_S27A_TO_ROBUSTNESS; S30 REFERENCE_BASELINE.
 ```

@@ -25,6 +25,9 @@ dev = [
   "pytest>=8,<9",
   "ruff>=0.6,<1",
 ]
+research = [
+  "skfolio>=1.0.5,<1.1",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["tacticore"]

@@ -16,7 +16,7 @@
 | Inverse volatility | allocation | E2 | 成熟风险配置，不是alpha | S4A | REJECTED | 简单比较器下复杂度 | UPSTREAM_COMPARE |
 | Equity/bond tactical trend | tactical | E3 | GTAA相关但单规则域敏感 | S8A | REJECTED | 非S8A救援的新问题 | LOCAL_ADJUDICATION |
 | Trend + inverse vol | composite | E3 | 成熟组件的组合 | S27A | ADVANCE_TO_EXECUTION_REVIEW | execution review，非前瞻/生产资格 | LOCAL_ADJUDICATION |
-| Equal risk contribution | allocation | E2 | 成熟构造方法，非收益异常 | S4B | BLOCK_UPSTREAM_DEPENDENCY | 官方依赖须先兼容项目 Python 范围 | UPSTREAM_COMPARE |
+| Equal risk contribution | allocation | E2 | 成熟构造方法，非收益异常 | S4B blocked / S4C | skfolio upstream path available | 同对齐样本 ERC transfer | UPSTREAM_COMPARE |
 | Volatility targeting | overlay | E3 | 支持与反证并存 | S10A | ADVANCE_TO_ROBUSTNESS | robust/前瞻/生产仍待证 | LOCAL_ADJUDICATION |
 | Static diversification | allocation | E1 | 复杂度门槛 | S30 | REFERENCE_BASELINE | 机制匹配比较器 | REFERENCE_ONLY |
 

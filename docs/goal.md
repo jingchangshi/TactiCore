@@ -1,4 +1,4 @@
-# Goal: TactiCore Batch 02 — Evidence-Informed Validation
+# Goal: TactiCore Batch 03 — Earned Stage Advancement
 
 Repository:
 
@@ -11,6 +11,8 @@ Role:
 ```text
 Principal Quant Research Engineer
 +
+Execution Validation Reviewer
++
 External Evidence Reviewer
 +
 Repository Architecture Maintainer
@@ -18,83 +20,84 @@ Repository Architecture Maintainer
 
 ---
 
-# 0. Mission
+# 0. Why This Work Exists
 
-TactiCore 已完成：
+TactiCore 当前不缺 strategy ideas。
 
-```text
-Batch 00
-External Strategy Evidence Foundation
-```
-
-因此从现在开始，禁止：
-
-```text
-想到策略
-→ 直接实现
-→ 跑回测
-```
-
-本 Goal 必须遵循：
+它已经形成明确的生命周期：
 
 ```text
 External Evidence Gate
         ↓
-Local Evidence Gap
+Historical Baseline
         ↓
-Predeclared Protocol
+Robustness
         ↓
-Implementation
+Execution Validation
         ↓
-Protocol Freeze Commit
+Candidate Freeze
         ↓
-Historical Experiment
-        ↓
-Evidence + Decision
-        ↓
-STOP for Principal Review
+Prospective Shadow
 ```
 
-本批次：
+截至最新 repository state：
 
 ```text
-BATCH_02_EVIDENCE_INFORMED_VALIDATION
+S2 R1
+→ FROZEN / PROSPECTIVE_SHADOW_ACTIVE
+
+S27A
+→ baseline PASS
+→ robustness PASS
+→ ADVANCE_TO_EXECUTION_REVIEW
+
+S10A
+→ baseline PASS
+→ ADVANCE_TO_ROBUSTNESS
+
+S4B
+→ no economic result
+→ BLOCK_UPSTREAM_DEPENDENCY
+
+S30
+→ REFERENCE_BASELINE
 ```
 
-只研究三条已由 registry 支持的高相关性 gap：
+因此下一步必须推进：
+
+```text
+already-earned stages
+```
+
+而不是继续横向增加 strategy count。
+
+本批定义为：
+
+```text
+BATCH_03_EARNED_STAGE_ADVANCEMENT
+```
+
+包含三个彼此独立的 track：
 
 ```text
 Track A
-S27A Robustness
+S27A authoritative execution review
 
 Track B
-S4B Canonical ERC / Risk Parity ETF Transfer
+S10A robustness
 
 Track C
-S10A Unlevered Volatility Targeting Adjudication
+Canonical ERC transfer through newly available
+mature upstream implementation
 ```
 
-三个问题属于不同研究类型：
-
-```text
-S27A
-E3 / LOCAL_ADJUDICATION
-→ 已通过 baseline，现在检验 robustness
-
-S4B ERC
-E2 / UPSTREAM_COMPARE
-→ 成熟方法，本地检验 transfer，不重新证明 risk parity
-
-S10A Volatility Targeting
-E3 / LOCAL_ADJUDICATION
-→ 文献有支持和反证，本地做裁决
-```
+不增加第四个策略。
 
 ---
 
 # 1. Repository First
 
-重新读取最新 remote `main`。
+开始前重新读取 remote `main`。
 
 执行：
 
@@ -104,9 +107,9 @@ git status
 git log --oneline -20
 ```
 
-不要相信本 Prompt 写死的 SHA。
+不要相信本 Prompt 中预期 HEAD。
 
-必须阅读：
+依次阅读：
 
 ```text
 AGENTS.md
@@ -121,20 +124,31 @@ docs/goal.md
 
 research/strategy_evidence/STRATEGY_EVIDENCE_REGISTRY.yaml
 
-research/results/BATCH_01_TRANSPARENT_STRATEGY_SCREEN.md
-research/results/S27A_TREND_INVERSE_VOL_BASELINE_V1.md
-research/results/S30_STATIC_STRATEGIC_ALLOCATION_V1.md
-research/results/S4A_INVERSE_VOL_BASELINE_V1.md
+research/results/BATCH_02_EVIDENCE_INFORMED_VALIDATION.md
+research/results/S27A_ROBUSTNESS_V1.md
+research/results/S10A_VOL_TARGETING_V1.md
+research/results/S4B_ERC_TRANSFER_V1.md
 
-research/batches/batch_01/PROTOCOL.md
-research/batches/batch_01/PROTOCOL_V2.md
+research/results/S2_RQALPHA_UPSTREAM_EXECUTION_CLOSURE_V1.md
+
+research/batches/batch_02/PROTOCOL.md
+research/batches/batch_02/PROTOCOL_V2.md
 
 config/s27_trend_inverse_vol.toml
-config/s4_inverse_vol.toml
+config/s10a_vol_targeting.toml
+config/strategy.toml
+config/universe.csv
 
 tacticore/strategies/trend_inverse_vol.py
-tacticore/strategies/inverse_vol_allocation.py
+tacticore/strategies/volatility_targeting.py
+tacticore/strategies/multi_asset_trend.py
+
 tacticore/engines/vectorbt_adapter.py
+tacticore/engines/rqalpha_adapter.py
+
+research/experiments/run_s2_rqalpha_validation.py
+research/experiments/run_s27a_robustness.py
+research/experiments/run_s10a_vol_targeting.py
 
 research/shadow/s2_r1/candidate_manifest.json
 ```
@@ -143,70 +157,31 @@ research/shadow/s2_r1/candidate_manifest.json
 
 ```text
 starting HEAD
+working tree
+recent commits
 
-S2 R1 status
+S2 candidate integrity
 
-S27A baseline state
-S27A baseline hashes
+S27 baseline hashes
+S27 robustness hashes
 
-S30 state
-
-S4A state
-
-External evidence entries:
-VOL_SCALED_TREND
-ERC_RISK_PARITY
-VOL_TARGETING
+S10 baseline hashes
+S10 Protocol V2 hashes
 
 canonical data hashes
-framework versions
+
+RQAlpha installed version
+
+external evidence snapshot date
 ```
 
-仓库事实覆盖本 Prompt。
+Repository evidence wins.
 
 ---
 
-# 2. Current Local State Must Remain Intact
+# 2. Protect S2 R1
 
-确认：
-
-```text
-S2 R1
-=
-FROZEN / PROSPECTIVE_SHADOW_ACTIVE
-```
-
-确认：
-
-```text
-S27A
-=
-ADVANCE_TO_ROBUSTNESS
-```
-
-确认：
-
-```text
-S3A/S3B/S3C/S4A/S8A
-=
-closed/rejected
-```
-
-确认：
-
-```text
-S30
-=
-REFERENCE_BASELINE
-```
-
-不得重新打开这些 baseline。
-
----
-
-# 3. Protect S2 R1
-
-开始前：
+第一条命令之一必须是：
 
 ```bash
 uv run python research/experiments/run_s2_r1_shadow.py \
@@ -231,595 +206,1280 @@ tacticore/engines/rqalpha_adapter.py
 research/shadow/s2_r1/candidate_manifest.json
 ```
 
-尤其禁止为了 Batch 02：
+S2 R1 继续独立积累真正前瞻 evidence。
 
-```text
-改变 S2 universe
-改变 S2 trend_window
-改变 S2 fallback
-改变 S2 manifest hashes
-```
+Batch 03 不得把 S27/S10 的结果回填到 S2。
 
 ---
 
-# 4. Phase A — Targeted External Evidence Hardening
+# 3. External Evidence Gate First
 
-在任何新策略代码或 robustness experiment 前，只针对本 Batch 三条 entry 做有界 evidence refresh。
+本 Goal 仍必须首先执行 External Evidence Gate。
 
-不要刷新整个 registry。
+但不要重新做整个 Batch 00。
 
-目标 entry：
+只检查：
 
 ```text
 VOL_SCALED_TREND
-
-ERC_RISK_PARITY
-
 VOL_TARGETING
+ERC_RISK_PARITY
 ```
+
+以及真正需要的 upstream implementation evidence。
 
 ---
 
-# 5. S27A External Evidence Gate
+# 4. Important New Upstream Evidence — skfolio
 
-必须回答：
-
-```text
-Canonical mapping:
-trend / time-series momentum
-+
-volatility-based sizing
-
-External tier:
-E3_MIXED_CONDITIONAL
-
-What is externally mature?
-
-What part remains conditional?
-
-Does canonical TSMOM literature already use
-volatility scaling?
-
-Is inverse-vol allocation itself alpha?
-NO.
-
-What did TactiCore actually add?
-A long-only ETF transfer with
-S2 trend state + inverse-vol active sizing.
-
-Remaining local gap:
-parameter / period / cost stability.
-```
-
-不得把：
-
-```text
-S27A historical PASS
-```
-
-包装成：
-
-```text
-new anomaly discovery
-```
-
----
-
-# 6. ERC External Evidence Gate
-
-至少重新核实：
-
-```text
-Maillard / Roncalli / Teiletche
-Equal Risk Contribution
-
-current Riskfolio-Lib official documentation
-
-current supported Riskfolio-Lib version
-```
-
-必须确认 upstream 是否能直接支持：
-
-```text
-long-only
-equal risk budget
-variance-based ERC
-fully invested portfolio
-```
-
-优先使用：
+当前 registry 主要记录：
 
 ```text
 Riskfolio-Lib
+PyPortfolioOpt
 ```
 
-原生 risk-parity API。
-
-禁止首先编写：
+但在开始本 Goal 时必须实际重新检查：
 
 ```text
-erc_solver.py
-risk_parity_optimizer.py
-custom convex optimizer
+skfolio official documentation
+skfolio PyPI
+skfolio current stable release
+skfolio RiskBudgeting API
 ```
 
-如果 upstream 无法在当前 Python / dependency 环境可靠运行：
+重点确认：
+
+```text
+Python compatibility
+
+long-only support
+
+RiskBudgeting
+
+equal risk budget semantics
+
+variance risk measure
+
+current stable API
+```
+
+如果当前官方 stable skfolio 仍具备：
+
+```text
+Python >= 3.10
+RiskBudgeting
+long-only
+equal risk budgeting / risk parity
+```
+
+则这是新的：
+
+```text
+mature upstream implementation evidence
+```
+
+它改变的是：
+
+```text
+S4B implementation-path assumption
+```
+
+而不是：
+
+```text
+ERC economic evidence tier
+```
+
+ERC 仍然：
+
+```text
+E2_ESTABLISHED_METHOD
+```
+
+---
+
+# 5. Do NOT Rewrite S4B History
+
+S4B：
 
 ```text
 BLOCK_S4B_UPSTREAM_DEPENDENCY
 ```
 
-而不是自己补一套 solver。
+必须永久保留。
+
+因为它准确记录：
+
+```text
+Riskfolio-Lib 7.3.0 route
+was blocked
+```
+
+不要改成：
+
+```text
+S4B passed
+```
+
+也不要删除其报告。
+
+新的 upstream route 定义为：
+
+```text
+S4C_CANONICAL_ERC_SKFOLIO_TRANSFER_V1
+```
+
+S4C 不是新金融策略。
+
+它是：
+
+```text
+same canonical ERC question
++
+new mature upstream implementation path
+```
 
 ---
 
-# 7. Volatility-Targeting External Evidence Gate
+# 6. Update External Evidence Before Coding
 
-必须至少核实：
-
-```text
-Moreira & Muir
-Volatility-Managed Portfolios
-
-Cederburg et al.
-contradictory / qualification evidence
-
-recent China-specific evidence
-if directly relevant
-```
-
-必须明确：
+如果 skfolio evidence 成立，在：
 
 ```text
-original factor / portfolio domain
-
-leverage assumptions
-
-normalization assumptions
-
-previous-month realized variance semantics
-
-difference from a long-only ETF implementation
-```
-
-不得：
-
-```text
-只引用 Moreira/Muir 的支持结论
-```
-
-而忽略反证。
-
----
-
-# 8. Evidence Update
-
-只有发现有意义的新信息时，才更新：
-
-```text
-research/strategy_evidence/STRATEGY_EVIDENCE_REGISTRY.yaml
-
-docs/STRATEGY_RESEARCH_MAP.md
+research/strategy_evidence/
+STRATEGY_EVIDENCE_REGISTRY.yaml
 ```
 
 更新：
 
 ```text
-canonical sources
-contradictory sources
+ERC_RISK_PARITY
+```
+
+增加：
+
+```text
+skfolio
+```
+
+implementation prior。
+
+记录：
+
+```text
+version
 evidence_as_of
-scope
-limitations
-remaining_gap
+official docs
+RiskBudgeting API
+Python support
 ```
 
-不要：
+同时最小更新：
 
 ```text
-改变 tier 来迎合后续结果
-```
-
-External evidence freeze 必须先于 performance。
-
----
-
-# 9. Batch 02 Protocol
-
-新增：
-
-```text
-research/batches/batch_02/PROTOCOL.md
-```
-
-在任何真实 performance run 前冻结：
-
-```text
-three research questions
-
-source evidence snapshot
-
-exact implementations
-
-all parameter sets
-
-all comparison rules
-
-all decision gates
-
-data hashes
-
-baseline hashes
-
-prohibited post-result changes
-```
-
----
-
-# 10. Protocol Freeze Discipline
-
-顺序必须严格：
-
-```text
-Evidence review
-        ↓
-Implement semantics + synthetic tests
-        ↓
-Write complete decision functions
-        ↓
-Write PROTOCOL.md
-        ↓
-NO PERFORMANCE RESULTS YET
-        ↓
-Protocol Freeze Commit
-        ↓
-Only then run historical experiments
-```
-
-如果任意真实收益数字已经被看到：
-
-不得再修改：
-
-```text
-strategy semantics
-parameter neighborhood
-decision thresholds
-primary comparator
-```
-
-除 correctness bug。
-
----
-
-# Track A — S27A Robustness
-
-# 11. Do NOT Modify the Frozen S27A Baseline
-
-以下保持不变：
-
-```text
-config/s27_trend_inverse_vol.toml
-
-tacticore/strategies/trend_inverse_vol.py
-
-research/results/S27A_TREND_INVERSE_VOL_BASELINE_V1.md
-
-Batch 01 artifacts
-```
-
-当前 baseline identity：
-
-```text
-trend_window = 200
-vol_window = 60
-monthly
-fallback = 511010.SS
-fees = 10bps
-slippage = 5bps
-```
-
----
-
-# 12. S27A Robustness Must Be Experiment-Layer Only
-
-新增：
-
-```text
-research/experiments/run_s27a_robustness.py
-```
-
-如需通用化 baseline evaluator：
-
-放在：
-
-```text
-research/experiments/
-```
-
-不要为了 robustness 修改 frozen strategy implementation。
-
-必须首先证明：
-
-```text
-generalized evaluator
-@ trend=200, vol=60
-```
-
-能够 reproduce Batch 01 corrected baseline。
-
-如果不能：
-
-```text
-BLOCK_S27A_ROBUSTNESS_REPRODUCTION
-```
-
----
-
-# 13. S27A One-Factor-at-a-Time Parameter Plateau
-
-禁止二维 grid search。
-
-只运行：
-
-## Trend dimension
-
-固定：
-
-```text
-vol_window = 60
-```
-
-测试：
-
-```text
-trend_window =
-160
-180
-200
-220
-240
-```
-
-这些窗口与既有 S2 plateau 邻域一致。
-
----
-
-## Volatility dimension
-
-固定：
-
-```text
-trend_window = 200
-```
-
-测试：
-
-```text
-vol_window =
-40
-60
-80
-```
-
-禁止：
-
-```text
-5 × 3 Cartesian grid
-```
-
-因为这会扩大研究自由度。
-
----
-
-# 14. No Best Parameter Selection
-
-本 Goal 绝对禁止：
-
-```text
-choose best trend_window
-choose best vol_window
-```
-
-中心 baseline 永远：
-
-```text
-200 / 60
-```
-
-robustness 只回答：
-
-```text
-Does the surrounding neighborhood
-support the same economic conclusion?
-```
-
----
-
-# 15. S27A Period Stability
-
-复用既有 S2 robustness 的：
-
-```text
-fixed-period definitions
-rolling 3Y methodology
-rolling 5Y methodology
-```
-
-不得为了 S27A 新挑历史断点。
-
-如果现有 artifact 中已有明确 period boundaries：
-
-原样复用。
-
----
-
-# 16. S27A Cost Sensitivity
-
-复用现有 S2：
-
-```text
-15 bps
-30 bps
-50 bps
-```
-
-成本场景定义和实现方式。
-
-不要设计新的 cost grid。
-
----
-
-# 17. S27A Primary Comparator
-
-Primary comparator：
-
-```text
-S2 fixed-sleeve trend
-```
-
-必须保持：
-
-```text
-same trend window
-same risk universe
-same data
-same timing
-same risk-budget semantics
-```
-
-差异只允许：
-
-```text
-active-sleeve weighting
-
-S2:
-equal fixed sleeves
-
-S27A:
-inverse-vol active sizing
-```
-
----
-
-# 18. S27A Contextual Comparator
-
-必须同时报告：
-
-```text
-S30 static strategic allocation
+docs/STRATEGY_RESEARCH_MAP.md
 ```
 
 但：
 
 ```text
-S27A does NOT automatically fail
-just because S30 has higher Sharpe.
+external tier stays E2
 ```
 
-因为 S30 不隔离同一机制。
-
-必须回答：
-
-> S27A 的复杂度究竟带来了什么，而 S30 没有？
-
-例如：
-
-```text
-lower drawdown
-different exposure path
-different crisis behavior
-```
-
-仅报告事实，不创造综合分数。
+不要因为软件出现改变经济 evidence tier。
 
 ---
 
-# 19. S27A Robustness Gate
+# 7. Batch 03 Protocol
 
-Protocol freeze 前实现 decision function。
-
-至少要求：
-
-### Baseline reproduction
+新增：
 
 ```text
-PASS
+research/batches/batch_03/
+  EVIDENCE_GATE.md
+  PROTOCOL.md
 ```
 
-### Trend neighborhood
+必须在任何真实 performance result 出现前冻结。
 
-5 个 trend windows 中：
-
-```text
-all CAGR > 0
-```
-
-且至少 4/5：
+PROTOCOL 至少包含：
 
 ```text
-retain >= 70% of baseline CAGR
-retain >= 70% of baseline Sharpe
-MaxDD > -25%
-```
+canonical data hashes
 
-### Volatility neighborhood
+S2 manifest hash
 
-40 / 60 / 80 三个全部：
+S27 frozen strategy hashes
 
-```text
-CAGR > 0
-Sharpe > 0
-MaxDD > -25%
-```
+S10 frozen strategy hashes
 
-且至少 2/3：
+RQAlpha version
 
-```text
-retain >= 80% of baseline Sharpe
-```
+skfolio version if Track C is available
 
-### Fixed periods
+all Track A decision gates
 
-不得由单一历史时期贡献全部正面结论。
+all Track B parameter neighborhoods
 
-至少要求所有既有固定 periods：
+all Track B decision gates
 
-```text
-CAGR > 0
-```
+all Track C semantics
 
-除非现有 S2 robustness methodology 明确采用其他预声明标准，则优先复用已存在标准。
+all Track C comparators
 
-### Rolling
-
-至少：
-
-```text
-rolling 3Y positive-CAGR share >= 90%
-
-rolling 5Y positive-CAGR share >= 95%
-```
-
-### Cost
-
-最高预声明成本场景：
-
-```text
-CAGR > 0
-Sharpe >= 0.50
+all Track C decision gates
 ```
 
 ---
 
-# 20. S27A Decision
+# 8. Two-Commit Discipline
+
+继续沿用 Batch 01 / 02 已证明有效的模式：
+
+```text
+Commit A
+=
+protocol freeze
++
+implementation
++
+synthetic tests
++
+NO new historical result
+
+then
+
+historical / execution runs
+
+then
+
+Commit B
+=
+results
++
+ledger/catalog/state updates
+```
+
+如果出现 correctness bug：
+
+```text
+INVALID_RUN
+→ disclose
+→ protocol V2
+→ freeze
+→ rerun affected track
+```
+
+不得静默修改。
+
+---
+
+# ============================================================
+
+# TRACK A — S27A AUTHORITATIVE EXECUTION REVIEW
+
+# ============================================================
+
+# 9. Research Question
+
+唯一问题：
+
+> S27A 已通过 historical baseline 与 robustness。将完全冻结的 S27A target schedule 交给 RQAlpha 原生市场执行与账户语义后，经济证据和目标实现质量是否仍然成立？
+
+不重新研究：
+
+```text
+trend existence
+trend windows
+volatility windows
+cost robustness
+parameter plateau
+```
+
+这些已关闭。
+
+---
+
+# 10. Frozen S27A Identity
+
+保持：
+
+```text
+trend_window = 200
+vol_window = 60
+
+same S2 risk universe
+
+same fallback = 511010.SS
+
+same 10 bps fees
+same 5 bps slippage
+
+monthly signal
+next-observation execution
+```
+
+禁止修改：
+
+```text
+config/s27_trend_inverse_vol.toml
+
+tacticore/strategies/trend_inverse_vol.py
+```
+
+---
+
+# 11. Freeze Exact S27 Target Schedule
+
+在 RQAlpha run 前生成：
+
+```text
+research/results/
+s27a_v1_frozen_targets.csv
+```
+
+来源必须是：
+
+```text
+existing canonical data
++
+frozen S27 config
++
+frozen S27 strategy implementation
+```
+
+流程：
+
+```text
+build_month_end_targets
+        ↓
+build_execution_weights
+        ↓
+drop rows without execution target
+        ↓
+freeze exact target schedule
+```
+
+非常重要：
+
+S27A 当前 baseline 使用：
+
+```text
+monthly targets
+```
+
+不是 S2 的：
+
+```text
+SIGNAL_CHANGE_ONLY
+```
+
+不得错误复用 S2 target-submission policy。
+
+---
+
+# 12. Frozen Target Artifact
+
+记录：
+
+```text
+number of target dates
+
+first execution date
+last execution date
+
+symbols
+
+SHA-256
+
+source config hash
+
+strategy source hash
+
+canonical data hash
+```
+
+目标：
+
+```text
+weights >= 0
+
+sum(weights) == 1
+
+dates unique
+
+dates strictly increasing
+```
+
+---
+
+# 13. Frozen-Schedule Reproduction Gate
+
+在任何 RQAlpha execution 前：
+
+把：
+
+```text
+s27a_v1_frozen_targets.csv
+```
+
+重新交给 VectorBT。
+
+它必须精确 reproduce frozen S27A 200/60 baseline：
+
+```text
+CAGR ~= 7.7867%
+MaxDD ~= -12.5034%
+Sharpe ~= 1.015
+```
+
+数值以 repository authoritative artifacts 为准。
+
+使用严格 machine tolerance。
+
+如果失败：
+
+```text
+BLOCK_S27A_EXECUTION_REPRODUCTION
+```
+
+停止 Track A。
+
+不要运行 RQAlpha。
+
+---
+
+# 14. RQAlpha Upstream Check
+
+执行前重新检查：
+
+```text
+current PyPI stable RQAlpha
+current changelog
+current project dependency
+```
+
+如果现有：
+
+```text
+rqalpha>=6.3,<6.4
+```
+
+仍对应当前仓库已验证的 stable path：
+
+继续使用。
+
+如果出现新稳定版本：
+
+不要自动升级。
+
+只有当前 6.3 出现执行 blocker 时才做有界 compatibility investigation。
+
+---
+
+# 15. Reuse Existing S2 Execution Infrastructure
+
+最大化复用：
+
+```text
+research/experiments/run_s2_rqalpha_validation.py
+
+tacticore/engines/rqalpha_adapter.py
+```
+
+但不要复制一个完整 execution framework。
+
+建议新增：
+
+```text
+research/experiments/
+run_s27a_rqalpha_execution_review.py
+```
+
+可以抽取极小、显然通用的：
+
+```text
+frozen-target replay helper
+native result parser
+target tracking helper
+```
+
+但只有在无需改变 S2 行为的情况下。
+
+不要大规模重构 S2 已关闭 evidence code。
+
+---
+
+# 16. RQAlpha Must NOT Recompute Signals
+
+RQAlpha 内部只能读取：
+
+```text
+frozen target schedule
+```
+
+禁止重新计算：
+
+```text
+200-day trend
+60-day vol
+risk budget
+inverse-vol weights
+```
+
+执行验证必须严格回答：
+
+```text
+Can native execution implement
+the frozen economic decision?
+```
+
+而不是重新跑策略。
+
+---
+
+# 17. RQAlpha Execution Semantics
+
+复用已经通过 S2 closure 的：
+
+```text
+order_target_portfolio
+
+partial_fill_on_insufficient_cash = true
+
+native matching
+
+native fees
+
+native slippage
+
+native account
+
+native position
+
+native analyser
+```
+
+不要：
+
+```text
+local cash reserve
+manual order sizing
+retry engine
+custom lot handling
+custom matching
+```
+
+---
+
+# 18. S27 Execution Evidence
+
+至少输出：
+
+```text
+RQAlpha CAGR
+RQAlpha MaxDD
+RQAlpha native Sharpe
+turnover
+trade count
+transaction cost
+
+native order count
+
+failed order events
+cash rejection events
+cash residual cancellations
+volume limited events
+
+ending cash
+minimum cash
+average cash ratio
+```
+
+目标 tracking：
+
+```text
+each execution date
+
+monthly reviews
+
+total absolute weight deviation
+
+maximum asset deviation
+
+cash residual
+
+materially off-target flag
+```
+
+material threshold 延续：
+
+```text
+5 percentage points
+```
+
+避免重新定义。
+
+---
+
+# 19. Explain Every Material Difference
+
+每个显著 execution deviation 必须关联：
+
+```text
+native order status
+
+fill evidence
+
+cash constraint
+
+volume constraint
+
+market availability
+
+other RQAlpha-native reason
+```
+
+不能留下：
+
+```text
+UNEXPLAINED_EXECUTION_DIFFERENCE
+```
+
+然后仍宣布 PASS。
+
+---
+
+# 20. S27 Execution Advance Gate
+
+预注册：
+
+### Integrity
+
+```text
+all frozen execution dates replayed
+NO missing schedule dates
+NO extra signal dates
+```
+
+### Cash
+
+```text
+cash rejection events = 0
+```
+
+原生：
+
+```text
+partial-fill residual cancellation
+```
+
+允许存在，但必须解释。
+
+### Target tracking
+
+要求：
+
+```text
+average execution-date
+total absolute weight deviation
+<= 3%
+```
+
+且：
+
+```text
+materially off-target execution dates
+<= 10% of frozen execution dates
+```
+
+### Cash drag
+
+要求：
+
+```text
+average cash ratio <= 2%
+```
+
+### Economics
+
+相对 frozen VectorBT：
+
+```text
+RQAlpha CAGR > 0
+
+RQAlpha CAGR
+>= VectorBT CAGR - 2 percentage points
+
+RQAlpha MaxDD
+must not worsen by more than
+5 percentage points
+```
+
+不要使用：
+
+```text
+RQAlpha native Sharpe == VectorBT Sharpe
+```
+
+作为硬门槛。
+
+两个框架 risk-free-rate / calendar 口径不同。
+
+---
+
+# 21. S27 Decision
 
 只能输出：
 
 ```text
-ADVANCE_S27A_TO_EXECUTION_REVIEW
+ADVANCE_S27A_TO_CANDIDATE_FREEZE_REVIEW
 
-REJECT_S27A_ROBUSTNESS
+DO_NOT_ADVANCE_S27A_EXECUTION
 
-BLOCK_S27A_ROBUSTNESS_REPRODUCTION
+BLOCK_S27A_EXECUTION_REPRODUCTION
+
+BLOCK_S27A_EXECUTION_ENVIRONMENT
+```
+
+即使：
+
+```text
+ADVANCE
+```
+
+本 Goal 也禁止：
+
+```text
+freeze S27 Research Candidate R1
+
+start S27 prospective shadow
+replace S2 R1
+```
+
+这些属于下一次 Principal Review。
+
+---
+
+# ============================================================
+
+# TRACK B — S10A ROBUSTNESS
+
+# ============================================================
+
+# 22. Research Question
+
+唯一问题：
+
+> S10A 20-day / 10% unlevered volatility-targeting result，是一个宽容的稳定机制，还是恰好依赖于单个 lookback / target-vol specification？
+
+这是：
+
+```text
+E3 LOCAL_ADJUDICATION
+```
+
+不是：
+
+```text
+optimize S10A
+```
+
+---
+
+# 23. Freeze Existing S10 Baseline
+
+禁止修改：
+
+```text
+config/s10a_vol_targeting.toml
+
+tacticore/strategies/volatility_targeting.py
+
+research/results/S10A_VOL_TARGETING_V1.md
+```
+
+中心 baseline 永远：
+
+```text
+vol_window = 20
+
+target_volatility = 10%
+
+scale = [0,1]
+
+NO leverage
+```
+
+无论邻域哪一个表现最好，都不改变中心。
+
+---
+
+# 24. Correctness Semantics Must Stay V2
+
+必须继续使用：
+
+```python
+pct_change(fill_method=None)
+```
+
+aligned returns。
+
+禁止重新引入：
+
+```text
+implicit forward fill
+```
+
+UNAVAILABLE / missing 必须真实保持。
+
+---
+
+# 25. Generalized Robustness Evaluator
+
+新增：
+
+```text
+research/experiments/
+run_s10a_robustness.py
+```
+
+参数变化只存在于 experiment layer。
+
+不要修改 frozen strategy source。
+
+首先要求：
+
+```text
+20-day / 10%
+```
+
+完全 reproduce：
+
+```text
+CAGR
+MaxDD
+Sharpe
+Calmar
+turnover
+```
+
+与合法 Protocol V2 baseline 一致。
+
+否则：
+
+```text
+BLOCK_S10A_ROBUSTNESS_REPRODUCTION
+```
+
+---
+
+# 26. One-Factor-at-a-Time Volatility Window
+
+固定：
+
+```text
+target volatility = 10%
+```
+
+测试：
+
+```text
+10 valid aligned returns
+20 valid aligned returns
+40 valid aligned returns
+```
+
+经济含义约为：
+
+```text
+~2 weeks
+~1 month
+~2 months
+```
+
+不测试：
+
+```text
+10 / 20 / 40
+×
+8 / 10 / 12
+```
+
+Cartesian grid。
+
+---
+
+# 27. One-Factor-at-a-Time Target Volatility
+
+固定：
+
+```text
+vol_window = 20
+```
+
+测试：
+
+```text
+8%
+10%
+12%
+```
+
+全部：
+
+```text
+max_scale = 1
+NO leverage
+```
+
+---
+
+# 28. Never Select the Best Parameter
+
+本轮禁止：
+
+```text
+best target volatility
+best lookback
+```
+
+20/10 永远保留为 baseline。
+
+Robustness 只回答：
+
+```text
+Does the mechanism survive
+reasonable nearby assumptions?
+```
+
+---
+
+# 29. Timing-Matched Comparator
+
+所有 S10 robustness case 都与：
+
+```text
+MONTHLY_STATIC_25_25_25_25
+```
+
+比较。
+
+必须完全相同：
+
+```text
+signal dates
+execution dates
+fees
+slippage
+capital
+canonical data
+```
+
+这样差异只来自：
+
+```text
+volatility scaling
+```
+
+S30 annual static：
+
+```text
+context only
+```
+
+---
+
+# 30. Fixed Periods
+
+复用 Batch 02 / S27 已冻结的 period boundaries：
+
+```text
+2013-03-29 → 2016-12-31
+
+2017-01-01 → 2019-12-31
+
+2020-01-01 → 2022-12-31
+
+2023-01-01 → 2026-08-31
+```
+
+如果 S10 的实际 common-data start 晚于第一区间起点：
+
+只按实际可用开始，
+
+但不能重新选日期。
+
+---
+
+# 31. Rolling Evidence
+
+复用已有：
+
+```text
+rolling 3Y
+rolling 5Y
+```
+
+month-end methodology。
+
+至少记录：
+
+```text
+positive CAGR share
+
+Sharpe
+
+MaxDD
+
+relative Sharpe vs monthly static
+
+relative MaxDD vs monthly static
+```
+
+不要发明新的 rolling windows。
+
+---
+
+# 32. S10 Cost Sensitivity
+
+完全复用 S27/S2 定义：
+
+```text
+VectorBT per-side fees
+
+slippage = 0
+
+15 bps
+30 bps
+50 bps
+```
+
+只对中心：
+
+```text
+20 / 10%
+```
+
+运行。
+
+不做 parameter × cost grid。
+
+---
+
+# 33. S10 Robustness Gate — Absolute
+
+所有：
+
+```text
+10/10
+20/10
+40/10
+
+20/8
+20/12
+```
+
+必须：
+
+```text
+CAGR > 0
+
+Sharpe > 0
+
+MaxDD > -20%
+```
+
+---
+
+# 34. S10 Robustness Gate — Parameter Neighborhood
+
+对于：
+
+```text
+window dimension
+10 / 20 / 40
+```
+
+至少：
+
+```text
+2 / 3
+```
+
+必须满足相对 monthly-static：
+
+```text
+CAGR >= comparator CAGR - 1.5pp
+
+MaxDD strictly better
+
+AND
+
+Sharpe > comparator Sharpe
+OR
+Calmar > comparator Calmar
+```
+
+对于：
+
+```text
+target dimension
+8 / 10 / 12
+```
+
+同样至少：
+
+```text
+2 / 3
+```
+
+满足上述 gate。
+
+---
+
+# 35. S10 Robustness Gate — Non-Degeneration
+
+中心 20/10 必须继续：
+
+```text
+0.40 < average scale < 0.95
+```
+
+对于 target-vol dimension：
+
+至少：
+
+```text
+2 / 3
+```
+
+variants 不能退化为：
+
+```text
+average scale >= 0.95
+```
+
+或：
+
+```text
+average scale <= 0.40
+```
+
+边缘 case 退化：
+
+可以记录，
+
+但不得偷偷改 target。
+
+---
+
+# 36. S10 Fixed-Period Gate
+
+中心：
+
+```text
+20 / 10%
+```
+
+必须：
+
+```text
+positive CAGR
+in all four fixed periods
+```
+
+并且至少：
+
+```text
+3 / 4 periods
+```
+
+满足：
+
+```text
+MaxDD <= monthly-static MaxDD
+```
+
+以及至少：
+
+```text
+3 / 4 periods
+```
+
+满足：
+
+```text
+Sharpe > comparator
+OR
+Calmar > comparator
+```
+
+---
+
+# 37. S10 Rolling Gate
+
+中心：
+
+```text
+rolling 3Y positive CAGR share >= 90%
+
+rolling 5Y positive CAGR share >= 95%
+```
+
+并报告：
+
+```text
+share of rolling 3Y windows
+where Sharpe > monthly-static
+
+share of rolling 3Y windows
+where MaxDD improves
+
+same for rolling 5Y
+```
+
+要求至少：
+
+```text
+60%
+```
+
+rolling 3Y windows 满足：
+
+```text
+Sharpe improvement
+OR
+MaxDD improvement
+```
+
+不要通过挑选 crisis windows 证明价值。
+
+---
+
+# 38. S10 Cost Gate
+
+50 bps per-side fee-only case：
+
+```text
+CAGR > 0
+
+Sharpe >= 0.70
+```
+
+---
+
+# 39. S10 Decision
+
+只能：
+
+```text
+ADVANCE_S10A_TO_EXECUTION_REVIEW
+
+REJECT_S10A_ROBUSTNESS
+
+BLOCK_S10A_ROBUSTNESS_REPRODUCTION
 ```
 
 即使 ADVANCE：
@@ -827,104 +1487,180 @@ BLOCK_S27A_ROBUSTNESS_REPRODUCTION
 本 Goal 也：
 
 ```text
-DO NOT run RQAlpha
-```
-
-只是获得：
-
-```text
-execution-review eligibility
+DO NOT run S10 RQAlpha
 ```
 
 ---
 
-# Track B — S4B ERC / Risk Parity Transfer
+# ============================================================
 
-# 21. Research Identity
+# TRACK C — S4C CANONICAL ERC THROUGH SKFOLIO
 
-新增：
+# ============================================================
+
+# 40. Why Track C Exists
+
+S4B 的结论是：
 
 ```text
-S4B_ERC_RISK_PARITY_V1
+Riskfolio-Lib route blocked
 ```
 
-Canonical mapping：
+不是：
+
+```text
+ERC rejected
+```
+
+如果当前 official skfolio：
+
+```text
+supports project Python versions
++
+contains canonical RiskBudgeting
+```
+
+则这属于新的：
+
+```text
+upstream implementation evidence
+```
+
+允许建立新的 bounded local question。
+
+---
+
+# 41. S4C Identity
+
+定义：
+
+```text
+S4C_CANONICAL_ERC_SKFOLIO_TRANSFER_V1
+```
+
+Canonical external mapping：
 
 ```text
 Equal Risk Contribution
 /
-Vanilla Risk Parity
+Risk Parity
 ```
 
-External tier：
+Tier：
 
 ```text
 E2_ESTABLISHED_METHOD
 ```
 
-Research action：
+Action：
 
 ```text
 UPSTREAM_COMPARE
 ```
 
-问题不是：
+---
+
+# 42. Dependency Compatibility Gate
+
+在任何 performance code 前：
+
+使用隔离 resolver 检查：
 
 ```text
-Does risk parity work?
+Python 3.10
+Python 3.11
+Python 3.12
 ```
 
-而是：
+与当前：
 
-> 在 TactiCore 当前无杠杆、多资产 ETF universe 中，correlation-aware ERC 是否相对简单 equal-weight / inverse-vol allocation 提供足够的本地增量价值？
+```text
+TactiCore dependency set
++
+current stable skfolio
+```
+
+是否可以可靠解析。
+
+不要因为本机当前是单一 Python 版本就认为项目范围兼容。
+
+如果失败：
+
+```text
+BLOCK_S4C_SKFOLIO_DEPENDENCY
+```
+
+不得：
+
+```text
+lower Python support
+use old package
+fork package
+write local solver
+```
 
 ---
 
-# 22. S4B Upstream Dependency
+# 43. Research-Only Dependency
 
-优先调查当前：
+如果 compatibility PASS：
+
+增加：
 
 ```text
-Riskfolio-Lib
+research optional dependency
 ```
 
-稳定版本。
+而不是 core runtime dependency。
 
-如果当前稳定官方版本与 Python 3.10–3.12 和项目环境兼容：
+版本范围必须基于实际 verified current release。
 
-新增 research-only optional dependency，例如：
+记录：
 
-```toml
-[project.optional-dependencies]
-research = [
-  "riskfolio-lib>=<verified-version>,<next-major>"
-]
+```text
+resolved skfolio version
+Python versions tested
+solver dependencies
+lock state
 ```
-
-实际版本必须以执行时官方稳定版本为准。
-
-不要盲目照抄本 Prompt。
-
-不要把 Riskfolio 变成核心 runtime dependency。
 
 ---
 
-# 23. S4B Exact Universe
+# 44. skfolio Responsibility Boundary
 
-复用 S4A 使用的：
+skfolio 只负责：
 
 ```text
-multi-asset risk universe
+ERC target-weight optimization
 ```
 
-从 frozen repository config 只读获得。
+VectorBT 继续负责：
 
-不得修改：
+```text
+portfolio simulation
+accounting
+trades
+returns
+drawdown
+```
+
+禁止使用 skfolio portfolio simulation 替代 VectorBT。
+
+这不是第三套 backtester。
+
+---
+
+# 45. Canonical S4C Universe
+
+复用当前 multi-asset risk universe。
+
+只读：
 
 ```text
 config/strategy.toml
-config/universe.csv
 ```
+
+不要修改 S2 config。
 
 fallback：
 
@@ -932,46 +1668,41 @@ fallback：
 511010.SS
 ```
 
----
-
-# 24. S4B Observation Window
-
-为了隔离：
-
-```text
-inverse-vol
-vs
-correlation-aware ERC
-```
-
-固定：
-
-```text
-risk estimation window = 60 daily returns
-```
-
-与 S4A 的 60-return horizon 对齐。
-
-不测试其他 window。
+不参与 risk-asset ERC optimization。
 
 ---
 
-# 25. S4B Aligned Covariance Semantics
-
-ERC 需要 covariance，因此必须使用真实共同日期。
+# 46. S4C Data Semantics
 
 每个 month-end：
 
-1. 取截至 signal date 的最近 61 个 canonical observations；
-2. asset 在这 61 个 observation 中必须都有有效价格；
-3. 得到 60 个 aligned daily returns；
-4. 至少：
+要求最近：
 
 ```text
-6 assets
+61 common valid prices
 ```
 
-满足才进入 ERC；
+产生：
+
+```text
+60 aligned daily returns
+```
+
+只有在所有该 eligible set 的共同日期上计算。
+
+严禁：
+
+```text
+forward fill
+zero fill
+pairwise silent covariance
+```
+
+至少：
+
+```text
+6 eligible assets
+```
 
 否则：
 
@@ -979,122 +1710,207 @@ ERC 需要 covariance，因此必须使用真实共同日期。
 fallback = 100%
 ```
 
-严禁：
-
-```text
-forward fill missing price
-zero fill
-pairwise covariance with silent PSD repair
-```
-
-如果 aligned data 不足：
-
-保持不可用。
-
 ---
 
-# 26. S4B Canonical ERC
+# 47. Canonical ERC Call
 
-使用 Riskfolio-Lib 官方：
+优先直接使用 official：
 
 ```text
-Classic
-variance / MV risk
-equal risk budgets
-long-only
+skfolio.optimization.RiskBudgeting
+```
+
+明确配置：
+
+```text
+risk measure = variance
+
+equal risk budget
+
+long only
+
 fully invested
+
+no leverage
+
+no expected-return objective
+
+no minimum-return constraint
+
+no custom risk budgets
+
+no alternative risk measure
 ```
 
-等价官方 vanilla ERC / risk-parity 模式。
-
-不要：
+不要测试：
 
 ```text
-expected-return optimization
-shorting
-leverage
-custom risk budgets
 CVaR risk parity
-drawdown risk parity
+semi-variance risk parity
+HERC
+HRP
+maximum diversification
 ```
-
-本轮只测试最经典、最低自由度版本。
 
 ---
 
-# 27. S4B Execution
+# 48. Solver Failure Semantics
+
+如果：
 
 ```text
-month-end estimation
+eligible assets >= 6
+```
+
+但 upstream solver 无法产生：
+
+```text
+finite
+nonnegative
+sum-to-one
+```
+
+weights：
+
+不得偷偷 fallback。
+
+该 track 直接记录：
+
+```text
+BLOCK_S4C_UPSTREAM_EXECUTION
+```
+
+并保留错误证据。
+
+这样不会让 solver failure 伪装成 defensive alpha。
+
+---
+
+# 49. S4C Primary Comparators
+
+必须基于完全相同：
+
+```text
+aligned window
+eligible set
+signal date
+execution date
+costs
+```
+
+创建：
+
+```text
+SAME_ELIGIBLE_EQUAL_WEIGHT
+
+SAME_ELIGIBLE_INVERSE_VOL
+```
+
+注意：
+
+现有 S4A inverse-vol 使用：
+
+```text
+asset-own valid returns
+```
+
+而 S4C 公平 comparator 必须使用：
+
+```text
+same aligned returns
+```
+
+所以不要直接拿 S4A 历史结果当 primary comparator。
+
+S4A 和 S30 仅 contextual。
+
+---
+
+# 50. S4C Timing
+
+```text
+month-end aligned return estimation
         ↓
-target weights
+skfolio ERC target
         ↓
 next canonical observation
         ↓
 VectorBT
 ```
 
-月度 target 是真实新估计，因此允许月度 rebalance。
+使用：
+
+```text
+10bps fee
+5bps slippage
+1,000,000 initial cash
+```
 
 ---
 
-# 28. S4B Comparators
+# 51. S4C Coverage Gate
 
-Primary 1：
-
-```text
-SAME_ELIGIBLE_SET_INVERSE_VOL
-```
-
-Primary 2：
+要求：
 
 ```text
-SAME_ELIGIBLE_SET_EQUAL_WEIGHT
+>= 6 eligible assets
 ```
 
-必须：
+在至少：
 
 ```text
-same dates
-same eligible assets
-same timing
-same costs
-same initial capital
+80%
 ```
 
-这样唯一主要差异是：
+evaluated month-end observations 成立。
+
+否则：
 
 ```text
-weighting algorithm
+BLOCK_S4C_DATA_COVERAGE
 ```
-
-S4A historical result只作为 contextual evidence。
-
-S30 也是 contextual reference。
 
 ---
 
-# 29. S4B Gate
+# 52. S4C Absolute Gate
 
 要求：
 
 ```text
 CAGR > 0
+
 Sharpe >= 0.50
+
 MaxDD > -35%
 ```
 
-相对 SAME_ELIGIBLE_SET_INVERSE_VOL：
+---
+
+# 53. S4C Relative Gate
+
+相对：
+
+```text
+SAME_ELIGIBLE_INVERSE_VOL
+```
+
+要求：
 
 ```text
 CAGR >= comparator CAGR - 1.5pp
 
-MaxDD no worse by > 2pp
+MaxDD cannot be worse by > 2pp
+```
 
-AND
+以及至少满足：
 
+```text
 Sharpe >= comparator Sharpe + 0.03
-OR
+```
+
+或：
+
+```text
 Calmar >= comparator Calmar + 0.05
 ```
 
@@ -1104,381 +1920,70 @@ Calmar >= comparator Calmar + 0.05
 turnover <= 1.5 × inverse-vol turnover
 ```
 
-报告：
+---
+
+# 54. S4C Concentration Diagnostics
+
+至少记录：
 
 ```text
-max weight
-median max weight
-95th-percentile max weight
+maximum weight
+
+median maximum weight
+
+95th-percentile maximum weight
+
 effective number of assets
+
+months with any asset > 50%
 ```
 
-不要因为 concentration 不好就事后加 cap。
-
----
-
-# 30. S4B Decision
-
-只能：
+不要事后添加：
 
 ```text
-ADVANCE_S4B_ERC_TRANSFER_TO_ROBUSTNESS
-
-DO_NOT_ADVANCE_S4B_ERC_TRANSFER
-
-BLOCK_S4B_UPSTREAM_DEPENDENCY
-
-BLOCK_S4B_DATA_COVERAGE
-```
-
-本地失败：
-
-```text
-!=
-risk parity globally invalid
-```
-
----
-
-# Track C — S10A Unlevered Volatility Targeting
-
-# 31. Research Identity
-
-新增：
-
-```text
-S10A_UNLEVERED_VOL_TARGETING_V1
-```
-
-Canonical mapping：
-
-```text
-volatility targeting
-/
-volatility-managed portfolio family
-```
-
-External tier：
-
-```text
-E3_MIXED_CONDITIONAL
-```
-
-Research action：
-
-```text
-LOCAL_ADJUDICATION
-```
-
----
-
-# 32. Why Use S30 as the Base
-
-不要同时发明新的 alpha portfolio。
-
-直接使用最简单、已经存在的：
-
-```text
-S30
-25% China equity
-25% US equity
-25% Gold
-25% China bond
-```
-
-作为 base allocation。
-
-问题只问：
-
-> 对这个已经很强的简单组合加无杠杆 volatility scaling，是否能进一步改善风险调整表现？
-
-这样能够隔离：
-
-```text
-volatility timing
-```
-
-而不是：
-
-```text
-asset-selection alpha
-```
-
----
-
-# 33. S10A Fixed Specification
-
-本轮只运行一个透明 specification：
-
-```text
-base weights:
-25 / 25 / 25 / 25
-
-volatility lookback:
-20 valid daily portfolio returns
-
-annualized target volatility:
-10%
-
-max exposure scale:
-1.0
-
-min exposure scale:
-0.0
-
-leverage:
-NO
-```
-
-如果 Phase A 文献核实发现这一 specification 与 canonical volatility-targeting 含义存在重大错误：
-
-允许在第一次 protocol freeze 前修正。
-
-修正必须：
-
-```text
-based on external evidence,
-not TactiCore performance.
-```
-
-一旦 protocol freeze：
-
-不可改。
-
----
-
-# 34. S10A Realized Volatility
-
-构造当前 base portfolio 的 daily return：
-
-```text
-r_base =
-0.25 * China equity return
-+
-0.25 * US equity return
-+
-0.25 * Gold return
-+
-0.25 * China bond return
-```
-
-使用过去：
-
-```text
-20 valid aligned daily observations
-```
-
-计算 annualized realized volatility。
-
-禁止：
-
-```text
-future data
-full-sample volatility
-```
-
----
-
-# 35. S10A Exposure
-
-月末：
-
-```text
-scale =
-min(
-    1.0,
-    target_vol / realized_vol
-)
-```
-
-若 volatility 不可用：
-
-```text
-scale = 0
-```
-
-然后：
-
-```text
-China equity = 0.25 * scale
-US equity    = 0.25 * scale
-Gold         = 0.25 * scale
-Bond         = 0.25 * scale + (1 - scale)
-```
-
-因此：
-
-```text
-sum(weights) = 1
-no leverage
-```
-
----
-
-# 36. S10A Primary Comparator
-
-建立：
-
-```text
-MONTHLY_STATIC_25_25_25_25
-```
-
-必须和 S10A：
-
-```text
-same signal dates
-same monthly execution dates
-same costs
-same initial capital
-```
-
-区别只有：
-
-```text
-volatility scaling
-```
-
-原始 annual-rebalance S30：
-
-```text
-REFERENCE CONTEXT ONLY
-```
-
-这样避免把：
-
-```text
-monthly rebalance effect
-```
-
-误认为 volatility-management alpha。
-
----
-
-# 37. S10A Diagnostics
-
-至少输出：
-
-```text
-realized_vol
-scale
-risk_reduction
-bond_weight
-
-average_scale
-median_scale
-min_scale
-max_scale
-
-months scale < 1
-
-target-change months
-turnover
-```
-
----
-
-# 38. S10A Non-Degeneration
-
-如果：
-
-```text
-average scale >= 0.95
-```
-
-则：
-
-```text
-REJECT_S10A_FILTER_DEGENERATION
-```
-
-因为策略几乎没工作。
-
-如果：
-
-```text
-average scale <= 0.40
-```
-
-则：
-
-```text
-REJECT_S10A_DEFENSIVE_DEGENERATION
-```
-
-因为几乎退化为 bond-heavy allocation。
-
----
-
-# 39. S10A Economic Gate
-
-绝对：
-
-```text
-CAGR > 0
-Sharpe >= 0.80
-MaxDD > -25%
-```
-
-相对 monthly static comparator：
-
-```text
-MaxDD improvement >= 2pp
-
-CAGR >= comparator CAGR - 1.5pp
-
-AND
-
-Sharpe > comparator Sharpe
-OR
-Calmar > comparator Calmar
-```
-
-不要求它必须：
-
-```text
-beat annual S30 CAGR
-```
-
-但必须完整报告。
-
----
-
-# 40. S10A Decision
-
-只能：
-
-```text
-ADVANCE_S10A_VOL_TARGETING_TO_ROBUSTNESS
-
-REJECT_S10A_VOL_TARGETING
-
-REJECT_S10A_FILTER_DEGENERATION
-
-REJECT_S10A_DEFENSIVE_DEGENERATION
-
-BLOCK_S10A_DATA
-```
-
-不得在失败后尝试：
-
-```text
-8% target
-12% target
-15% target
-40-day vol
-60-day vol
+weight cap
 ```
 
 救结果。
 
 ---
 
-# 41. No Other Strategies in Batch 02
+# 55. S4C Decision
 
-禁止实现：
+只能：
 
 ```text
-Minimum Variance
+ADVANCE_S4C_ERC_TRANSFER_TO_ROBUSTNESS
+
+DO_NOT_ADVANCE_S4C_ERC_TRANSFER
+
+BLOCK_S4C_SKFOLIO_DEPENDENCY
+
+BLOCK_S4C_DATA_COVERAGE
+
+BLOCK_S4C_UPSTREAM_EXECUTION
+```
+
+不得把 local failure 写成：
+
+```text
+risk parity does not work
+```
+
+---
+
+# ============================================================
+
+# COMMON FREEZE / EXECUTION
+
+# ============================================================
+
+# 56. No Other Strategies
+
+本 Goal 禁止实现：
+
+```text
+MinVar
 Shrinkage MinVar
 HRP
 HERC
@@ -1487,186 +1992,216 @@ Black-Litterman
 
 Theme Rotation
 Asset-Class Breadth
-Defensive Asset Rotation
+Defensive Rotation
 PIT Sector Rotation
+
+new momentum variants
 ```
 
-这些保留给未来 Principal Review。
-
-尤其：
+尤其不能因为 skfolio 已安装就：
 
 ```text
-S4B ERC pass/fail
-```
-
-不得在同一 Goal 触发：
-
-```text
-“顺手试试 MinVar”
+顺便测试库中其它 optimizer
 ```
 
 ---
 
-# 42. Expected Implementation
+# 57. Expected Files
 
 合理新增：
 
 ```text
-research/batches/batch_02/
-  PROTOCOL.md
+research/batches/batch_03/
   EVIDENCE_GATE.md
+  PROTOCOL.md
 
 research/experiments/
-  run_s27a_robustness.py
-  run_s4b_erc_transfer.py
-  run_s10a_vol_targeting.py
-
-tacticore/strategies/
-  erc_risk_parity.py
-  volatility_targeting.py
-
-config/
-  s4b_erc_risk_parity.toml
-  s10a_vol_targeting.toml
+  run_s27a_rqalpha_execution_review.py
+  run_s10a_robustness.py
+  run_s4c_erc_skfolio_transfer.py
 
 research/results/
-  S27A_ROBUSTNESS_V1.md
-  S4B_ERC_TRANSFER_V1.md
-  S10A_VOL_TARGETING_V1.md
-  BATCH_02_EVIDENCE_INFORMED_VALIDATION.md
+  s27a_v1_frozen_targets.csv
 
-  relevant small CSV artifacts
+  S27A_RQALPHA_EXECUTION_REVIEW_V1.md
+  S10A_ROBUSTNESS_V1.md
+  S4C_ERC_SKFOLIO_TRANSFER_V1.md
+
+  BATCH_03_EARNED_STAGE_ADVANCEMENT.md
+
+  focused small CSV artifacts
 ```
 
-S27A baseline代码保持冻结。
-
----
-
-# 43. Dependency Rule
-
-如果需要 Riskfolio-Lib：
-
-只作为：
+可能修改：
 
 ```text
-research optional dependency
+pyproject.toml
+uv.lock
 ```
 
-不得把整个 Riskfolio 逻辑复制进仓库。
-
-需要记录：
+仅当：
 
 ```text
-package version
-official API used
-why it is required
-why VectorBT alone does not own ERC optimization
-```
-
-VectorBT 仍负责：
-
-```text
-portfolio simulation
-```
-
-Riskfolio 只负责：
-
-```text
-ERC target-weight optimization
+skfolio compatibility gate passes
 ```
 
 ---
 
-# 44. No New Generic Framework
+# 58. Files Normally Unchanged
 
-禁止创建：
-
-```text
-OptimizerEngine
-AllocationFramework
-StrategyRegistry
-ResearchManager
-BacktestFramework
-RobustnessPlatform
-EvidenceDatabase
-```
-
-如果三个 runner 共享少量 metric helpers：
-
-可以继续复用：
+正常保持：
 
 ```text
-research/experiments/batch_01_common.py
+AGENTS.md
+docs/ARCHITECTURE.md
+docs/RESEARCH_RULES.md
+
+data/**
+
+config/strategy.toml
+config/universe.csv
+
+config/s27_trend_inverse_vol.toml
+config/s10a_vol_targeting.toml
+
+tacticore/strategies/multi_asset_trend.py
+tacticore/strategies/trend_inverse_vol.py
+tacticore/strategies/volatility_targeting.py
+
+tacticore/engines/rqalpha_adapter.py
+
+research/shadow/s2_r1/**
 ```
 
-或抽取一个很小的 experiment helper。
-
-不要提升成平台。
+已有永久规则已经足够。
 
 ---
 
-# 45. Protocol Freeze Commit
+# 59. Synthetic / Unit Tests Before Freeze
+
+至少测试：
+
+## S27
+
+```text
+frozen schedule == existing S27 execution semantics
+
+schedule sums to 1
+
+next-observation timing
+
+monthly target submission preserved
+
+no signal calculation inside RQAlpha callback
+
+replayed-date exactness
+
+decision boundary tests
+```
+
+## S10
+
+```text
+20/10 generalized evaluator
+exactly reproduces frozen strategy targets
+
+fill_method=None preserved
+
+10/20/40 are one-factor only
+
+8/10/12 are one-factor only
+
+no Cartesian generation
+
+decision boundary tests
+```
+
+## S4C
+
+```text
+equal risk budget call
+
+long-only weights
+
+sum(weights) == 1
+
+aligned-return semantics
+
+missing rows not filled
+
+<6 eligible → fallback
+
+eligible solver failure → BLOCK
+
+same-eligible comparators
+
+next-observation timing
+
+decision boundary tests
+```
+
+---
+
+# 60. Commit A — Protocol Freeze
 
 完成：
 
 ```text
-External Evidence Gate
-+
-configs
-+
-strategy semantics
-+
-runners
-+
-decision functions
-+
-synthetic tests
-+
+evidence refresh
+
+new upstream check
+
+all code
+
+all synthetic tests
+
+all decision gates
+
 PROTOCOL.md
 ```
 
-但还没有运行真实历史 performance 后：
+但：
 
-运行：
+```text
+NO S27 RQAlpha result
+
+NO S10 robustness result
+
+NO S4C historical result
+```
+
+时运行：
 
 ```bash
 uv sync --extra dev
 ```
 
-如 S4B 使用 research extra：
+若 S4C dependency pass：
 
 ```bash
 uv sync --extra dev --extra research
 ```
 
-然后：
+再：
 
 ```bash
 uv run pytest
 uv run ruff check .
 uv run ruff format --check .
 uv run mypy
-```
 
-以及：
-
-```bash
 uv run python research/experiments/run_s2_r1_shadow.py \
   --verify-candidate
 ```
 
-全部通过。
+全部 PASS。
 
-创建：
-
-```text
-Commit A
-```
+创建 Commit A。
 
 建议：
 
 ```text
-freeze batch 2 evidence informed validation protocol
+freeze batch 3 earned stage advancement protocol
 ```
 
 push。
@@ -1674,339 +2209,329 @@ push。
 记录：
 
 ```text
-BATCH_02_PROTOCOL_FREEZE_SHA
+BATCH_03_PROTOCOL_FREEZE_SHA
 ```
 
 ---
 
-# 46. No Post-Freeze Design Changes
+# 61. After Freeze — Run Track A
 
-Protocol freeze 后：
+运行：
 
-禁止修改：
+```bash
+uv run python \
+  research/experiments/run_s27a_rqalpha_execution_review.py
+```
 
-```text
-S27 robustness neighborhoods
+禁止结果出来后修改 gate。
 
-ERC semantics
+---
 
-ERC estimator/window
+# 62. After Freeze — Run Track B
 
-volatility target
+运行：
 
-volatility lookback
-
-decision gates
-
-primary comparators
+```bash
+uv run python \
+  research/experiments/run_s10a_robustness.py
 ```
 
 ---
 
-# 47. Correctness-Bug Exception
+# 63. After Freeze — Run Track C
 
-如果 performance 后发现明确：
+仅在 dependency gate PASS 时：
+
+```bash
+uv run python \
+  research/experiments/run_s4c_erc_skfolio_transfer.py
+```
+
+若 blocked：
+
+生成 block report 即可。
+
+不要强行运行。
+
+---
+
+# 64. Invalid-Run Discipline
+
+如果发现：
 
 ```text
-lookahead
 wrong comparator
-incorrect execution timing
-incorrect Riskfolio call
-target-sum bug
-incorrect eligibility
+
+wrong timing
+
+forward-fill
+
+incorrect RQAlpha replay
+
+wrong risk-budget call
+
+lookahead
+
+incorrect eligible set
 ```
 
 必须：
 
 ```text
-mark run INVALID_RUN
+INVALID_RUN_BATCH_03_<N>.md
+```
+
+记录：
+
+```text
+what was wrong
+what results became invalid
+whether performance had been seen
+what is allowed to change
 ```
 
 然后：
 
 ```text
-document bug
-fix it
-create Protocol V2
-commit V2 freeze
-rerun entire affected track
+Protocol V2
+freeze commit
+rerun affected track
 ```
-
-不得静默修复。
-
-遵循 Batch 01 已经建立的良好 precedent。
 
 ---
 
-# 48. Run Entire Batch
-
-Protocol freeze 后统一执行：
-
-```bash
-uv run python research/experiments/run_s27a_robustness.py
-
-uv run python research/experiments/run_s4b_erc_transfer.py
-
-uv run python research/experiments/run_s10a_vol_targeting.py
-```
-
-单条失败不应提前结束其他独立 track。
-
-只有：
-
-```text
-S2 integrity failure
-canonical data corruption
-shared correctness bug
-```
-
-才中断整批。
-
----
-
-# 49. Batch Summary
+# 65. Batch Summary
 
 生成：
 
 ```text
-research/results/BATCH_02_EVIDENCE_INFORMED_VALIDATION.md
+research/results/
+BATCH_03_EARNED_STAGE_ADVANCEMENT.md
 ```
 
-统一表：
+第一张表：
 
-| Track           | Evidence Tier | Research Action    | Local Question              | Decision |
-| --------------- | ------------- | ------------------ | --------------------------- | -------- |
-| S27A Robustness | E3            | LOCAL_ADJUDICATION | sizing 是否稳定                 |          |
-| S4B ERC         | E2            | UPSTREAM_COMPARE   | correlation-aware ERC 是否有增量 |          |
-| S10A Vol Target | E3            | LOCAL_ADJUDICATION | 无杠杆 ETF vol timing 是否有效     |          |
+| Track | Stage Before      | Question     | Decision |
+| ----- | ----------------- | ------------ | -------- |
+| S27A  | robustness PASS   | execution    |          |
+| S10A  | baseline PASS     | robustness   |          |
+| S4C   | upstream reopened | ERC transfer |          |
 
-性能表至少：
+第二张 performance 表按实际可比较数据填写。
 
-| Strategy | CAGR | MaxDD | Sharpe | Calmar | Turnover | Decision |
-| -------- | ---: | ----: | -----: | -----: | -------: | -------- |
-
-不要做：
+不要创建：
 
 ```text
-overall strategy score
+winner score
 ```
 
 ---
 
-# 50. Cross-Track Questions
+# 66. Cross-Track Interpretation
 
-Batch summary 必须回答：
+必须回答：
 
 ```text
-1. Did S27A survive parameter,
-   period and cost robustness?
+1. Can S27A actually be implemented
+   under authoritative RQAlpha semantics?
 
-2. Is S27A's inverse-vol improvement
-   structural or narrow?
+2. Are S27A execution deviations
+   economic or merely framework accounting differences?
 
-3. Did correlation-aware ERC improve
-   on simple inverse-vol?
+3. Does S10A survive nearby
+   lookback and target-vol assumptions?
 
-4. Did ERC justify its additional
-   optimizer dependency?
+4. Is S10A's benefit spread across periods
+   or concentrated in a few crises?
 
-5. Did unlevered volatility targeting
-   add value after controlling
-   monthly rebalance mechanics?
+5. Does canonical ERC add anything
+   beyond aligned inverse-vol?
 
-6. Did volatility targeting merely
-   lower average risk exposure?
+6. Did skfolio solve an implementation blocker
+   without forcing local optimizer code?
 
-7. How do surviving dynamic strategies
-   compare contextually with S30?
+7. Which complexity is justified?
 
-8. Which external claims transferred
-   successfully?
+8. Which tracks deserve another stage?
 
-9. Which did not?
-
-10. What remains local and unproven?
+9. Which tracks should stop?
 ```
 
 ---
 
-# 51. Research Ledger
+# 67. Research Ledger
 
-追加独立 local questions：
+追加新的 local questions。
 
-建议：
-
-```text
-RL-025 S27A Robustness
-
-RL-026 S4B ERC ETF Transfer
-
-RL-027 S10A Volatility Targeting Adjudication
-```
-
-实际编号以最新 ledger 为准。
-
-只记录：
+按最新编号顺延，例如：
 
 ```text
-question
-external mapping
-external tier
-local gap
-frozen protocol
-decision
-evidence
-reopen condition
+S27A execution review
+
+S10A robustness
+
+S4C skfolio ERC transfer
 ```
 
-不要复制整篇文献综述。
+不要修改：
+
+```text
+RL-025
+RL-026
+RL-027
+```
+
+的历史事实。
+
+S4C 必须明确引用：
+
+```text
+S4B remains blocked under Riskfolio route
+
+S4C exists because a new mature upstream
+implementation became available
+```
 
 ---
 
-# 52. External Registry After Results
+# 68. External Registry
 
-结果完成后更新相关 entry 的：
-
-```text
-local_mapping
-local_status
-local_evidence_refs
-remaining_gap
-```
-
-不得根据本地结果改变：
+结果后更新对应：
 
 ```text
-external evidence tier
-external consensus
+VOL_SCALED_TREND
+
+VOL_TARGETING
+
+ERC_RISK_PARITY
 ```
 
-除非本 Goal 的外部文献审计本身发现新的外部证据。
+仅更新：
+
+```text
+implementation prior
+
+local mapping
+
+local status
+
+local evidence refs
+
+remaining gap
+```
+
+本地结果不得修改外部 tier。
 
 ---
 
-# 53. Strategy Research Map
+# 69. STRATEGY_RESEARCH_MAP
 
 更新：
 
 ```text
-docs/STRATEGY_RESEARCH_MAP.md
+S27A lifecycle
+
+S10A lifecycle
+
+S4C mapping
 ```
-
-反映：
-
-```text
-S27A robustness result
-
-S4B local mapping/result
-
-S10A local mapping/result
-```
-
-继续严格区分：
-
-```text
-external evidence
-vs
-local evidence
-```
-
----
-
-# 54. STRATEGY_CATALOG
-
-更新：
-
-```text
-docs/STRATEGY_CATALOG.md
-```
-
-只记录本地生命周期。
 
 例如：
 
 ```text
 S27A:
-baseline → robustness result
-
-S4B:
-ERC transfer baseline → result
+EXECUTION_REVIEW_PASS / STOP
 
 S10A:
-vol-target adjudication → result
+ROBUSTNESS_PASS / REJECT
+
+S4C:
+TRANSFER_PASS / NO_ADVANCE / BLOCK
 ```
 
-不要把 external literature 全部塞进 catalog。
+使用实际结果。
 
 ---
 
-# 55. CURRENT_STATE
+# 70. STRATEGY_CATALOG
 
-完成 Batch 02 后只保留当前前沿。
-
-如果某些 track advance：
-
-写：
+仅记录：
 
 ```text
-which tracks earned next-stage eligibility
+local strategy lifecycle
 ```
 
-如果全部 fail：
-
-如实关闭。
-
-最终状态必须：
+详细数字仍放：
 
 ```text
-BATCH_02_COMPLETE
-AWAIT_BATCH_02_ARCHITECT_REVIEW
+research/results/
 ```
-
-不得自动开始下一阶段。
 
 ---
 
-# 56. ARCHITECTURE / RESEARCH_RULES / AGENTS
+# 71. CURRENT_STATE
 
-正常：
+完成后只记录真正当前前沿。
 
-```text
-UNCHANGED
-```
-
-因为 Batch 00 已经完成永久规则升级。
-
-不要把：
+无论结果如何，状态先停：
 
 ```text
-ERC 60 days
-S10 target vol 10%
-S27 parameter neighborhood
+BATCH_03_COMPLETE
+
+AWAIT_BATCH_03_ARCHITECT_REVIEW
 ```
 
-写进永久规则。
+如果 S27A execution PASS：
 
-这些属于 strategy-specific protocol。
+只写：
+
+```text
+candidate-freeze eligible
+```
+
+不要创建 candidate。
+
+如果 S10 robustness PASS：
+
+只写：
+
+```text
+execution-review eligible
+```
+
+不要运行 execution。
+
+如果 S4C baseline PASS：
+
+只写：
+
+```text
+robustness eligible
+```
+
+不要运行 robustness。
 
 ---
 
-# 57. docs/goal.md
+# 72. docs/goal.md
 
-用本 Goal 替换完成的 Batch 00 Goal。
+替换已完成 Batch 02 Goal。
 
-结束写：
+完成后记录：
 
 ```text
 Status: completed
 
 Batch:
-BATCH_02_EVIDENCE_INFORMED_VALIDATION
+BATCH_03_EARNED_STAGE_ADVANCEMENT
 
 Starting HEAD:
 ...
 
 Protocol Freeze SHA:
+...
+
+Protocol revisions:
 ...
 
 Results SHA:
@@ -2015,46 +2540,42 @@ Results SHA:
 S27A:
 ...
 
-S4B:
-...
-
 S10A:
 ...
 
+S4C:
+...
+
 Next:
-AWAIT_BATCH_02_ARCHITECT_REVIEW
+AWAIT_BATCH_03_ARCHITECT_REVIEW
 ```
 
 ---
 
-# 58. S2 Final Integrity Gate
+# 73. Final S2 Integrity Gate
 
-所有实验和文档完成后再次：
+结束前：
 
 ```bash
 uv run python research/experiments/run_s2_r1_shadow.py \
   --verify-candidate
 ```
 
-必须：
+必须 PASS。
+
+如果失败：
 
 ```text
-PASS
+BATCH_03_INVALID
 ```
 
-否则：
-
-```text
-BATCH_02_INVALID
-```
-
-不得更新 S2 manifest。
+不要更新 S2 manifest。
 
 ---
 
-# 59. Full Validation
+# 74. Full Validation
 
-执行：
+运行：
 
 ```bash
 uv run pytest
@@ -2066,52 +2587,45 @@ uv run ruff format --check .
 uv run mypy
 ```
 
-如果新增 research dependency：
+如果启用 research extra：
 
-同时从 clean sync 验证：
-
-```bash
-uv sync --extra dev --extra research
-```
+从 clean dependency sync 再验证。
 
 ---
 
-# 60. Architecture Drift Audit
+# 75. Architecture Drift Audit
 
 最终逐项回答：
 
 ```text
 Did we modify S2 R1?
 
-Did we reopen rejected S3/S4A/S8A?
+Did we modify frozen S27 semantics?
 
-Did we tune old failed strategies?
+Did we modify frozen S10 semantics?
 
-Did we run a Cartesian parameter search?
+Did we pick best S10 parameters?
 
-Did we pick best S27 parameters?
+Did we run a Cartesian S10 grid?
 
-Did we write our own ERC solver?
+Did RQAlpha recompute S27 signals?
 
-Did we confuse Riskfolio implementation
-with economic evidence?
+Did we implement a local execution engine?
 
-Did we ignore contradictory
-volatility-management evidence?
+Did we implement an ERC solver?
 
-Did we add leverage?
+Did we silently replace Riskfolio history?
 
-Did we run RQAlpha?
+Did we test MinVar/HRP/HERC because skfolio exposes them?
 
-Did we start MinVar/HRP/Theme?
+Did we change external evidence tier
+because of local returns?
 
-Did one track's performance alter
-another frozen track?
+Did we start Theme Rotation?
 
-Did we change external tiers
-because of local performance?
+Did we create another generic framework?
 
-Did we add generic research infrastructure?
+Did we create a new candidate automatically?
 ```
 
 正常全部：
@@ -2122,9 +2636,9 @@ NO
 
 ---
 
-# 61. Commit B
+# 76. Commit B
 
-完成结果、文档和 validation 后：
+完成全部结果后：
 
 ```bash
 git status
@@ -2134,148 +2648,195 @@ git diff
 创建：
 
 ```text
-Commit B
-```
-
-建议：
-
-```text
-evaluate batch 2 evidence informed strategy gaps
+evaluate batch 3 earned strategy stages
 ```
 
 push。
 
----
-
-# 62. Final User Report
-
-最终必须报告：
+如果需要最后修正：
 
 ```text
-Starting HEAD
-Protocol Freeze SHA
-Results SHA
-Ending HEAD
+docs/goal.md
+```
 
-S2 verification before/after
+中的 Results SHA，
 
-External sources added/updated
+允许再做一个 metadata-only commit。
 
-Riskfolio version
-Riskfolio API used
+---
 
-S27A:
-baseline reproduction
-trend neighborhood
-vol neighborhood
-fixed periods
-rolling 3Y/5Y
-cost sensitivity
-decision
+# 77. Final Completion Report
 
-S4B:
-coverage
-ERC metrics
-inverse-vol comparator
-equal-weight comparator
-concentration
-turnover
-decision
+最终回复至少给：
 
-S10A:
-average scale
-months scaled down
-CAGR
+```text
+starting HEAD
+
+protocol freeze SHA
+
+protocol revision SHA if any
+
+results SHA
+
+ending HEAD
+```
+
+## S27A
+
+```text
+frozen target count
+
+frozen target SHA
+
+VectorBT reproduction
+
+RQAlpha version
+
+RQAlpha CAGR
 MaxDD
 Sharpe
-Calmar
-monthly-static comparator
-annual S30 context
+
+transaction cost
+turnover
+
+cash rejection events
+volume-limit events
+
+average cash ratio
+
+average execution-date deviation
+
+materially off-target execution dates
+
 decision
 ```
 
----
-
-# 63. Mandatory Stop
-
-完成 Batch 02 后：
+## S10A
 
 ```text
-STOP
+central reproduction
+
+10/20/40 window results
+
+8/10/12 target results
+
+fixed-period evidence
+
+rolling 3Y/5Y
+
+50-bps cost result
+
+average scale
+
+decision
 ```
 
-禁止自动：
+## S4C
 
 ```text
-run S27 RQAlpha
-run ERC robustness
-run vol-target robustness
+skfolio version
 
-implement MinVar
-implement HRP
-implement Theme Rotation
+Python 3.10 resolution
+Python 3.11 resolution
+Python 3.12 resolution
 
-start Batch 03
+RiskBudgeting API used
+
+coverage
+
+ERC metrics
+
+aligned inverse-vol metrics
+
+aligned equal-weight metrics
+
+turnover
+
+concentration
+
+decision
 ```
 
-等待 Principal Review。
+最后明确：
+
+```text
+S2 R1 modified?
+NO
+
+S27 candidate created?
+NO
+
+S10 RQAlpha run?
+NO
+
+S4B historical result rewritten?
+NO
+
+Local ERC solver created?
+NO
+
+New unrelated strategies added?
+NO
+```
 
 ---
 
-# 64. Final Principle
+# 78. Stop Condition
+
+Batch 03 完成后必须停止。
+
+不要自动继续：
 
 ```text
-External evidence tells us
-which question is worth asking.
+S27 candidate freeze
 
-It does not answer
-the TactiCore local question.
+S10 execution review
 
-S27A earned robustness.
+S4C robustness
+
+Batch 04
+```
+
+等待下一次 repository-first Principal Review。
+
+---
+
+# 79. Final Principle
+
+```text
+Do not reward an idea
+for merely surviving one backtest.
+
+A strategy earns the next stage.
+
+S27A earned execution review.
+Test execution.
+
+S10A earned robustness.
 Test robustness.
 
-ERC is established.
-Reuse upstream and test transfer.
+ERC was blocked by one upstream path.
+A new mature upstream path now exists.
+Use it instead of writing a solver.
 
-Volatility targeting is contested.
-Adjudicate locally.
+Do not skip stages.
 
-Do not invent canonical methods.
+Do not optimize after seeing results.
 
-Do not optimize rejected ideas.
+Do not confuse software availability
+with economic evidence.
 
-Do not let one historical result
-rewrite another experiment.
+Do not confuse local failure
+with global literature.
 
-One frozen batch.
-Three orthogonal gaps.
-Then stop and review.
+Freeze first.
+Run second.
+Record evidence.
+Then stop.
 
 Literature first.
 Upstream first.
 Local evidence next.
-Prospective evidence later.
+Execution before prospective candidacy.
 Infrastructure last.
 ```
-
----
-
-Status: completed
-
-Batch: `BATCH_02_EVIDENCE_INFORMED_VALIDATION`
-
-Starting HEAD: `eeca3038c504da1c07489ff713b7968285ed6d32`
-
-Protocol Freeze SHA: `3e220075e9da2ca4f7373beeadc98a92273aa16c`
-
-S10A Protocol V2 SHA: `bea032742c872d7d06b7c3ba28196ad09897821c`
-
-Results SHA: `52a38515a8174f85af324e6d65e9b53761a54d15`
-
-S27A: `ADVANCE_S27A_TO_EXECUTION_REVIEW`
-
-S4B: `BLOCK_S4B_UPSTREAM_DEPENDENCY`
-
-S10A: `ADVANCE_S10A_VOL_TARGETING_TO_ROBUSTNESS`
-
-Next: `AWAIT_BATCH_02_ARCHITECT_REVIEW`

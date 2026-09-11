@@ -276,3 +276,30 @@
 - 结论：CAGR 9.92%、最大回撤 -15.04%、Sharpe 1.114、Calmar 0.660；`REFERENCE_BASELINE`，不作 alpha pass/fail。
 - 证据：[报告](../research/results/S30_STATIC_STRATEGIC_ALLOCATION_V1.md)；冻结协议 `0d245b9`；canonical 同 RL-001。
 - 重开条件：只有静态配置或 canonical 契约明确变化。
+
+## RL-025 S27A inverse-vol sizing robustness
+
+- 策略：S27A_TREND_INVERSE_VOL_V1；状态：CLOSED。
+- 问题/范围：在冻结 S27A 基线周围，仅以 160/180/200/220/240 趋势窗口和 40/60/80 波动窗口的单因素邻域，检验 inverse-vol active sizing 是否稳定；复用既有固定分期、3Y/5Y 滚动和 15/30/50 bps 成本语义。
+- 外部映射：`VOL_SCALED_TREND`，E3；Kim/Tse/Wald 的缩放反证保留，问题仅为本地 ETF sizing transfer。
+- 结论：实验层 evaluator 精确复现修正后的 200/60 基线；所有预声明参数、分期、滚动和 50 bps 成本门槛均通过，决策 `ADVANCE_S27A_TO_EXECUTION_REVIEW`。它不授权 RQAlpha、前瞻或生产。
+- 证据：[报告](../research/results/S27A_ROBUSTNESS_V1.md)、[协议](../research/batches/batch_02/PROTOCOL.md)；canonical 同 RL-001。
+- 重开条件：执行 review 发现具体矛盾，或 S27A 语义、canonical 契约或 VectorBT 核心假设变化；不得选择邻域最佳参数。
+
+## RL-026 S4B canonical ERC ETF transfer
+
+- 策略：S4B_ERC_RISK_PARITY_V1；状态：CLOSED。
+- 问题/范围：官方上游 Riskfolio-Lib 是否能在 TactiCore 声明的 Python 环境可靠安装，从而开始预注册的无杠杆 ERC ETF transfer。
+- 外部映射：`ERC_RISK_PARITY`，E2 established method；软件可用性不等同于经济优越性。
+- 结论：当前 7.3.0 需要 `scipy>=1.16.1`，与项目 `>=3.10,<3.13` 的跨版本解析不兼容；决策 `BLOCK_S4B_UPSTREAM_DEPENDENCY`。没有本地 solver、旧版替代、ERC 权重或历史绩效证据。
+- 证据：[报告](../research/results/S4B_ERC_TRANSFER_V1.md)、[协议](../research/batches/batch_02/PROTOCOL.md)。
+- 重开条件：官方当前上游依赖在项目 Python 范围可靠解析；届时必须新建协议，不能把本 block 当作 ERC 经济失败。
+
+## RL-027 S10A unlevered volatility-targeting adjudication
+
+- 策略：S10A_UNLEVERED_VOL_TARGETING_V1；状态：CLOSED。
+- 问题/范围：固定 25/25/25/25 base、20 个有效对齐日收益、10% target、[0,1] 无杠杆 scale，是否相对同 timing/cost 的月频静态控制带来本地风险调整增量。
+- 外部映射：`VOL_TARGETING`，E3；Moreira/Muir 支持与 Cederburg 等反证均保留，结论不外推至文献争议。
+- 结论：R1 因默认前填充违反有效对齐收益语义而无效；Protocol V2 后的唯一 rerun 以 `fill_method=None` 通过绝对、相对与非退化门槛，决策 `ADVANCE_S10A_VOL_TARGETING_TO_ROBUSTNESS`。结果不是前瞻或生产资格。
+- 证据：[报告](../research/results/S10A_VOL_TARGETING_V1.md)、[无效运行记录](../research/results/INVALID_RUN_BATCH_02_R1.md)、[Protocol V2](../research/batches/batch_02/PROTOCOL_V2.md)；canonical 同 RL-001。
+- 重开条件：仅 robustness、语义/canonical/VectorBT 变化或具体正确性矛盾；不得由历史结果改 target 或 lookback。

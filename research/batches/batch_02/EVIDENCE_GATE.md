@@ -14,7 +14,7 @@ Evidence snapshot date: 2026-09-11. This review precedes any Batch 02 historical
 
 - Canonical mapping: vanilla equal-risk-contribution/risk parity.
 - Tier/action: `E2_ESTABLISHED_METHOD` / `UPSTREAM_COMPARE`; Maillard/Roncalli/Teiletche is canonical (`10.3905/JPM.2010.36.4.060`).
-- Upstream result: current Riskfolio-Lib 7.3.0 officially supports Python ≥3.10, but its `scipy>=1.16.1` dependency cannot resolve across TactiCore's supported Python `>=3.10,<3.13`; `uv sync --extra research` fails for Python 3.10 compatibility.
+- Upstream result: a pre-freeze resolver check for current Riskfolio-Lib 7.3.0 found its `scipy>=1.16.1` dependency cannot resolve across TactiCore's supported Python `>=3.10,<3.13`.  The trial dependency was deliberately not retained, so the repository has no `research` extra today.
 - Decision before implementation: `BLOCK_S4B_UPSTREAM_DEPENDENCY`. No local solver, older-version substitution, or dependency-range narrowing is authorized by this Goal.
 
 ## S10A volatility targeting — `VOL_TARGETING`

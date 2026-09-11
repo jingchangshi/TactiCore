@@ -67,6 +67,12 @@
 - S27A trend + inverse vol：`ADVANCE_S27A_TO_ROBUSTNESS`；仅 baseline 问题关闭，尚非执行或前瞻候选，详见 [报告](../research/results/S27A_TREND_INVERSE_VOL_BASELINE_V1.md)。
 - S30 static strategic allocation：`REFERENCE_BASELINE`；固定 25/25/25/25 的复杂度门槛，详见 [报告](../research/results/S30_STATIC_STRATEGIC_ALLOCATION_V1.md)。
 
+## Batch 02 evidence-informed validation
+
+- S27A trend + inverse vol：`ADVANCE_S27A_TO_EXECUTION_REVIEW`；预声明趋势/波动邻域、分期、滚动及成本均通过，详见 [robustness 报告](../research/results/S27A_ROBUSTNESS_V1.md)。这不是 RQAlpha、前瞻或生产批准。
+- S4B canonical ERC：`BLOCK_S4B_UPSTREAM_DEPENDENCY`；官方 Riskfolio-Lib 当前依赖无法在项目声明的 Python 范围可靠解析，未实现或回测 ERC，详见 [报告](../research/results/S4B_ERC_TRANSFER_V1.md)。
+- S10A unlevered volatility targeting：`ADVANCE_S10A_VOL_TARGETING_TO_ROBUSTNESS`；20 日/10% 无杠杆、月频静态对照通过本地经济门槛，详见 [报告](../research/results/S10A_VOL_TARGETING_V1.md)。这不是前瞻或生产批准。
+
 ## 外部 canonical 映射与本地边界
 
 详细外部范围见 [策略研究地图](STRATEGY_RESEARCH_MAP.md)，此处只记录已实现策略的本地生命周期。
@@ -80,5 +86,7 @@
 | S3C | per-sector trend transfer | E3 | 本地固定sleeve filter，REJECTED | trend globally invalid |
 | S4A | inverse-volatility allocation | E2 | 复杂度是否有增量价值，REJECTED | inverse-vol 方法无用 |
 | S8A | moving-average tactical allocation | E3 | 两资产中国ETF规则，REJECTED | trend literature 被否定 |
-| S27A | trend + inverse-vol sizing | E3 | 历史基线 ADVANCE_TO_ROBUSTNESS | 新异常或已获执行资格 |
+| S27A | trend + inverse-vol sizing | E3 | robustness 后 ADVANCE_TO_EXECUTION_REVIEW | 新异常或生产资格 |
+| S4B | equal risk contribution | E2 | 官方依赖 BLOCKED，未做本地经济比较 | ERC 方法或文献无效 |
+| S10A | unlevered volatility targeting | E3 | 历史 adjudication ADVANCE_TO_ROBUSTNESS | volatility-managed 文献已被本地证明 |
 | S30 | naive/static diversification | E1 | REFERENCE_BASELINE | alpha 策略 |

@@ -2,18 +2,18 @@
 
 ## 当前策略与最新决策
 
-S2 Research Candidate R1 保持 **`FROZEN / PROSPECTIVE_SHADOW_ACTIVE`**，等待真实未来 evidence；它仍不是生产候选。Batch 01 仅 S27A 通过 baseline screen，S3C/S4A/S8A 被拒绝，S30 为参考基线。
+S2 Research Candidate R1 保持 **`FROZEN / PROSPECTIVE_SHADOW_ACTIVE`**，等待真实未来 evidence；它仍不是生产候选。`BATCH_02_COMPLETE`：S27A 获 execution-review 资格，S10A 获 robustness 资格，S4B 因官方上游依赖阻塞；三者均不构成生产或新的前瞻候选。
 
 ## 最新决定性证据
 
-S2 R1 的 [manifest](../research/shadow/s2_r1/candidate_manifest.json) 仍通过完整性验证。S27A 在历史 follow-up screen 中相对 S2 reproduction 改善 CAGR、回撤与 Sharpe，但仍需独立 robustness；完整矩阵见 [Batch 01](../research/results/BATCH_01_TRANSPARENT_STRATEGY_SCREEN.md)。
+S2 R1 的 [manifest](../research/shadow/s2_r1/candidate_manifest.json) 仍通过完整性验证。S27A 复现 corrected baseline 并通过冻结邻域、分期、滚动和成本测试；S10A 在消除隐式前填充后的 Protocol V2 rerun 中相对月频静态控制改善回撤、Sharpe 和 Calmar；完整结论见 [Batch 02](../research/results/BATCH_02_EVIDENCE_INFORMED_VALIDATION.md)。
 
 ## 剩余阻塞
 
-S2 仍缺少足够前瞻 observation；S3A、S3B、S3C、S4A、S8A 均已关闭，不得以参数微调重开。
+S2 仍缺少足够前瞻 observation；S4B 等待官方当前 Riskfolio-Lib 依赖能在项目 Python 范围可靠解析。S3A、S3B、S3C、S4A、S8A 均已关闭，不得以参数微调重开。
 
 ## External Evidence Foundation
 
-`BATCH_00_EXTERNAL_EVIDENCE_FOUNDATION_COMPLETE`：外部证据 registry 与研究地图已建立。S2 R1 继续前瞻影子；S27A 仅具 robustness 资格，未自动启动；Batch 02 与 Theme Rotation 均未开始。
+`BATCH_00_EXTERNAL_EVIDENCE_FOUNDATION_COMPLETE` 保持有效；Batch 02 的三条有界 gap 已按外部证据、冻结协议和本地证据完成。外部 tier 未因本地结果改变，Theme Rotation 未开始。
 
-当前前沿为 `EVIDENCE_INFORMED_STRATEGY_SELECTION`，下一状态为 `AWAIT_EXTERNAL_EVIDENCE_ARCHITECT_REVIEW`。未来策略选择必须先完成 External Evidence Gate，并从本地 remaining gap 而非历史收益或叙事开始。
+当前前沿为 `AWAIT_BATCH_02_ARCHITECT_REVIEW`。未来策略选择必须先完成 External Evidence Gate，并从本地 remaining gap 而非历史收益或叙事开始。

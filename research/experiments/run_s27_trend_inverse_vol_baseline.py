@@ -9,7 +9,11 @@ import pandas as pd
 from research.experiments.batch_01_common import metric_row, row
 from tacticore.data.prices import load_price_csv
 from tacticore.engines.vectorbt_adapter import run_target_weights
-from tacticore.strategies.multi_asset_trend import build_execution_weights, load_trend_config
+from tacticore.strategies.multi_asset_trend import (
+    build_execution_weights,
+    build_signal_change_execution_weights,
+    load_trend_config,
+)
 from tacticore.strategies.multi_asset_trend import build_month_end_targets as s2_targets
 from tacticore.strategies.trend_inverse_vol import (
     build_month_end_targets,
@@ -43,7 +47,7 @@ def main() -> None:
     prices = load_price_csv(ROOT / "data/canonical/etf_adjusted_close.csv")
     targets, diagnostics = build_month_end_targets(prices, config, s2.risk_symbols)
     execution = build_execution_weights(prices, targets)
-    s2_execution = build_execution_weights(prices, s2_targets(prices, s2))
+    s2_execution = build_signal_change_execution_weights(prices, s2_targets(prices, s2))
     start = execution.dropna(how="all").index[0]
     common = dict(
         fees=config.fees,

@@ -15,9 +15,9 @@
 | Per-sector trend | tactical | E3 | trend transfer而非新异常 | S3C | REJECTED | PIT/工具域 | LOCAL_ADJUDICATION |
 | Inverse volatility | allocation | E2 | 成熟风险配置，不是alpha | S4A | REJECTED | 简单比较器下复杂度 | UPSTREAM_COMPARE |
 | Equity/bond tactical trend | tactical | E3 | GTAA相关但单规则域敏感 | S8A | REJECTED | 非S8A救援的新问题 | LOCAL_ADJUDICATION |
-| Trend + inverse vol | composite | E3 | 成熟组件的组合 | S27A | ADVANCE_TO_EXECUTION_REVIEW | execution review，非前瞻/生产资格 | LOCAL_ADJUDICATION |
-| Equal risk contribution | allocation | E2 | 成熟构造方法，非收益异常 | S4B blocked / S4C | skfolio upstream path available | 同对齐样本 ERC transfer | UPSTREAM_COMPARE |
-| Volatility targeting | overlay | E3 | 支持与反证并存 | S10A | ADVANCE_TO_ROBUSTNESS | robust/前瞻/生产仍待证 | LOCAL_ADJUDICATION |
+| Trend + inverse vol | composite | E3 | 成熟组件的组合 | S27A | BLOCK_S27A_EXECUTION_ENVIRONMENT | 兼容 RQAlpha bundle 或新数据契约；非前瞻/生产资格 | LOCAL_ADJUDICATION |
+| Equal risk contribution | allocation | E2 | 成熟构造方法，非收益异常 | S4B blocked / S4C | ADVANCE_S4C_ERC_TRANSFER_TO_ROBUSTNESS | S4C 预注册 robustness；S4B block 保留 | UPSTREAM_COMPARE |
+| Volatility targeting | overlay | E3 | 支持与反证并存 | S10A | REJECT_S10A_ROBUSTNESS | 仅新语义/canonical/矛盾证据可建新版本 | LOCAL_ADJUDICATION |
 | Static diversification | allocation | E1 | 复杂度门槛 | S30 | REFERENCE_BASELINE | 机制匹配比较器 | REFERENCE_ONLY |
 
 ## 成熟/已知：不应从零验证存在性
@@ -38,7 +38,7 @@ China ETF transfer、theme rotation、defensive ETF、PIT ETF universe、launch/
 
 ## 已关闭本地问题与当前缺口
 
-S1、S3A、S3B、S3C、S4A、S8A 的具体基线已关闭，不能换名或调参重开。S2 R1 是唯一前瞻影子候选；S27A 仅获 execution-review 资格，S10A 仅获 robustness 资格，均非前瞻或生产候选。S4B 因官方依赖阻塞，未形成经济结论。S30 是简单复杂度门槛，不是alpha策略。
+S1、S3A、S3B、S3C、S4A、S8A 与 S10A 的具体问题已关闭，不能换名或调参重开。S2 R1 是唯一前瞻影子候选；S27A 受 RQAlpha 环境阻塞，S4C 仅获 robustness-review 资格，均非前瞻或生产候选。S4B 因 Riskfolio-Lib 依赖阻塞的历史结论保持不变。S30 是简单复杂度门槛，不是alpha策略。
 
 ## 未来选择规则
 

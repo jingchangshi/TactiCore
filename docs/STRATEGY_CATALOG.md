@@ -73,6 +73,12 @@
 - S4B canonical ERC：`BLOCK_S4B_UPSTREAM_DEPENDENCY`；官方 Riskfolio-Lib 当前依赖无法在项目声明的 Python 范围可靠解析，未实现或回测 ERC，详见 [报告](../research/results/S4B_ERC_TRANSFER_V1.md)。
 - S10A unlevered volatility targeting：`ADVANCE_S10A_VOL_TARGETING_TO_ROBUSTNESS`；20 日/10% 无杠杆、月频静态对照通过本地经济门槛，详见 [报告](../research/results/S10A_VOL_TARGETING_V1.md)。这不是前瞻或生产批准。
 
+## Batch 03 earned stage advancement
+
+- S27A trend + inverse vol：`BLOCK_S27A_EXECUTION_ENVIRONMENT`；171 个冻结月频目标精确复现 VectorBT baseline，但本地 RQAlpha bundle 在首个 frozen date 不识别 511010.XSHG，未形成原生执行指标或候选，详见 [执行审查](../research/results/S27A_RQALPHA_EXECUTION_REVIEW_V1.md)。
+- S10A unlevered volatility targeting：`REJECT_S10A_ROBUSTNESS`；V4 有效重跑的邻域、rolling 和成本均通过，但冻结的固定分期 MaxDD 数值条件只为 1/4，详见 [稳健性报告](../research/results/S10A_ROBUSTNESS_V1.md)。不得通过改参数重开。
+- S4C canonical ERC / skfolio：`ADVANCE_S4C_ERC_TRANSFER_TO_ROBUSTNESS`；新官方 skfolio 路径在同 eligible-set 控制下通过 transfer gates，S4B Riskfolio-Lib block 保持，详见 [报告](../research/results/S4C_ERC_SKFOLIO_TRANSFER_V1.md)。这不是候选、前瞻或生产批准。
+
 ## 外部 canonical 映射与本地边界
 
 详细外部范围见 [策略研究地图](STRATEGY_RESEARCH_MAP.md)，此处只记录已实现策略的本地生命周期。
@@ -86,7 +92,7 @@
 | S3C | per-sector trend transfer | E3 | 本地固定sleeve filter，REJECTED | trend globally invalid |
 | S4A | inverse-volatility allocation | E2 | 复杂度是否有增量价值，REJECTED | inverse-vol 方法无用 |
 | S8A | moving-average tactical allocation | E3 | 两资产中国ETF规则，REJECTED | trend literature 被否定 |
-| S27A | trend + inverse-vol sizing | E3 | robustness 后 ADVANCE_TO_EXECUTION_REVIEW | 新异常或生产资格 |
-| S4B | equal risk contribution | E2 | 官方依赖 BLOCKED，未做本地经济比较 | ERC 方法或文献无效 |
-| S10A | unlevered volatility targeting | E3 | 历史 adjudication ADVANCE_TO_ROBUSTNESS | volatility-managed 文献已被本地证明 |
+| S27A | trend + inverse-vol sizing | E3 | RQAlpha execution environment BLOCKED | 新异常或生产资格 |
+| S4B / S4C | equal risk contribution | E2 | S4B Riskfolio BLOCKED；S4C skfolio robustness eligible | ERC 方法或文献无效 |
+| S10A | unlevered volatility targeting | E3 | robustness REJECTED | volatility-managed 文献已被本地证明 |
 | S30 | naive/static diversification | E1 | REFERENCE_BASELINE | alpha 策略 |

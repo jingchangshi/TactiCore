@@ -303,3 +303,27 @@
 - 结论：R1 因默认前填充违反有效对齐收益语义而无效；Protocol V2 后的唯一 rerun 以 `fill_method=None` 通过绝对、相对与非退化门槛，决策 `ADVANCE_S10A_VOL_TARGETING_TO_ROBUSTNESS`。结果不是前瞻或生产资格。
 - 证据：[报告](../research/results/S10A_VOL_TARGETING_V1.md)、[无效运行记录](../research/results/INVALID_RUN_BATCH_02_R1.md)、[Protocol V2](../research/batches/batch_02/PROTOCOL_V2.md)；canonical 同 RL-001。
 - 重开条件：仅 robustness、语义/canonical/VectorBT 变化或具体正确性矛盾；不得由历史结果改 target 或 lookback。
+
+## RL-028 S27A frozen-target RQAlpha execution review
+
+- 策略：S27A_TREND_INVERSE_VOL_V1；状态：BLOCKED。
+- 问题/范围：171 个冻结的月频 S27A execution targets 能否在 RQAlpha 6.3.0 原生账户中覆盖全期回放，并满足 fidelity、现金与经济门槛。
+- 结论：VectorBT 从首个 execution date 精确复现 Batch 02 baseline；但本地 RQAlpha bundle 在首个 frozen date `2012-06-01` 不识别 511010.XSHG，未产生可信原生指标。决策 `BLOCK_S27A_EXECUTION_ENVIRONMENT`，不创建候选。
+- 证据：[报告](../research/results/S27A_RQALPHA_EXECUTION_REVIEW_V1.md)、[冻结 schedule](../research/results/s27a_v1_frozen_targets.csv)、[Protocol V2](../research/batches/batch_03/PROTOCOL_V2.md)。
+- 重开条件：可覆盖完整冻结 schedule 的 RQAlpha bundle，或明确的原生数据契约变化；不得改 target 或以本地执行替代。
+
+## RL-029 S10A unlevered volatility-targeting robustness
+
+- 策略：S10A_UNLEVERED_VOL_TARGETING_V1；状态：REJECTED。
+- 问题/范围：对冻结 20 日/10% 无杠杆 overlay 做单因素窗口与 target 邻域、固定分期、3Y/5Y rolling 和 15/30/50 bps 成本审查。
+- 结论：V4 有效重跑的绝对、相对邻域、scale、rolling 与 50 bps 门槛通过；按冻结字面固定分期 MaxDD `<=` static MaxDD 规则，只有 1/4 分期通过，未达 3/4。决策 `REJECT_S10A_ROBUSTNESS`，不运行 RQAlpha。
+- 证据：[报告](../research/results/S10A_ROBUSTNESS_V1.md)、[Protocol V4](../research/batches/batch_03/PROTOCOL_V4.md)、[R2](../research/results/INVALID_RUN_BATCH_03_R2.md)、[R3](../research/results/INVALID_RUN_BATCH_03_R3.md)。
+- 重开条件：仅新策略语义、canonical/VectorBT 契约变化或具体新矛盾证据；不得调 window 或 target 救援。
+
+## RL-030 S4C canonical ERC skfolio transfer
+
+- 策略：S4C_CANONICAL_ERC_SKFOLIO_TRANSFER_V1；状态：CLOSED。
+- 问题/范围：在 Python 3.10–3.12 可解析的官方 skfolio `RiskBudgeting` variance long-only/equal-budget 路径下，对 S2 risk universe 以 61 对齐价格/60 收益做无杠杆 ERC transfer，并与同 eligible set equal/inverse-vol 比较。
+- 结论：3.10/3.11/3.12 resolver 均通过；风险覆盖 87.13%，ERC CAGR 10.91%、MaxDD -18.35%、Sharpe 1.058，满足绝对和 inverse-vol 相对门槛，决策 `ADVANCE_S4C_ERC_TRANSFER_TO_ROBUSTNESS`。S4B Riskfolio-Lib block 保持不变；没有本地 solver。
+- 证据：[报告](../research/results/S4C_ERC_SKFOLIO_TRANSFER_V1.md)、[比较](../research/results/s4c_erc_skfolio_comparison_v1.csv)、[Protocol](../research/batches/batch_03/PROTOCOL.md)。
+- 重开条件：下一问题仅可为预注册 S4C robustness；不得通过 ERC 参数调优、替换 S4B 历史或跳过 upstream 路径重开。

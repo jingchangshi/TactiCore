@@ -1,6 +1,6 @@
 # Batch 01 transparent strategy screen
 
-Protocol freeze: `0d245b984108224623638301ada2de727277e7e4`. All figures are historical economic screens on frozen canonical data, not OOS or prospective validation.
+Corrected protocol freeze: `ae218d70b73adac1922a0c761cd74ab6e02bf955`. All figures are historical economic screens on frozen canonical data, not OOS or prospective validation. The initial S27A comparator run was invalidated and rerun under Protocol V2; see [disclosure](INVALID_RUN_BATCH_01_R1.md).
 
 | Strategy | Mechanism | CAGR | MaxDD | Sharpe | Calmar | Turnover | Decision |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |

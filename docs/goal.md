@@ -2705,7 +2705,7 @@ Status: completed
 
 Batch: BATCH_01_DIVERSE_TRANSPARENT_BASELINES
 
-Protocol Freeze SHA: 0d245b984108224623638301ada2de727277e7e4
+Protocol Freeze SHA: ae218d70b73adac1922a0c761cd74ab6e02bf955 (V2; R1 S27 comparator correction disclosed)
 
 Results SHA: pending Commit B
 

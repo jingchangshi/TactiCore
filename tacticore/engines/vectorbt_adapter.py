@@ -64,6 +64,26 @@ def run_vectorbt(
     """运行月频双动量 baseline；VectorBT 只负责研究探索与指标输出。"""
     targets = build_month_end_targets(prices, config)
     execution_weights = build_execution_weights(prices, targets)
+    return run_target_weights(
+        prices,
+        execution_weights,
+        fees=config.fees,
+        slippage=config.slippage,
+        initial_cash=config.initial_cash,
+        metric_start=metric_start,
+    )
+
+
+def run_target_weights(
+    prices: pd.DataFrame,
+    execution_weights: pd.DataFrame,
+    *,
+    fees: float,
+    slippage: float,
+    initial_cash: float,
+    metric_start: pd.Timestamp | None = None,
+) -> ResearchResult:
+    """将策略已生成的目标权重交给 VectorBT 执行和记账。"""
     portfolio = vbt.Portfolio.from_orders(
         close=prices,
         size=execution_weights,
@@ -71,9 +91,9 @@ def run_vectorbt(
         group_by=True,
         cash_sharing=True,
         call_seq="auto",
-        fees=config.fees,
-        slippage=config.slippage,
-        init_cash=config.initial_cash,
+        fees=fees,
+        slippage=slippage,
+        init_cash=initial_cash,
         freq="1D",
     )
     equity = portfolio.value(group_by=True)

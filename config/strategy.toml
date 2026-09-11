@@ -18,3 +18,22 @@ risk_symbols = [
   "518880.SS",
   "159980.SZ",
 ]
+
+[multi_asset_trend]
+trend_window = 200
+rebalance_frequency = "monthly"
+fallback_symbol = "511010.SS"
+fees = 0.001
+slippage = 0.0005
+initial_cash = 1000000.0
+risk_symbols = [
+  "510300.SS",
+  "510500.SS",
+  "513500.SS",
+  "513100.SS",
+  "159920.SZ",
+  "513520.SS",
+  "513030.SS",
+  "518880.SS",
+  "159980.SZ",
+]

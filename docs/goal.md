@@ -1,4 +1,4 @@
-# Goal: S1 Evidence Closure V1 — Decide Whether Global Dual Momentum Deserves Further Research
+# Goal: S2 Multi-Asset Trend Following — Baseline Economic Screen V1
 
 Repository:
 
@@ -18,465 +18,599 @@ Research Correctness Reviewer
 
 ---
 
-# 0. Repository-First Rule
+# 0. Why This Goal Exists
 
-Before modifying anything:
+TactiCore has completed the full evidence closure for:
 
-1. fetch / inspect latest `main`;
-2. record current HEAD SHA;
-3. inspect at least latest 10 commits, or all commits if fewer than 10;
-4. read first:
+```text
+S1 Global Dual Momentum
+```
+
+The repository decision is:
+
+```text
+REJECT_S1
+```
+
+Do NOT reopen S1 parameter research.
+
+Do NOT attempt to rescue S1 by:
+
+```text
+changing lookback
+changing top_k
+changing fallback
+adding volatility filters
+adding regime filters
+adding extra indicators
+```
+
+S1 should remain a frozen rejected research artifact.
+
+The next research direction is:
+
+```text
+S2 Multi-Asset Trend Following
+```
+
+This Goal exists to answer one question:
+
+> Does a simple diversified multi-asset time-series trend strategy show enough economic value to justify deeper validation?
+
+The Goal is NOT to build the complete S2 system.
+
+It is an:
+
+```text
+Economic Screen
+```
+
+At the end of this Goal there must be exactly one decision:
+
+```text
+CONTINUE_S2
+or
+REJECT_S2
+```
+
+---
+
+# 1. Repository-First Audit
+
+Before making any change:
+
+```bash
+git status
+git log --oneline -10
+```
+
+Read actual latest:
 
 ```text
 README.md
 docs/ARCHITECTURE.md
 docs/RESEARCH_RULES.md
 docs/CURRENT_STATE.md
+
 config/universe.csv
 config/strategy.toml
-```
 
-5. inspect actual implementations for:
-
-```text
 tacticore/data/
 tacticore/strategies/
 tacticore/engines/
+
 research/experiments/
 research/results/
+
 tests/
 ```
 
-Do not reason from this Goal Prompt alone.
-
-Repository is the source of truth.
-
-If latest `main` contradicts any assumption below:
+Record:
 
 ```text
-follow repository evidence
+HEAD SHA
+latest commits
+current S1 decision
+current data snapshot
+current VectorBT path
+current RQAlpha path
 ```
 
-and document the discrepancy.
+Repository is source of truth.
+
+Do not implement based only on this prompt.
 
 ---
 
-# 1. Why This Work Exists
+# 2. First Fix One Known Documentation Drift
 
-TactiCore already has:
+Current repository evidence indicates:
 
 ```text
-Tushare Pro real market data
-+
-canonical adjusted ETF price dataset
-+
-Global Dual Momentum baseline
-+
-VectorBT research path
-+
-RQAlpha validation path skeleton
+docs/CURRENT_STATE.md:
+S1 = REJECT_S1
+S2 = next direction
+RQAlpha bundle validation = completed
 ```
 
-Current historical S1 evidence is approximately:
+but `docs/ARCHITECTURE.md` may still contain a stale final "当前重点" section describing:
 
 ```text
-252-day baseline
-
-CAGR            ~8.32%
-Max Drawdown    ~-46.81%
-Sharpe          ~0.491
-Calmar          ~0.178
+continue S1 rolling/OOS/cost validation
+RQAlpha bundle still blocked
 ```
 
-and preliminary lookback checks around:
+Verify this against latest main.
+
+If still stale:
+
+fix it immediately.
+
+Do NOT redesign the architecture.
+
+This is documentation correctness only.
+
+After correction, architecture should consistently state:
 
 ```text
-80 / 120 / 160 / 252 trading days
-```
+S1
+REJECTED / frozen
 
-do not suggest that the weakness is caused by one isolated bad lookback choice.
+S2
+current research direction
 
-The primary unresolved question is therefore NOT:
-
-```text
-How can we add more strategy features?
-```
-
-It is:
-
-> Does Global Dual Momentum provide enough robust economic value, relative to simple alternatives, to justify another round of strategy research?
-
-This Goal must end with a research decision.
-
-It must NOT end merely with:
-
-```text
-more infrastructure completed
-```
-
----
-
-# 2. Project Mission Must Remain Unchanged
-
-TactiCore is:
-
-```text
-Low-Frequency Multi-Asset Tactical Allocation Research System
-```
-
-Its purpose is:
-
-> Discover robust, explainable, executable low-frequency allocation strategies for a user who does not have time for frequent trading.
-
-Default preferences remain:
-
-```text
-signal calculation:
-daily if useful
-
-normal rebalance:
-weekly / biweekly / monthly
-
-actual portfolio changes:
-preferably low frequency
-
-holding horizon:
-weeks to months
-```
-
-The system is NOT intended to become:
-
-```text
-generic quant platform
-generic backtest framework
-high-frequency trading system
-data engineering platform
-experiment-governance platform
-```
-
----
-
-# 3. NEW PERMANENT ARCHITECTURE RULE:
-
-# USE FRAMEWORK INFRASTRUCTURE BEFORE WRITING OUR OWN
-
-This rule must be added to BOTH:
-
-```text
-docs/ARCHITECTURE.md
-docs/RESEARCH_RULES.md
-```
-
-and treated as a permanent invariant for all future Goals.
-
-## 3.1 Core Rule
-
-Before implementing any capability related to:
-
-```text
-backtesting
-portfolio accounting
-order generation
-order simulation
-matching
-cash accounting
-positions
-transaction costs
-slippage
-corporate actions
-trading calendar
-suspensions
-price adjustment
-performance statistics
-drawdown
-returns
-trade records
-position records
-benchmark analysis
-portfolio value
-execution sequencing
-rebalance simulation
-```
-
-you MUST first inspect whether:
-
-```text
 RQAlpha
-or
-VectorBT
+official bundle path proven operational
 ```
-
-already provides the capability.
-
-If it exists:
-
-```text
-USE THE EXISTING FRAMEWORK CAPABILITY
-```
-
-Do NOT reimplement it.
 
 ---
 
-# 3.2 Explicitly Forbidden Duplication
+# 3. Permanent Framework-First Rule
 
-Do not create TactiCore-specific replacements for existing framework functionality such as:
+Before writing ANY implementation, reread:
 
 ```text
-custom backtest loop
-custom trade matcher
-custom broker simulator
-custom cash ledger
-custom position accounting
-custom corporate-action engine
-custom commission engine
-custom slippage engine
-custom drawdown engine
-custom generic performance analytics framework
-custom generic portfolio simulator
-custom generic order lifecycle
+docs/RESEARCH_RULES.md
+docs/ARCHITECTURE.md
 ```
 
-unless a concrete strategy requirement proves that neither RQAlpha nor VectorBT can satisfy it.
+The following is a HARD architecture invariant:
 
----
+> TactiCore owns strategy hypotheses and target allocation logic.
+> VectorBT and RQAlpha own generic quantitative infrastructure.
 
-# 3.3 Required Decision Process
-
-Whenever implementation appears to require new infrastructure:
-
-FIRST answer:
+Before implementing anything involving:
 
 ```text
-1. Does VectorBT already implement this?
-2. Does RQAlpha already implement this?
-3. Can an existing public API or documented extension mechanism solve it?
-4. Can the strategy be expressed differently to use existing infrastructure?
-```
-
-Only if all applicable answers are NO may TactiCore add custom implementation.
-
-Even then:
-
-```text
-document the exact blocker
-+
-implement the smallest possible extension
-```
-
-Do not generalize it prematurely.
-
----
-
-# 3.4 Framework Extension Is Different From Framework Reimplementation
-
-Allowed:
-
-```text
-thin adapter
-configuration
-framework callback
-RQAlpha Mod
-RQAlpha DataSource extension
-VectorBT-native parameterization
-small conversion layer
-```
-
-Not allowed:
-
-```text
-copying framework functionality into tacticore/
-```
-
-If RQAlpha provides an official extension point, prefer that extension point.
-
-For example:
-
-```text
-AbstractDataSource
-BaseDataSource
-Mod
-scheduler
-order_target_percent
-history_bars
-sys_analyser
-sys_simulation
-sys_transaction_cost
-```
-
-should be preferred over recreating equivalent behavior.
-
-Likewise VectorBT native functionality should be preferred for:
-
-```text
-Portfolio
+portfolio simulation
+returns
+drawdown
 orders
 trades
-returns
-drawdowns
-stats
+cash
+positions
 fees
 slippage
-target-percent allocation
-parameterized research
+matching
+execution
+transaction cost
+benchmark portfolio
+portfolio value
+performance statistics
+corporate actions
+trading calendar
 ```
 
-where appropriate.
+FIRST inspect:
+
+```text
+VectorBT native APIs
+RQAlpha native APIs
+existing TactiCore thin adapters
+```
+
+Decision order:
+
+```text
+1. framework native API
+2. documented framework extension point
+3. existing TactiCore thin adapter
+4. smallest possible local implementation
+```
+
+A duplicate implementation is architecture drift.
 
 ---
 
-# 3.5 Local Metrics Rule
+# 3.1 Specifically For This Goal
 
-Existing TactiCore code currently calculates some research metrics locally.
-
-Do NOT blindly rewrite them during this Goal.
-
-Instead audit:
+Prefer VectorBT native:
 
 ```text
-which metrics are already directly and reliably provided by VectorBT
+Portfolio.from_orders
+Portfolio.value
+returns accessor
+drawdown records
+orders records
+trades records
+stats where semantics match
+fees
+slippage
+targetpercent
 ```
 
-If a metric is duplicated only because of historical implementation convenience:
-
-prefer migrating toward VectorBT's native statistic where semantics match.
-
-However:
+Do not create:
 
 ```text
-do not perform unrelated refactoring
+custom portfolio simulator
+custom drawdown calculator
+custom turnover engine if existing records suffice
+custom cost simulator
+custom trade ledger
 ```
 
-during this Goal.
+If existing TactiCore S1 evidence code contains useful bounded helpers:
 
-Record duplication as technical debt if replacing it is not needed for S1 evidence closure.
+reuse them where economically identical.
 
-The priority remains strategy evidence.
+Now that S1 and S2 are two concrete research use cases, a VERY SMALL common extraction is allowed if it genuinely removes duplicated research plumbing.
+
+But do NOT build:
+
+```text
+generic experiment framework
+strategy plugin system
+generic analytics framework
+universal benchmark engine
+```
+
+Rule of 2 does not mean "build a platform".
+
+It means only:
+
+> extract the smallest common function when two actual callers already need exactly the same behavior.
 
 ---
 
-# 4. Primary Objective — ONE ONLY
+# 4. S2 Economic Hypothesis
 
-Complete:
-
-```text
-S1 Evidence Closure V1
-```
-
-The Goal must answer:
-
-> Should Global Dual Momentum be CONTINUED, REVISED once for a clearly justified economic reason, or REJECTED?
-
-Allowed terminal decisions:
+S1 used:
 
 ```text
-CONTINUE_S1
-REVISE_S1
-REJECT_S1
+absolute momentum filter
++
+cross-sectional relative ranking
++
+Top-2 concentration
 ```
 
-There must be exactly one final research decision.
+and failed partly because the portfolio could remain concentrated in highly correlated assets during a large market reversal.
+
+S2 tests a different hypothesis:
+
+> Medium/long-term trends persist enough that independently filtering each asset by its own trend can reduce large drawdowns while preserving meaningful participation in rising markets.
+
+S2 must NOT use:
+
+```text
+cross-sectional ranking
+top-k selection
+winner picking
+```
+
+Each asset is evaluated independently.
+
+This is:
+
+```text
+time-series trend following
+```
+
+not:
+
+```text
+cross-sectional momentum
+```
 
 ---
 
-# 5. Current Strategy Must Stay Frozen During Evaluation
+# 5. Freeze A Single Transparent S2 Baseline
 
-Do NOT improve the strategy before evaluating it.
+Do NOT parameter mine.
 
-Current S1 baseline is expected to remain approximately:
+Create one explicit baseline.
+
+Recommended baseline:
 
 ```text
-absolute momentum:
-252 trading-day return > 0
-
-relative momentum:
-rank eligible risk assets
-
-allocation:
-top 2 equally weighted
-
-fallback:
-defensive bond ETF when no risk asset qualifies
+signal:
+month-end adjusted close > 200-trading-day moving average
 
 rebalance:
 monthly
 
-signal:
-month-end close
-
 execution:
 next trading day
+
+risk universe:
+reuse the existing S1 risk assets unless repository evidence gives a concrete reason otherwise
+
+defensive asset:
+reuse the existing defensive bond ETF
 ```
 
-Verify actual repository implementation first.
-
-Do not change:
-
-```text
-lookback
-top_k
-absolute threshold
-fallback
-rebalance frequency
-```
-
-to make results prettier.
-
-This Goal evaluates the existing strategy.
+Do not introduce a new universe merely to improve results.
 
 ---
 
-# 6. Workstream A — Add Proper Benchmarks
+# 5.1 Sleeve Allocation Semantics
 
-Current CAGR is meaningless without comparison.
+This part must be explicit.
 
-Implement the smallest useful set of benchmarks using existing VectorBT functionality wherever possible.
+At every signal date:
 
-At minimum compare S1 against:
+1. determine which risk assets have enough valid history to calculate the 200-day moving average;
+2. those assets form the currently eligible universe;
+3. every eligible asset owns one equal capital sleeve:
 
-### B1 — China Equity Buy & Hold
+```text
+sleeve_weight = 1 / eligible_asset_count
+```
+
+4. if an asset is above its moving average:
+
+```text
+its sleeve → that asset
+```
+
+5. if below its moving average:
+
+```text
+its sleeve → defensive asset
+```
 
 Example:
 
 ```text
-510300 / CSI300 ETF proxy
+4 eligible assets
+
+A uptrend
+B uptrend
+C downtrend
+D downtrend
+
+Target:
+
+A          25%
+B          25%
+Defensive  50%
 ```
 
-### B2 — US Equity Buy & Hold
-
-Use the existing canonical US broad-market instrument if appropriate.
-
-### B3 — Equal-Weight Risk Assets
-
-Static equal-weight portfolio over eligible risk assets.
-
-Handle listing availability honestly.
-
-Do not backfill nonexistent assets.
-
-### B4 — Simple Diversified Static Allocation
-
-Use a simple diversified benchmark involving:
+NOT:
 
 ```text
-equity
-+
-bond
-+
-gold
+A 50%
+B 50%
 ```
 
-No tactical signal.
+and NOT:
 
-Rebalance no more frequently than annual or quarterly.
+```text
+rank A/B and choose the strongest
+```
 
-Keep it intentionally simple.
+If all eligible assets are below trend:
+
+```text
+100% defensive
+```
+
+If all are above trend:
+
+```text
+equal-weight all eligible assets
+```
+
+Assets without enough history:
+
+```text
+not eligible
+```
+
+Do not classify missing trend as negative trend.
+
+Do not fill missing data with zero.
 
 ---
 
-# 6.1 Benchmark Requirements
+# 5.2 Why This Exact Baseline
 
-For every benchmark report at least:
+The baseline deliberately isolates ONE economic idea:
+
+```text
+independent trend filter
+```
+
+It does NOT combine:
+
+```text
+inverse volatility weighting
+risk parity
+volatility targeting
+dynamic leverage
+macro regime
+relative momentum
+breadth
+fund flow
+valuation
+machine learning
+```
+
+Those may become future hypotheses ONLY if the simple trend baseline first demonstrates economic value.
+
+---
+
+# 6. Configuration
+
+Add a simple explicit section such as:
+
+```toml
+[multi_asset_trend]
+trend_window = 200
+rebalance_frequency = "monthly"
+fallback_symbol = "..."
+fees = ...
+slippage = ...
+initial_cash = ...
+risk_symbols = [...]
+```
+
+Reuse existing values where appropriate.
+
+Do NOT create a configuration framework.
+
+Do NOT create a strategy registry.
+
+---
+
+# 7. Strategy Implementation
+
+Add the smallest clear strategy module, for example:
+
+```text
+tacticore/strategies/multi_asset_trend.py
+```
+
+Responsibilities limited to:
+
+```text
+calculate trend eligibility
+calculate trend state
+build month-end target weights
+shift targets to next trading day
+```
+
+It must NOT contain:
+
+```text
+portfolio accounting
+returns calculation
+trade simulation
+fee calculation
+slippage calculation
+drawdown logic
+```
+
+Those belong to VectorBT/RQAlpha.
+
+---
+
+# 8. VectorBT Integration
+
+Use existing VectorBT infrastructure.
+
+Inspect the current `vectorbt_adapter.py`.
+
+If it is unnecessarily tied to `GlobalDualMomentumConfig`, do not duplicate the whole adapter for S2.
+
+Because there are now two concrete strategies, it is acceptable to minimally extract something equivalent to:
+
+```text
+run_target_weights(
+    prices,
+    execution_weights,
+    fees,
+    slippage,
+    initial_cash,
+    ...
+)
+```
+
+ONLY if needed.
+
+The common adapter should remain thin and directly delegate portfolio behavior to:
+
+```text
+vectorbt.Portfolio.from_orders(...)
+```
+
+Do NOT move strategy logic into the adapter.
+
+Do NOT make a general strategy engine.
+
+S1 must continue reproducing its frozen historical outputs after any refactor.
+
+---
+
+# 9. Do Not Implement RQAlpha S2 Yet
+
+This is important.
+
+VectorBT's job is:
+
+```text
+fast economic screening
+```
+
+RQAlpha's job is:
+
+```text
+authoritative validation of strategies worth validating
+```
+
+Therefore:
+
+> Do not implement S2 RQAlpha callbacks in this Goal unless they already work almost trivially through an existing strategy-independent adapter.
+
+Do not spend infrastructure work validating a strategy that may fail its first economic screen.
+
+If S2 ends:
+
+```text
+CONTINUE_S2
+```
+
+then the NEXT Goal can perform RQAlpha differential validation.
+
+If S2 ends:
+
+```text
+REJECT_S2
+```
+
+no RQAlpha implementation effort should have been wasted.
+
+This separation is intentional architecture.
+
+---
+
+# 10. Baseline Benchmark Comparison
+
+Use the same relevant simple benchmarks already established for S1 wherever economically comparable.
+
+At minimum compare S2 against:
+
+```text
+S1 rejected baseline
+B1 沪深300 buy-and-hold
+B2 美国宽基 buy-and-hold
+B3 current-risk-assets static equal weight
+B4 simple 60/20/20 equity-bond-gold allocation
+```
+
+Do NOT recreate benchmark logic if current evidence code already provides it.
+
+Reuse existing VectorBT-native portfolio construction.
+
+Use matched evaluation intervals when required by listing dates.
+
+Never backfill instruments before listing.
+
+---
+
+# 11. Core Metrics
+
+At minimum report:
 
 ```text
 CAGR
@@ -485,27 +619,64 @@ Sharpe
 Calmar
 Worst Year
 Turnover
+Trade Count
+Average Holding Period
 ```
 
-Use the same evaluation period where economically meaningful.
+Prefer framework-native metrics and records where semantics match.
 
-If a benchmark cannot exist over the entire period because of instrument listing dates:
+If an existing bounded local metric is retained:
 
-state this clearly.
+document why.
 
-Do not fabricate history.
+Do not build a generic metric library.
 
 ---
 
-# 7. Workstream B — Temporal Robustness
+# 12. Primary Question: Did Trend Filtering Improve The S1 Failure Mode?
 
-Do NOT optimize parameters.
+S1's largest historical weakness was approximately:
 
-Keep S1 parameters fixed.
+```text
+2015-06 → 2016-01
 
-Evaluate performance across time.
+continued exposure to
+510300 + 510500
 
-At minimum produce calendar subperiod analysis approximately like:
+high correlation
++
+large joint decline
++
+no defensive allocation
+```
+
+For S2 explicitly inspect this historical interval.
+
+Answer:
+
+```text
+When did each China equity ETF fall below its trend?
+
+When did S2 reduce exposure?
+
+How much defensive allocation appeared?
+
+What was S2 drawdown during the same episode?
+
+Did trend following materially shorten or reduce the loss?
+```
+
+Use VectorBT records and target weights.
+
+Do not implement a separate event simulator.
+
+---
+
+# 13. Temporal Robustness
+
+A strategy that only fixes 2015 is not enough.
+
+Evaluate the frozen 200-day S2 baseline over approximately:
 
 ```text
 2013–2016
@@ -514,81 +685,7 @@ At minimum produce calendar subperiod analysis approximately like:
 2023–2026
 ```
 
-Adjust exact boundaries only if required by actual data availability.
-
-For each period report:
-
-```text
-CAGR
-Max Drawdown
-Sharpe
-Calmar
-Turnover
-```
-
-Also report:
-
-```text
-best calendar year
-worst calendar year
-annual-return table
-```
-
----
-
-# 7.1 Rolling Robustness
-
-Add:
-
-```text
-rolling 3-year
-rolling 5-year
-```
-
-performance analysis.
-
-Focus on:
-
-```text
-rolling CAGR
-rolling Max Drawdown if practical using framework-native functionality
-rolling Sharpe
-```
-
-Do not create a generic rolling analytics framework.
-
-Use VectorBT / pandas only as necessary for this exact analysis.
-
-The goal is to answer:
-
-> Is performance reasonably persistent across time, or concentrated in a few regimes?
-
----
-
-# 8. Workstream C — Cost Sensitivity
-
-Use existing VectorBT transaction-cost/slippage infrastructure.
-
-Do NOT implement a custom cost engine.
-
-Test a bounded range.
-
-For example, total per-side implementation assumptions approximately:
-
-```text
-5 bps
-15 bps
-30 bps
-50 bps
-```
-
-or an equivalent clearly documented combination of:
-
-```text
-fees + slippage
-```
-
-Use existing framework parameters.
+Use exact valid boundaries dictated by data.
 
 Report:
 
@@ -600,469 +697,315 @@ Calmar
 turnover
 ```
 
-for each cost assumption.
+Also annual returns.
 
-Primary question:
-
-> Does S1 remain economically meaningful under materially worse execution costs?
+Do NOT optimize the trend window using these periods.
 
 ---
 
-# 9. Workstream D — Universe / Selection Bias Audit
+# 14. Rolling Stability
 
-This is NOT permission to build a historical ETF database.
-
-Do not create:
+If existing S1 evidence code already has bounded rolling analysis that can be reused without building infrastructure, evaluate:
 
 ```text
-survivorship database
-historical constituent platform
-point-in-time ETF master
-generic universe engine
+rolling 3Y
+rolling 5Y
 ```
 
-Instead perform a bounded audit using existing repository data and Tushare Pro where necessary.
-
-Current universe has instruments with different listing dates.
-
-For every asset report at least:
+At minimum:
 
 ```text
-symbol
-asset class
-listing date
-first usable signal date
-historical availability
+CAGR min / median / max
+Sharpe min
+worst rolling MaxDD
 ```
 
-Then analyze:
+Use VectorBT returns accessors where available.
 
-```text
-how many eligible strategy assets existed at each major historical period
-```
+The question is:
 
-For example:
-
-```text
-2013
-2015
-2018
-2020
-2023
-2026
-```
-
-or annual counts.
+> Does diversified trend following avoid long stretches of economically useless performance?
 
 ---
 
-# 9.1 Bias Questions
+# 15. Cost Sensitivity
 
-Explicitly answer:
+Because this is a low-frequency personal strategy, verify that it remains low maintenance.
 
-1. Did the strategy operate on a materially smaller universe in early history?
-2. Which important assets entered only later?
-3. Could today's selected ETF universe introduce hindsight selection?
-4. Are any current results likely to be inflated by survivorship or ex-post universe construction?
-5. Does the strategy still look interesting after acknowledging this limitation?
+Use VectorBT native:
 
-Do NOT claim to have solved survivorship bias unless you truly have PIT universe data.
+```text
+fees
+slippage
+```
 
-Expected status may remain:
+No custom cost engine.
+
+Test a small bounded set such as:
+
+```text
+15 bps baseline
+30 bps
+50 bps
+```
+
+Do not perform a giant grid.
+
+Report whether transaction costs materially change the decision.
+
+---
+
+# 16. Turnover / User Effort Is A First-Class Metric
+
+The user does not have time for frequent trading.
+
+Explicitly report:
+
+```text
+annualized rebalance count
+asset-level trade count
+turnover
+average holding period
+months with no portfolio change
+average number of changed positions per rebalance
+maximum number of changed positions in one rebalance
+```
+
+Use framework order/trade/target records whenever available.
+
+Do not create execution infrastructure.
+
+Interpret results in human terms.
+
+Example:
+
+```text
+Approximately X months per year require any action.
+Typical rebalance changes Y instruments.
+```
+
+This matters as much as small CAGR differences.
+
+---
+
+# 17. Universe Bias
+
+Do NOT build PIT ETF infrastructure.
+
+Retain the existing honest status:
 
 ```text
 BIAS_NOT_FULLY_RESOLVED
 ```
 
-That is acceptable.
+Reuse existing listing-date / availability logic.
 
-The goal is honest decision-making, not perfect infrastructure.
+Explain whether S2 benefits materially from late-added assets.
 
----
+No historical ETF master database.
 
-# 10. Workstream E — Inspect the Drawdown Mechanism
-
-Current MaxDD around:
-
-```text
--47%
-```
-
-is the major practical weakness.
-
-Do NOT modify the strategy yet.
-
-Instead identify:
-
-```text
-largest drawdown period
-assets held during drawdown
-major allocation transitions
-whether drawdown came from:
-    concentrated risk allocation
-    momentum lag
-    asset correlation convergence
-    lack of defensive allocation
-    execution behavior
-    data artifact
-```
-
-Use existing VectorBT portfolio/trade/order records whenever possible.
-
-Do not build a custom portfolio event tracker if framework data already exposes the information.
+No survivorship platform.
 
 ---
 
-# 10.1 Explicitly Investigate Partial Top-K Behavior
+# 18. No Parameter Sweep In This Goal
 
-Current strategy logic may behave as follows:
-
-```text
-top_k = 2
-```
-
-but if only one asset has positive momentum:
+Do NOT search:
 
 ```text
-100% allocated to that one risk asset
+100
+120
+150
+180
+190
+200
+210
+220
+250
+...
 ```
 
-instead of:
+for the best moving-average period.
+
+The baseline is intentionally:
 
 ```text
-50% risk asset
-50% defensive asset
+200 trading days
 ```
 
-Verify actual current behavior from repository code.
+or another single period only if repository evidence proves 200 is technically unsuitable.
 
-Do NOT change it in this Goal.
+Do not change it because the result is poor.
 
-Measure:
+If S2 passes the economic screen:
+
+a future Goal may examine a coarse robustness neighborhood such as:
 
 ```text
-how often this occurred
-which periods
-whether major drawdowns overlap with this behavior
+150 / 200 / 250
 ```
 
-This is hypothesis generation only.
-
-If this mechanism clearly matters, it may justify:
-
-```text
-REVISE_S1
-```
-
-for the NEXT Goal.
+but not now.
 
 ---
 
-# 11. Workstream F — Actually Attempt RQAlpha Validation
+# 19. Decision Gate
 
-The previous state treated missing:
+The Goal must end in exactly one decision.
 
-```text
-~/.rqalpha
-```
+## CONTINUE_S2
 
-bundle as an external blocker.
-
-Do not leave this unchallenged.
-
-First inspect the installed/current RQAlpha version and its documented bundle workflow.
-
-Prefer official framework mechanisms.
-
-Attempt, where environment/network allows:
-
-```bash
-rqalpha download-bundle
-```
-
-or the equivalent current command.
-
-Do NOT require RQData unless actually necessary.
-
----
-
-# 11.1 Important RQAlpha Rule
-
-RQAlpha already has infrastructure for:
+Choose this only if S2 shows a meaningful combination of:
 
 ```text
-bundle data
-trading calendar
-instruments
-events
-orders
-positions
-cash
-commission
-slippage
-corporate actions
-```
-
-Do NOT recreate these using Tushare.
-
-Use official RQAlpha infrastructure whenever possible.
-
----
-
-# 11.2 If Official Bundle Is Sufficient
-
-Run S1 through current RQAlpha path.
-
-Compare with VectorBT:
-
-```text
-rebalance dates
-selected symbols
-target weights
-order directions
-portfolio return
-turnover
-cost effects
-```
-
-Bit-for-bit equality is NOT required.
-
-Explain differences.
-
----
-
-# 11.3 Adjustment Semantics
-
-Current Tushare / VectorBT research uses:
-
-```text
-post-adjusted fund prices
-```
-
-RQAlpha may default to another adjustment convention.
-
-Do not rely on implicit defaults.
-
-Inspect and explicitly set / document:
-
-```text
-adjust_type
-```
-
-where appropriate.
-
-Determine whether momentum comparisons are economically equivalent.
-
-Do not write a new adjustment engine.
-
----
-
-# 11.4 If Official Bundle Is Insufficient
-
-Only after proving that the bundle cannot provide required ETF history:
-
-inspect RQAlpha's official DataSource / Mod extension mechanism.
-
-RQAlpha documentation supports external/custom data sources.
-
-If necessary, implement ONLY the minimum adapter required to let RQAlpha consume the already-existing Tushare canonical data.
-
-Prefer:
-
-```text
-RQAlpha DataSource extension
-```
-
-over:
-
-```text
-rewriting RQAlpha market infrastructure
-```
-
-The custom layer must NOT implement:
-
-```text
-cash
-orders
-matching
-corporate actions
-commission
-portfolio accounting
-```
-
-Those remain RQAlpha responsibilities.
-
-If even this would materially expand scope:
-
-stop and document the blocker instead.
-
----
-
-# 12. Workstream G — Pseudo-OOS / Chronological Holdout
-
-Do not call historical slices truly untouched OOS if the full history has already been inspected.
-
-Use honest terminology:
-
-```text
-chronological holdout
-or
-pseudo-OOS
-```
-
-Choose a meaningful late period, for example:
-
-```text
-2023–2026
-```
-
-while keeping parameters frozen.
-
-Report whether S1 continues to exhibit:
-
-```text
-positive return
-reasonable relative performance
-acceptable turnover
-```
-
-Do not optimize using this period.
-
----
-
-# 13. Do NOT Build Prospective Infrastructure Yet
-
-Do not recreate DailyETF's complex prospective evidence machinery.
-
-If current evidence eventually supports continuing S1, a future Goal may add something as simple as:
-
-```text
-date
-signal
-target portfolio
-actual next rebalance
-```
-
-for forward shadow tracking.
-
-Not in this Goal.
-
----
-
-# 14. Required Decision Framework
-
-The final research artifact must end with exactly one of:
-
-## CONTINUE_S1
-
-Use only if evidence broadly shows:
-
-```text
-reasonable benchmark advantage
+substantially better drawdown behavior than S1
 +
-temporal robustness
+competitive risk-adjusted performance against simple diversified benchmarks
 +
-cost robustness
+positive long-run economic value
 +
-RQAlpha does not invalidate core behavior
+reasonable temporal stability
 +
-drawdown is not obviously fatal
+low enough turnover for the user's lifestyle
 ```
 
-This does NOT mean production-ready.
+It does NOT need the highest CAGR.
 
-It means:
+For this project:
 
 ```text
-S1 deserves another research iteration
+9% CAGR / -18% DD
+```
+
+may be more valuable than:
+
+```text
+13% CAGR / -45% DD
 ```
 
 ---
 
-## REVISE_S1
+## REJECT_S2
 
-Use if:
-
-```text
-there is meaningful evidence of value
-BUT
-one clear and economically explainable weakness dominates
-```
-
-Examples:
+Choose this if evidence shows that:
 
 ```text
-partial Top-K concentration
-defensive allocation failure
-clear trend lag mechanism
+simple static diversification is as good or better
+OR
+trend filtering destroys too much return without enough drawdown benefit
+OR
+performance is strongly regime-dependent
+OR
+turnover is too high
+OR
+the strategy adds complexity without enough economic value
 ```
 
-There must be ONE clearly justified revision hypothesis.
+If rejected:
 
-Do not output several simultaneous changes.
+do NOT tune the MA until it works.
+
+The next candidate would then be evaluated separately, potentially:
+
+```text
+S3 China Sector / Theme Rotation
+```
+
+or another economically distinct strategy approved by repository direction.
 
 ---
 
-## REJECT_S1
+# 20. Very Important: Do Not Automatically Add Volatility Targeting
 
-Use if:
-
-```text
-simple benchmarks are as good or better
-OR
-performance is concentrated in a few periods
-OR
-costs remove the advantage
-OR
-RQAlpha materially contradicts VectorBT
-OR
-bias concerns make the claimed edge unreliable
-```
-
-If REJECT_S1:
-
-recommend:
+If the simple trend strategy produces:
 
 ```text
-S2 Multi-Asset Trend Following
+good return
+but still excessive drawdown
 ```
 
-as the next primary strategy direction.
+do NOT immediately add:
 
-Do not try to rescue S1 through parameter mining.
+```text
+inverse-vol weighting
+risk parity
+volatility target
+```
+
+in this Goal.
+
+Instead, if evidence strongly supports continuing S2:
+
+record ONE potential next hypothesis.
+
+Example:
+
+```text
+S2 baseline has persistent positive alpha/risk-adjusted value
+but residual drawdown is driven by unequal asset volatility.
+
+NEXT hypothesis:
+volatility-aware sizing.
+```
+
+That becomes a future Goal.
+
+Do not implement it now.
 
 ---
 
-# 15. Required Research Artifacts
+# 21. Required Research Artifact
 
-Create or update a small bounded set such as:
-
-```text
-research/results/
-    S1_EVIDENCE_CLOSURE_V1.md
-    s1_benchmark_comparison.csv
-    s1_period_performance.csv
-    s1_annual_returns.csv
-    s1_rolling_performance.csv
-    s1_cost_sensitivity.csv
-    s1_universe_availability.csv
-```
-
-If RQAlpha succeeds:
+Create a bounded report such as:
 
 ```text
-    s1_rqalpha_comparison.csv
+research/results/S2_BASELINE_ECONOMIC_SCREEN_V1.md
 ```
 
-Avoid proliferation of JSON/manifests unless an existing project convention genuinely requires them.
+and only a small number of useful machine-readable outputs, for example:
 
-Do not recreate DailyETF artifact governance.
+```text
+s2_benchmark_comparison.csv
+s2_period_performance.csv
+s2_annual_returns.csv
+s2_cost_sensitivity.csv
+s2_rolling_performance.csv
+```
+
+Do not create dozens of:
+
+```text
+json manifests
+status artifacts
+promotion records
+governance files
+```
+
+This is not DailyETF.
 
 ---
 
-# 16. Documentation Requirement — MANDATORY
+# 22. S1 Artifacts Are Frozen
 
-After implementation update:
+Do not rewrite S1 research conclusions to make S2 look better.
+
+S1 remains:
+
+```text
+REJECT_S1
+```
+
+Its evidence is historical research knowledge.
+
+S2 should be compared to it, not overwrite it.
+
+---
+
+# 23. Documentation Must Be Updated After Implementation
+
+Every Goal must refresh the user-facing understanding of the system.
+
+At minimum review/update:
 
 ```text
 docs/CURRENT_STATE.md
@@ -1071,115 +1014,115 @@ docs/RESEARCH_RULES.md
 README.md
 ```
 
-where appropriate.
+Only update `RESEARCH_RULES.md` if a genuinely new permanent rule is discovered.
 
-At minimum:
-
-```text
-CURRENT_STATE
-ARCHITECTURE
-RESEARCH_RULES
-```
-
-must be reviewed and updated if necessary.
+Do not churn unchanged text.
 
 ---
 
-# 16.1 ARCHITECTURE.md Must Add
+# 23.1 CURRENT_STATE.md Must Explain
 
-A permanent section equivalent to:
-
-```text
-Framework-First Infrastructure Rule
-```
-
-Explain:
+In plain language:
 
 ```text
-VectorBT and RQAlpha are infrastructure dependencies,
-not libraries to be wrapped and gradually replaced.
+What S2 is
 
-TactiCore owns strategy logic.
-VectorBT/RQAlpha own generic quantitative infrastructure.
+How it differs from S1
 
-Before implementing generic infrastructure,
-inspect framework-native capabilities first.
+Why it was chosen
+
+What was implemented
+
+What historical result it produced
+
+How its drawdown compares with S1
+
+How it compares with simple static portfolios
+
+How often the user would actually need to trade
+
+What remains uncertain
+
+CONTINUE_S2 or REJECT_S2
+
+What the next single direction is
 ```
 
-Include examples.
+The user should be able to read only this document and understand current project direction.
 
 ---
 
-# 16.2 RESEARCH_RULES.md Must Add
+# 23.2 ARCHITECTURE.md Must Be Internally Consistent
 
-Permanent rules equivalent to:
+Fix any stale S1 "current focus" text.
+
+After this Goal, all roadmap/current-focus sections must agree.
+
+No document may simultaneously claim:
 
 ```text
-Framework capability check is mandatory before custom implementation.
-
-Duplicate framework functionality is considered architecture drift.
-
-A thin adapter is acceptable.
-A reimplementation is not.
-
-Prefer framework public APIs and documented extension mechanisms.
+S1 rejected
 ```
+
+and:
+
+```text
+current priority is further S1 validation
+```
+
+Add no architecture layers unless actually necessary.
 
 ---
 
-# 17. Architecture Drift Audit — Mandatory
+# 24. Documentation Consistency Audit
 
-Before finalizing explicitly answer:
+Before final commit search the repository for stale statements such as:
 
 ```text
-Did we duplicate VectorBT functionality?
-
-Did we duplicate RQAlpha functionality?
-
-Did we write any generic infrastructure that an existing framework already provides?
-
-Did we create abstractions without a concrete strategy need?
-
-Did infrastructure LOC grow more than necessary for this research question?
-
-Did this Goal materially improve our ability to decide whether S1 has value?
+S1 next
+S1 current focus
+RQAlpha blocked
+bundle missing
+S2 future
 ```
 
-If the first four contain unjustified YES:
+and determine whether they are historical context or stale current-state statements.
 
-simplify before committing.
+Historical research documents may remain unchanged.
+
+Current architecture/status documents must reflect reality.
+
+Do not rewrite historical artifacts merely because their conclusion was true at an earlier commit.
 
 ---
 
-# 18. Tests
+# 25. Testing
 
-Tests must focus on economic correctness.
+Add only economically useful tests.
 
-Cover where relevant:
+At minimum verify:
 
 ```text
-fixed strategy parameters remain unchanged
-no lookahead
-period slicing
-benchmark construction
-cost scenarios
-universe availability
-partial Top-K measurement
-RQAlpha mapping
-adjustment semantic configuration
+trend uses only historical/current signal-date data
+no same-close execution lookahead
+200-day insufficient history → unavailable, not negative
+positive-trend sleeve → risk asset
+negative-trend sleeve → defensive asset
+weights sum to 100%
+all-negative → 100% defensive
+all-positive → equal-weight eligible assets
+mixed signals → inactive sleeves go to defensive
+future-listed assets do not participate early
+S1 outputs remain unchanged after any shared-adapter refactor
 ```
 
-Do NOT build large mock trading infrastructure.
-
-Prefer framework tests / real framework behavior where practical.
-
-Do not chase line coverage.
+Do NOT create mock broker/accounting infrastructure.
 
 ---
 
-# 19. Validation Commands
+# 26. Validation
 
-Run actual project checks such as:
+Run actual repository checks:
 
 ```bash
 uv run pytest
@@ -1188,124 +1131,162 @@ uv run ruff format --check .
 uv run mypy
 ```
 
-and actual research scripts.
+Run the real S2 research script on frozen Tushare canonical data.
 
-Run RQAlpha validation if its bundle becomes available.
+Do not report a command as successful if it was not executed.
 
-Do not claim a test or backtest succeeded unless it actually ran.
+GitHub currently may not have CI status checks configured.
 
-Clearly report:
+Do NOT introduce a CI project in this Goal merely because of that.
 
-```text
-passed
-failed
-skipped
-blocked
-```
+Local verified tests are sufficient for this bounded research Goal.
 
 ---
 
-# 20. Explicitly Out of Scope
+# 27. Explicitly Out Of Scope
 
 Do NOT implement:
 
 ```text
-S2 strategy
-S3 strategy
+RQAlpha S2 integration unless already trivial through existing generic path
 
-new macro regime system
-fund-flow strategy
-valuation strategy
-ML model
-AI strategy generation
+S3
 
-live trading
-broker connection
-VeighNa
-notifications
-dashboard
-web UI
+volatility targeting
+risk parity
+inverse-vol weighting
+macro regime
+cross-sectional ranking
+relative momentum
+fund flows
+valuation
+breadth
+machine learning
+AI strategy search
+
+new Tushare APIs without demonstrated need
+new data provider
+RQData integration
 
 database
-generic experiment framework
-generic provider abstraction
-generic strategy plugin system
-generic portfolio engine
+scheduler
+dashboard
+web UI
+notification system
+broker integration
+VeighNa
+live trading
 
-new backtest engine
-new accounting engine
-new matcher
-new corporate-action engine
+generic research framework
+generic benchmark framework
+generic strategy base class
+strategy registry
+plugin system
+
+new backtester
+new accounting system
+new execution simulator
+new cost engine
 ```
 
 ---
 
-# 21. Stop Conditions
+# 28. Architecture Drift Audit
 
-STOP when:
+Before commit answer explicitly:
 
 ```text
-benchmark comparison complete
-temporal robustness complete
-rolling analysis complete
-cost sensitivity complete
-universe bias audit complete
-drawdown mechanism inspected
-partial Top-K behavior quantified
-RQAlpha validation attempted honestly
-chronological holdout evaluated
-final S1 decision produced
-docs updated
-tests complete
+Did we duplicate VectorBT functionality?
+
+Did we duplicate RQAlpha functionality?
+
+Did we write generic infrastructure without a concrete S2 blocker?
+
+Did we create a strategy framework instead of one strategy?
+
+Did we introduce a new data abstraction unnecessarily?
+
+Did S1 results change unintentionally?
+
+Did infrastructure complexity grow more than research capability?
 ```
 
-Do not start the next strategy.
+Any unjustified YES must be simplified before commit.
 
 ---
 
-# 22. Final Report Format
+# 29. Success Criterion
 
-The final Codex response must contain:
+This Goal is successful even if:
+
+```text
+REJECT_S2
+```
+
+A failed strategy with a clear reason is useful research.
+
+Success means:
+
+> We learned whether simple diversified multi-asset trend following deserves more work.
+
+Success does NOT mean:
+
+```text
+S2 achieved 10% CAGR
+```
+
+and it does NOT mean:
+
+```text
+more code exists
+```
+
+---
+
+# 30. Final Report Required Format
+
+Final response must contain:
 
 ```text
 1. Executive Summary
 
 2. Repository State
-   - HEAD
-   - relevant commits
-   - files changed
+   - baseline HEAD
+   - final HEAD
+   - changed files
 
-3. What Was Implemented
+3. Documentation Drift Fixed
 
-4. Framework Reuse Audit
-   - VectorBT capabilities reused
-   - RQAlpha capabilities reused
-   - custom code added and why it was unavoidable
+4. S2 Economic Hypothesis
 
-5. Benchmark Comparison
+5. Exact S2 Baseline Rules
 
-6. Temporal Robustness
+6. Framework Reuse Audit
+   - VectorBT native capabilities used
+   - existing TactiCore code reused
+   - local code added and why
 
-7. Rolling 3Y / 5Y Evidence
+7. Full-Sample Results
 
-8. Cost Sensitivity
+8. Benchmark Comparison
 
-9. Universe / Selection Bias Audit
+9. 2015–2016 S1 Failure-Mode Comparison
 
-10. Drawdown Mechanism
+10. Temporal / Rolling Robustness
 
-11. Partial Top-K Concentration Analysis
+11. Cost Sensitivity
 
-12. RQAlpha Differential Validation
-    or exact remaining blocker
+12. User Trading Effort
+    - how often action is actually required
 
-13. Chronological Holdout
+13. Universe Bias Status
 
-14. S1 Research Decision
+14. S2 Decision
     exactly one:
-    CONTINUE_S1 / REVISE_S1 / REJECT_S1
+    CONTINUE_S2
+    REJECT_S2
 
-15. Why This Decision Follows From Evidence
+15. Why The Evidence Supports This Decision
 
 16. What This Goal Does NOT Prove
 
@@ -1325,41 +1306,43 @@ The final Codex response must contain:
 
 ---
 
-# 23. User-Facing Explanation Requirement
+# 31. User-Facing Explanation Requirement
 
-The final report must be understandable to the repository owner without reading code.
+Do not finish with only engineering information.
 
-For every major change explain:
+Explain concretely:
 
-```text
-What changed?
+> Compared with S1, what changed in portfolio behavior?
 
-Why was it needed?
-
-Did we use VectorBT/RQAlpha existing infrastructure?
-
-What result did it produce?
-
-What uncertainty remains?
-
-How does this change our overall strategy direction?
-```
-
-Do not only provide:
+For example:
 
 ```text
-file list
-test count
-implementation details
+S1:
+select two strongest assets
+→ can concentrate in correlated winners
+
+S2:
+give every available asset an independent sleeve
+→ positive trend holds asset
+→ negative trend sends sleeve to defensive asset
 ```
 
-The user must be able to understand whether the project is getting closer to a usable investment strategy.
+Explain the historical effect in numbers.
+
+Also explain:
+
+```text
+If I actually followed this strategy,
+roughly how often would I need to touch my portfolio?
+```
+
+This is a first-class project requirement.
 
 ---
 
-# 24. Git Requirement
+# 32. Git Requirement
 
-After all validation:
+After all work and validation:
 
 ```bash
 git status
@@ -1369,15 +1352,13 @@ git diff
 Confirm no:
 
 ```text
-token
+TUSHARE_TOKEN
 secret
-temporary file
-unexpected large dataset
-cache
 RQAlpha bundle
+cache
+temporary files
+unexpected large data
 ```
-
-is accidentally committed.
 
 Then:
 
@@ -1387,32 +1368,37 @@ git commit
 git push
 ```
 
-Use a commit message focused on research value, for example:
+Suggested commit message:
 
 ```text
-close S1 robustness evidence and framework validation
+screen diversified multi-asset trend baseline
 ```
 
 ---
 
-# 25. Final Principle
+# 33. Final Principle
 
-Remember:
+Remember throughout this Goal:
 
 ```text
-TactiCore owns alpha research.
+TactiCore owns strategy research.
 
 VectorBT owns fast portfolio research infrastructure.
 
-RQAlpha owns event-driven trading infrastructure.
+RQAlpha owns authoritative trading infrastructure.
 
-Do not make TactiCore compete with its dependencies.
+Tushare Pro supplies strategy-demanded market data.
+
+Do not make TactiCore compete with any of them.
 ```
 
-The purpose of this Goal is not to make TactiCore more sophisticated.
+And:
 
-The purpose is to make one high-value decision:
+```text
+One strategy hypothesis
+→ one bounded experiment
+→ one evidence-based decision
+→ stop.
+```
 
-> Is Global Dual Momentum worth continuing?
-
-Start from latest `main`.
+Begin from the latest `main`.

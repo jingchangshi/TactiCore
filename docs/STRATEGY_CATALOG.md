@@ -59,3 +59,10 @@
 - 历史筛选：回撤相对 fixed-sleeve ungated basket 改善 10.30pp，但 CAGR sacrifice 2.51pp，Sharpe/Calmar 未改善。
 - 尚未证明：OOS、执行、生产可交易性或其他 trend window/sleeve 语义。
 - 下一步：停止 S3C；暂停继续改造 sector-momentum family，选择新的独立 hypothesis。Theme Rotation 未启动。
+
+## Batch 01 multi-asset screens
+
+- S4A inverse-volatility：`REJECT_S4A_BASELINE`；未实现所需的相对回撤改善，详见 [报告](../research/results/S4A_INVERSE_VOL_BASELINE_V1.md)。
+- S8A equity/bond trend：`REJECT_S8A_BASELINE`；绝对指标与两个简单 comparator 均不成立，详见 [报告](../research/results/S8A_EQUITY_BOND_TREND_BASELINE_V1.md)。
+- S27A trend + inverse vol：`ADVANCE_S27A_TO_ROBUSTNESS`；仅 baseline 问题关闭，尚非执行或前瞻候选，详见 [报告](../research/results/S27A_TREND_INVERSE_VOL_BASELINE_V1.md)。
+- S30 static strategic allocation：`REFERENCE_BASELINE`；固定 25/25/25/25 的复杂度门槛，详见 [报告](../research/results/S30_STATIC_STRATEGIC_ALLOCATION_V1.md)。

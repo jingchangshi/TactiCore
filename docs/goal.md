@@ -2698,5 +2698,16 @@ S2 R1 remains frozen.
 Strategy research
 >
 infrastructure engineering.
-```
 
+---
+
+Status: completed
+
+Batch: BATCH_01_DIVERSE_TRANSPARENT_BASELINES
+
+Protocol Freeze SHA: 0d245b984108224623638301ada2de727277e7e4
+
+Results SHA: pending Commit B
+
+Decisions: S3C REJECT_S3C_BASELINE; S4A REJECT_S4A_BASELINE; S8A REJECT_S8A_BASELINE; S27A ADVANCE_S27A_TO_ROBUSTNESS; S30 REFERENCE_BASELINE.
+```

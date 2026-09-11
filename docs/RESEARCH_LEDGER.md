@@ -243,3 +243,36 @@
 - 结论：回撤改善 10.30pp，但 CAGR sacrifice 2.51pp，Sharpe/Calmar 未提高，`REJECT_S3C_BASELINE`。
 - 证据：[S3C 报告](../research/results/S3C_SECTOR_SLEEVE_BASELINE_V1.md)、[比较](../research/results/s3c_sector_sleeve_comparison_v1.csv)。
 - 重开条件：仅新策略版本或数据/universe 契约变化；不得参数救援。
+
+## RL-021 S4A inverse-volatility baseline
+
+- 策略：S4A_INVERSE_VOL_V1；状态：REJECTED。
+- 问题/范围：60 个有效日收益 inverse-vol 是否优于同 eligible set 的等权多资产配置；少于 6 个资产全防御。
+- 结论：CAGR 10.88%、Sharpe 0.981 均高于等权，但最大回撤 -22.48% 略差于 -22.33%，未达到预注册的 3pp 改善门槛，`REJECT_S4A_BASELINE`。
+- 证据：[报告](../research/results/S4A_INVERSE_VOL_BASELINE_V1.md)；冻结协议 `0d245b9`；canonical 同 RL-001。
+- 重开条件：新策略语义、canonical 或 universe 契约变化；不得以 cap/optimizer/参数调优重开。
+
+## RL-022 S8A equity/bond trend baseline
+
+- 策略：S8A_EQUITY_BOND_TREND_V1；状态：REJECTED。
+- 问题/范围：510300 的 200 有效观测趋势能否在 511010 之间形成低维护股债切换。
+- 结论：CAGR 1.80%、最大回撤 -51.92%、Sharpe 0.193，弱于股票与静态 50/50 comparator，`REJECT_S8A_BASELINE`。
+- 证据：[报告](../research/results/S8A_EQUITY_BOND_TREND_BASELINE_V1.md)；冻结协议 `0d245b9`；canonical 同 RL-001。
+- 重开条件：新策略语义或 canonical 契约变化；不得调趋势窗口重开。
+
+## RL-023 S27A trend + inverse-vol baseline
+
+- 策略：S27A_TREND_INVERSE_VOL_V1；状态：CLOSED。
+- 问题/范围：保持 S2 同一趋势状态和 P/N 风险预算，仅用 60 日 inverse-vol 重分配 active sleeves 是否改善风险调整效率。
+- 假设来源：已观察 S2 evidence 后的 historical follow-up，不是 OOS。
+- 结论：相对只读 S2 reproduction，CAGR 7.79% vs 6.30%、最大回撤 -12.50% vs -26.18%、Sharpe 1.015 vs 0.654；`ADVANCE_S27A_TO_ROBUSTNESS`，基线问题关闭。
+- 证据：[报告](../research/results/S27A_TREND_INVERSE_VOL_BASELINE_V1.md)；冻结协议 `0d245b9`；canonical 同 RL-001。
+- 重开条件：下一问题仅可为预注册 robustness；不得修改本基线以追逐结果。
+
+## RL-024 S30 static strategic-allocation reference
+
+- 策略：S30_REFERENCE_V1；状态：CLOSED。
+- 范围：510300/513500/518880/511010 固定各 25%，年频再平衡的复杂度基准。
+- 结论：CAGR 9.92%、最大回撤 -15.04%、Sharpe 1.114、Calmar 0.660；`REFERENCE_BASELINE`，不作 alpha pass/fail。
+- 证据：[报告](../research/results/S30_STATIC_STRATEGIC_ALLOCATION_V1.md)；冻结协议 `0d245b9`；canonical 同 RL-001。
+- 重开条件：只有静态配置或 canonical 契约明确变化。

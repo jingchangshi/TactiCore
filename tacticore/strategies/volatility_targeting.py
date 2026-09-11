@@ -34,7 +34,7 @@ def build_month_end_targets(
     if len(config.symbols) != 4 or config.base_weights != (0.25, 0.25, 0.25, 0.25):
         raise ValueError("S10A requires the frozen 25/25/25/25 base allocation")
     base = prices.loc[:, list(config.symbols)]
-    aligned_returns = base.pct_change().dropna(how="any")
+    aligned_returns = base.pct_change(fill_method=None).dropna(how="any")
     ends = prices.groupby(pd.DatetimeIndex(prices.index).to_period("M")).tail(1).index
     targets = pd.DataFrame(0.0, index=ends, columns=prices.columns)
     diagnostics: list[dict[str, object]] = []

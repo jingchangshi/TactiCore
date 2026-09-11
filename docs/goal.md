@@ -2257,3 +2257,25 @@ Local evidence next.
 Prospective evidence later.
 Infrastructure last.
 ```
+
+---
+
+Status: completed
+
+Batch: `BATCH_02_EVIDENCE_INFORMED_VALIDATION`
+
+Starting HEAD: `eeca3038c504da1c07489ff713b7968285ed6d32`
+
+Protocol Freeze SHA: `3e220075e9da2ca4f7373beeadc98a92273aa16c`
+
+S10A Protocol V2 SHA: `bea032742c872d7d06b7c3ba28196ad09897821c`
+
+Results SHA: `52a38515a8174f85af324e6d65e9b53761a54d15`
+
+S27A: `ADVANCE_S27A_TO_EXECUTION_REVIEW`
+
+S4B: `BLOCK_S4B_UPSTREAM_DEPENDENCY`
+
+S10A: `ADVANCE_S10A_VOL_TARGETING_TO_ROBUSTNESS`
+
+Next: `AWAIT_BATCH_02_ARCHITECT_REVIEW`

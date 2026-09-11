@@ -29,8 +29,7 @@ def load_trend_config(path: str | Path) -> MultiAssetTrendConfig:
     return MultiAssetTrendConfig(**raw)
 
 
-def build_month_end_targets(prices: pd.DataFrame, config: MultiAssetTrendConfig) -> pd.DataFrame:
-    """按每只当期可用资产的独立 200 日趋势分配等额 sleeve。"""
+def _validate_prices(prices: pd.DataFrame, config: MultiAssetTrendConfig) -> None:
     required = set(config.risk_symbols) | {config.fallback_symbol}
     missing = required.difference(prices.columns)
     if missing:
@@ -40,11 +39,24 @@ def build_month_end_targets(prices: pd.DataFrame, config: MultiAssetTrendConfig)
     if not prices.index.is_monotonic_increasing or prices.index.has_duplicates:
         raise ValueError("价格日期必须唯一且递增")
 
+
+def valid_observation_moving_average(prices: pd.DataFrame, window: int) -> pd.DataFrame:
+    """逐资产计算最近 window 个有效观测均值，不填补内部缺失值。"""
+    result = pd.DataFrame(index=prices.index, columns=prices.columns, dtype=float)
+    for symbol in prices:
+        valid = prices[symbol].dropna()
+        result.loc[valid.index, symbol] = valid.rolling(window, min_periods=window).mean()
+    return result
+
+
+def _targets_from_moving_average(
+    prices: pd.DataFrame,
+    config: MultiAssetTrendConfig,
+    moving_average: pd.DataFrame,
+) -> pd.DataFrame:
     risk_prices = prices[list(config.risk_symbols)]
-    moving_average = risk_prices.rolling(
-        config.trend_window, min_periods=config.trend_window
-    ).mean()
-    month_ends = prices.groupby(prices.index.to_period("M")).tail(1).index
+    month_periods = pd.DatetimeIndex(prices.index).to_period("M")
+    month_ends = prices.groupby(month_periods).tail(1).index
     rows: list[pd.Series] = []
     dates: list[pd.Timestamp] = []
     for signal_date in month_ends:
@@ -65,6 +77,26 @@ def build_month_end_targets(prices: pd.DataFrame, config: MultiAssetTrendConfig)
     return pd.DataFrame(rows, index=pd.DatetimeIndex(dates), columns=prices.columns)
 
 
+def build_month_end_targets(prices: pd.DataFrame, config: MultiAssetTrendConfig) -> pd.DataFrame:
+    """用最近 200 个有效观测，按独立趋势分配等额 sleeve。"""
+    _validate_prices(prices, config)
+    risk_prices = prices[list(config.risk_symbols)]
+    moving_average = valid_observation_moving_average(risk_prices, config.trend_window)
+    return _targets_from_moving_average(prices, config, moving_average)
+
+
+def build_strict_month_end_targets(
+    prices: pd.DataFrame, config: MultiAssetTrendConfig
+) -> pd.DataFrame:
+    """保留 S2 V1 的连续 dataframe 行语义，只用于历史版本复现。"""
+    _validate_prices(prices, config)
+    risk_prices = prices[list(config.risk_symbols)]
+    moving_average = risk_prices.rolling(
+        config.trend_window, min_periods=config.trend_window
+    ).mean()
+    return _targets_from_moving_average(prices, config, moving_average)
+
+
 def build_execution_weights(prices: pd.DataFrame, month_end_targets: pd.DataFrame) -> pd.DataFrame:
     """将月末信号移至下一观测日，禁止同一收盘价生成并执行信号。"""
     execution = pd.DataFrame(float("nan"), index=prices.index, columns=prices.columns)
@@ -73,3 +105,11 @@ def build_execution_weights(prices: pd.DataFrame, month_end_targets: pd.DataFram
         if next_location < len(prices.index):
             execution.iloc[next_location] = target
     return execution
+
+
+def build_signal_change_execution_weights(
+    prices: pd.DataFrame, month_end_targets: pd.DataFrame
+) -> pd.DataFrame:
+    """仅当策略目标状态发生变化时，在下一观测日提交新目标。"""
+    changed = month_end_targets.ne(month_end_targets.shift()).any(axis=1)
+    return build_execution_weights(prices, month_end_targets.loc[changed])

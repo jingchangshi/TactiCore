@@ -1,0 +1,4 @@
+variant,monthly_review_count,submitted_target_months,actual_order_months,no_action_review_months,annualized_action_months,asset_level_order_count,average_instruments_per_action_month,maximum_instruments_per_action_month,trend_state_change_months,target_change_months,turnover,average_holding_days
+V1,161,161,157,4,11.69574750,1001,6.37579618,10,96,104,26.28766938,291.71062992
+V2A,161,161,157,4,11.69574750,1019,6.49044586,10,99,103,26.02074406,296.44933078
+V2B,161,103,103,58,7.67300632,644,6.25242718,10,99,103,25.33520960,292.72823219

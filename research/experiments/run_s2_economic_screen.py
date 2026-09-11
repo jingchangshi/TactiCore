@@ -24,7 +24,7 @@ from tacticore.strategies.global_dual_momentum import load_strategy_config
 from tacticore.strategies.multi_asset_trend import (
     MultiAssetTrendConfig,
     build_execution_weights,
-    build_month_end_targets,
+    build_strict_month_end_targets,
     load_trend_config,
 )
 
@@ -46,7 +46,7 @@ def run_s2(
     total_cost_bps: int | None = None,
     metric_start: pd.Timestamp | None = None,
 ) -> ResearchResult:
-    targets = build_month_end_targets(prices, config)
+    targets = build_strict_month_end_targets(prices, config)
     execution = build_execution_weights(prices, targets)
     return run_target_weights(
         prices,
@@ -418,7 +418,7 @@ def main() -> None:
     prices = load_price_csv(ROOT / "data/canonical/etf_adjusted_close.csv")
     config = load_trend_config(ROOT / "config/strategy.toml")
     assert_frozen_baseline(config)
-    targets = build_month_end_targets(prices, config)
+    targets = build_strict_month_end_targets(prices, config)
     executions = build_execution_weights(prices, targets)
     first_execution = executions.dropna(how="all").index[0]
     first_location = prices.index.get_loc(first_execution)

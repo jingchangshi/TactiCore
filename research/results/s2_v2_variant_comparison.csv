@@ -1,0 +1,4 @@
+variant,availability_semantics,execution_semantics,cagr,max_drawdown,sharpe,calmar,turnover,trade_count,average_holding_days,worst_year,eligible_asset_months,average_eligible_assets,actual_order_months,annualized_action_months,asset_level_order_count,changed_state_months_vs_v1,changed_state_asset_months_vs_v1,changed_target_months_vs_v1,changed_target_months_2015_vs_v1
+V1,连续全局行,每月提交目标,0.07008145,-0.26181326,0.72624854,0.26767723,26.28766938,508.00000000,291.71062992,-0.16409499,1153,6.70348837,157.00000000,11.69574750,1001.00000000,0,0,0,0
+V2A,逐资产最近有效观测,每月提交目标,0.06698001,-0.26181326,0.67358540,0.25583123,26.02074406,523.00000000,296.44933078,-0.16409499,1193,6.93604651,157.00000000,11.69574750,1019.00000000,32,40,30,8
+V2B,逐资产最近有效观测,仅目标变化,0.06555207,-0.26181326,0.64698936,0.25037719,25.33520960,379.00000000,292.72823219,-0.16409499,1193,6.93604651,103.00000000,7.67300632,644.00000000,32,40,30,8

@@ -148,11 +148,7 @@ def decision(
         (central_rolling.loc[central_rolling.years.eq(3), "cagr_positive_share"] >= 0.90).all()
         and (central_rolling.loc[central_rolling.years.eq(5), "cagr_positive_share"] >= 0.95).all()
         and (
-            (
-                central_rolling.loc[central_rolling.years.eq(3), "sharpe_improves_share"]
-                | central_rolling.loc[central_rolling.years.eq(3), "max_drawdown_improves_share"]
-            )
-            >= 0.60
+            central_rolling.loc[central_rolling.years.eq(3), "either_improves_share"] >= 0.60
         ).all()
     )
     cost = costs.loc[costs.cost_bps.eq(50)].iloc[0]
@@ -197,6 +193,9 @@ def _rolling_pair(
         ],
         on=["years", "window_end"],
     )
+    merged["either_improves"] = (merged.sharpe > merged.comparator_sharpe) | (
+        merged.max_drawdown > merged.comparator_max_drawdown
+    )
     return (
         merged.groupby("years", as_index=False)
         .agg(
@@ -213,6 +212,7 @@ def _rolling_pair(
                     (values > merged.loc[values.index, "comparator_max_drawdown"]).mean()
                 ),
             ),
+            either_improves_share=("either_improves", "mean"),
         )
         .assign(series=label)
     )

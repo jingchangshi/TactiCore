@@ -183,3 +183,27 @@
 - 数据快照：同 RL-001；评价区间 2013-03-29 至 2026-08-31，前瞻证据截止线为 2026-08-31。
 - 框架/版本：VectorBT 0.28.5；仅使用原生组合记录，参数判定编排保留在一次性实验中。
 - 重开条件：S2 R1 冻结语义或 canonical 数据契约变化，VectorBT 变更使结果不可复现，或未来前瞻影子证据与平台结论发生实质矛盾。
+
+## RL-016 S2 Research Candidate R1 冻结
+
+- 策略：S2 V2B / Research Candidate R1
+- 问题：进入真正前瞻观察前，R1 的可复现身份、输入边界与替换规则是什么？
+- 状态：CLOSED
+- 范围：200 个有效观测、月末收盘信号、下一 canonical 观测日执行、`SIGNAL_CHANGE_ONLY`、既有资产池/防御资产/成本/缺失值语义，以及 RQAlpha 6.3 原生资金不足部分成交。
+- 结论：S2_R1 于 commit `68c31b88e8432bee8078aa233a2b95ab414afdb6` 的已验证历史基线冻结；historical cutoff 为 2026-08-31，prospective start 为 2026-09-01。身份、框架版本与关键输入 SHA-256 见 [manifest](../research/shadow/s2_r1/candidate_manifest.json)。任何实质语义或数据契约变更均创建下一顺序候选版本，不改写 R1。
+- 证据：[R1 前瞻协议报告](../research/results/S2_R1_PROSPECTIVE_PROTOCOL_V1.md)、[协议](../research/shadow/s2_r1/README.md)。
+- 数据快照：RL-001 的冻结 canonical；价格 SHA-256 `0ab40b9cf12cb900fa1c3ff53afc35f9963e44e10f67157a007f3fd7e15d8e93`，交易日历 SHA-256 `ad942a3e1e3e3ae4b7703ea5319ec12793d484b4c49423181682357a1a9d7512`。
+- 框架/版本：VectorBT 0.28.5；RQAlpha 6.3.0。
+- 重开条件：不重开 R1；新语义、新 canonical 契约或不兼容框架变化必须产生新的候选版本。
+
+## RL-017 S2 前瞻影子协议 V1
+
+- 策略：S2 Research Candidate R1
+- 问题：如何在不重做历史研究的前提下，积累真正前瞻 evidence？
+- 状态：ACTIVE
+- 范围：候选专属 data vintages、as-of 驱动的月度 decision record、追加式 execution evidence、评审资格与候选完整性规则。
+- 结论：协议 V1 已预注册。中期完整性复核不得早于 12 个日历月；production-candidate review 资格为至少 18 个日历月且至少 10 个真实 target-change 执行事件。没有预设收益门槛；当前尚无足够前瞻 observation。
+- 证据：[协议](../research/shadow/s2_r1/README.md)、[记录表](../research/shadow/s2_r1/observations.csv)、[R1 前瞻协议报告](../research/results/S2_R1_PROSPECTIVE_PROTOCOL_V1.md)。
+- 数据快照：historical cutoff 2026-08-31；前瞻数据仅接受严格晚于该日期的 candidate-specific vintage。
+- 框架/版本：不新增框架；决策沿用冻结策略语义，执行证据沿用 RQAlpha 6.3.x 原生结果。
+- 重开条件：只在 manifest/协议无法保持身份、历史/前瞻隔离或 as-of 正确性时有界修订协议；不得因短期表现重开或优化 R1。

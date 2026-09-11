@@ -2,16 +2,16 @@
 
 ## 当前策略与最新决策
 
-S2 多资产趋势 V2B 已通过粗粒度稳健性门：`PASS_S2_PARAMETER_PLATEAU`，保持 `trend_window = 200`，并按既有信号和 RQAlpha 6.3 原生执行语义冻结为 **S2 Research Candidate R1**。它仍不是生产策略。S1 与 S2 V1 保持已拒绝，S3 保持锁定。
+当前候选为 **S2 Research Candidate R1**：`FROZEN / PROSPECTIVE_SHADOW_ACTIVE`。historical cutoff 为 2026-08-31，prospective start 为 2026-09-01；它仍不是生产候选。
 
 ## 最新决定性证据
 
-预声明的 `160/180/200/220/240` 五点全样本 CAGR 为 6.20%–7.61%，最大回撤为 -26.18% 至 -21.48%，Sharpe 为 0.612–0.786；四个既有分期均为正 CAGR 和 Sharpe。3 年滚动正收益覆盖率为 99.19%–100%，5 年为 100%；每年目标变化月份为 7.15–8.19，未出现参数孤峰或运营负担突变。完整证据见 [S2 参数平台报告](../research/results/S2_PARAMETER_PLATEAU_V1.md)。
+R1 的身份、关键输入 hash 和边界已经冻结在 [manifest](../research/shadow/s2_r1/candidate_manifest.json)；前瞻协议 V1 已预注册于 [协议](../research/shadow/s2_r1/README.md) 和 [完成报告](../research/results/S2_R1_PROSPECTIVE_PROTOCOL_V1.md)。历史参数平台结论保持有效，但只属于历史证据。
 
 ## 剩余阻塞
 
-现有 2012 至 2026-08 历史已经反复研究，不能再充当真正未触碰样本外证据。S2 R1 尚缺少 2026-08-31 之后新数据形成的前瞻影子证据和后续生产可交易性复核。
+尚未积累足够的真实前瞻月末 observation；必须在不改变 R1 的前提下等待并追加证据，随后才可进行生产可交易性复核。
 
 ## 下一项唯一研究方向
 
-冻结 S2 R1，并定义从 2026-08-31 之后开始的前瞻影子验证协议；本阶段不建设调度器、券商、通知或生产仪表盘，也不启动 S3。
+S2 R1 按协议积累前瞻证据；下一活动研究家族为 S3 透明基线/假设研究。本 Goal 不实现 S3。

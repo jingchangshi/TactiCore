@@ -1,0 +1,65 @@
+{
+  "candidate_id": "S2_R1",
+  "candidate_version": "R1",
+  "strategy_family": "S2 Multi-Asset Trend Following",
+  "strategy_version": "multi_asset_trend_v2b",
+  "freeze_commit": "68c31b88e8432bee8078aa233a2b95ab414afdb6",
+  "freeze_timestamp": "2026-09-11T12:55:14Z",
+  "historical_cutoff": "2026-08-31",
+  "prospective_start": "2026-09-01",
+  "strategy_semantics": {
+    "trend_window": 200,
+    "valid_observation_definition": "每个风险资产独立使用截至信号日的最近 200 个有效价格；信号日本身必须有有效价格。",
+    "rebalance_frequency": "monthly",
+    "signal_timing": "月末 canonical 观测日收盘后生成信号",
+    "execution_timing": "不得早于信号日后的下一 canonical 观测日",
+    "execution_policy": "SIGNAL_CHANGE_ONLY",
+    "allocation": "eligible risk assets receive equal sleeves; negative-trend sleeves use fallback asset",
+    "risk_symbols": [
+      "510300.SS",
+      "510500.SS",
+      "513500.SS",
+      "513100.SS",
+      "159920.SZ",
+      "513520.SS",
+      "513030.SS",
+      "518880.SS",
+      "159980.SZ"
+    ],
+    "fallback_symbol": "511010.SS",
+    "fees": 0.001,
+    "slippage": 0.0005,
+    "initial_cash": 1000000.0
+  },
+  "execution_semantics": {
+    "authority": "RQAlpha 6.3.x native execution",
+    "order_api": "order_target_portfolio",
+    "partial_fill_on_insufficient_cash": true,
+    "matching_type": "current_bar",
+    "volume_limit": true,
+    "volume_percent": 0.25
+  },
+  "framework_versions": {
+    "vectorbt": "0.28.5",
+    "rqalpha": "6.3.0",
+    "pandas": "2.3.3",
+    "numpy": "1.26.4",
+    "tushare": "1.4.29"
+  },
+  "data_contract": {
+    "source": "Tushare Pro",
+    "adjustment": "后复权：fund_daily.close × fund_adj.adj_factor",
+    "missing_values": "缺失保持未知，不前向填充、插值、置零或猜测。",
+    "historical_policy": "data/canonical 是截至 historical_cutoff 的冻结历史基线；后续数据只能写入 candidate-specific vintages。"
+  },
+  "file_hashes": {
+    "config/strategy.toml": "9935dbdb54f3ea369574f2edfcdba2103c97d539697ff119c7ac9d084931c2ce",
+    "config/universe.csv": "190aacbca6feadd2ba825b1f284c06f48f30bdc3b5a4618f405711e5aadb8829",
+    "data/canonical/etf_adjusted_close.csv": "0ab40b9cf12cb900fa1c3ff53afc35f9963e44e10f67157a007f3fd7e15d8e93",
+    "data/canonical/trading_calendar.csv": "ad942a3e1e3e3ae4b7703ea5319ec12793d484b4c49423181682357a1a9d7512",
+    "data/canonical/provenance.json": "7af2e21890080cec4a4d2ed08a0bd9c6c89fae666fe98d866e33e55837a8d4e3",
+    "tacticore/strategies/multi_asset_trend.py": "2a11156f2f44f2cda9774b7c035bed9cb9757a83900b17028f6fd8c65eb7d1a6",
+    "tacticore/engines/rqalpha_adapter.py": "76c551f703b354d033fbb11849170dadee39654d947c1e93e389db5694530477",
+    "research/results/s2_v2_frozen_targets.csv": "9cc5a8e70751f274cb7c4f900784400bd8de684450833ba6d4034fd75ca70b61"
+  }
+}

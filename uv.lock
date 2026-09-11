@@ -1508,7 +1508,7 @@ wheels = [
 
 [[package]]
 name = "rqalpha"
-version = "5.6.5"
+version = "6.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1530,8 +1530,9 @@ dependencies = [
     { name = "simplejson" },
     { name = "six" },
     { name = "tabulate" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/52/32/a40f2147464ad4503f3155b90e7af866754ddb5b3d972c7709b0221b4eae/rqalpha-5.6.5.tar.gz", hash = "sha256:e448346dd5fc37d62947fa7752c5f16e96d8ae9e643e24f6681bad02f4175e20", size = 325045, upload-time = "2025-11-14T07:57:59.612Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/20/8e/6c2a85145c8ae7908ba1ba3a46917613e7921c7ffc978582e57df9985a08/rqalpha-6.3.0.tar.gz", hash = "sha256:2feadf01d75809871a21a5246f70d0150d39da29f635f16958d3de182817c324", size = 4823624, upload-time = "2026-07-23T04:04:22.475Z" }
 
 [[package]]
 name = "rqrisk"
@@ -1896,7 +1897,7 @@ requires-dist = [
     { name = "pandas-stubs", marker = "extra == 'dev'", specifier = ">=2.2,<3" },
     { name = "plotly", specifier = ">=5,<7" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8,<9" },
-    { name = "rqalpha", specifier = ">=5.5,<6" },
+    { name = "rqalpha", specifier = ">=6.3,<6.4" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6,<1" },
     { name = "tomli", specifier = ">=2,<3" },
     { name = "tushare", specifier = ">=1.4,<2" },

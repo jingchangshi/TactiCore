@@ -32,7 +32,15 @@ def test_vectorbt_adapter_returns_required_metrics(
 def test_rqalpha_config_is_daily_stock_account(
     strategy_config: GlobalDualMomentumConfig, tmp_path: Path
 ) -> None:
-    config = build_rqalpha_config("2020-01-01", "2024-12-31", strategy_config, tmp_path / "bundle")
+    config = build_rqalpha_config(
+        "2020-01-01",
+        "2024-12-31",
+        initial_cash=strategy_config.initial_cash,
+        fees=strategy_config.fees,
+        slippage=strategy_config.slippage,
+        bundle_path=tmp_path / "bundle",
+        rqalpha_major_version=5,
+    )
 
     assert config["base"]["frequency"] == "1d"
     assert config["base"]["accounts"] == {"STOCK": strategy_config.initial_cash}
@@ -41,6 +49,26 @@ def test_rqalpha_config_is_daily_stock_account(
     assert config["mod"]["sys_simulation"]["volume_limit"] is True
     assert config["mod"]["sys_simulation"]["volume_percent"] == 0.25
     assert config["mod"]["sys_transaction_cost"]["cn_stock_min_commission"] == 0
+
+
+def test_rqalpha_6_config_enables_native_insufficient_cash_handling(
+    strategy_config: GlobalDualMomentumConfig, tmp_path: Path
+) -> None:
+    config = build_rqalpha_config(
+        "2020-01-01",
+        "2024-12-31",
+        initial_cash=strategy_config.initial_cash,
+        fees=strategy_config.fees,
+        slippage=strategy_config.slippage,
+        bundle_path=tmp_path / "bundle",
+        rqalpha_major_version=6,
+        partial_fill_on_insufficient_cash=True,
+    )
+
+    assert config["base"]["partial_fill_on_insufficient_cash"] is True
+    assert config["base"]["capital_gain_tax_rate"] == 0
+    assert config["mod"]["sys_transaction_cost"]["stock_min_commission"] == 0
+    assert "cn_stock_min_commission" not in config["mod"]["sys_transaction_cost"]
 
 
 def test_rqalpha_run_fails_clearly_without_bundle(
@@ -98,7 +126,7 @@ def test_rqalpha_callback_uses_prior_bars_and_submits_ranked_targets(
         def __init__(self, symbol: str) -> None:
             self.symbol = symbol
 
-        def listing_at(self, now: pd.Timestamp) -> bool:
+        def active_at(self, now: pd.Timestamp) -> bool:
             return now >= pd.Timestamp("2020-01-01") and self.symbol != "C.XSHG"
 
     monkeypatch.setattr(rqalpha.api, "history_bars", history_bars)

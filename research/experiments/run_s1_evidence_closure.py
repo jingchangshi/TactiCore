@@ -361,6 +361,8 @@ def rqalpha_comparison(
     universe: pd.DataFrame,
     bundle: Path,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
+    from rqalpha import __version__ as rqalpha_version
+
     rq_targets: list[dict[str, Any]] = []
     result = run_rqalpha(
         config,
@@ -422,7 +424,7 @@ def rqalpha_comparison(
     comparison = pd.DataFrame(rows)
     summary = result["summary"]
     diagnostics = {
-        "rqalpha_version": "5.6.5",
+        "rqalpha_version": rqalpha_version,
         "adjust_type": "pre",
         "rqalpha_total_return": rq_return,
         "vectorbt_total_return_same_period": vbt_return,

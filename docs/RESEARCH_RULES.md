@@ -62,19 +62,21 @@ RQAlpha 用于：
 1. TactiCore 已有代码；
 2. VectorBT / RQAlpha 原生 API；
 3. 官方 Mod 与文档化扩展点；
-4. 成熟的社区实现；
-5. 最小的 TactiCore 专用适配。
+4. 最新兼容的框架发行版；
+5. 最新稳定上游版本；
+6. 成熟的社区实现；
+7. 最小的 TactiCore 专用适配。
 
 - VectorBT 优先使用 `Portfolio.from_orders`、returns accessor 以及 order、trade、drawdown records；
 - RQAlpha 优先使用官方 bundle、instrument/history/scheduler/order API、analyser 以及 DataSource/Mod 扩展点；
 - 薄适配器可以转换代码、字段或调用协议，但不得接管框架的通用职责；
 - 框架原生能力不能满足具体策略研究问题时，才可增加范围明确的本地计算，并记录为什么不可避免及其口径；
-- 不得仅因为社区依赖存在就引入它；依赖必须解决当前具体阻塞、显著简化本地实现，并且不重复 VectorBT/RQAlpha；
+- 实现框架绕行方案前，必须检查上游 changelog、API、必要的 issue/扩展点，判断较新受支持版本是否已解决问题，并用冻结输入做兼容实验；
+- 不得因存在新版本而盲目升级；上游采用必须证明冻结策略语义未变；
+- 不得仅因为社区依赖存在就引入它；依赖必须解决当前具体阻塞、显著简化本地实现、不重复 VectorBT/RQAlpha，并具备可接受的维护成熟度；
 - 复制框架已有功能一律视为架构漂移，必须在合并前删除或给出不可替代的证据。
 
 自定义实现永远是最后选项。TactiCore 拥有策略逻辑，VectorBT / RQAlpha 拥有通用量化基础设施。
-
-这项规则由 S2 冻结目标验证进一步确认：直接复用 RQAlpha 的组合目标 API、撮合/成本 Mod 与 `sys_analyser`，自定义代码只保留输入编排和有界目标追踪。结果暴露的是执行政策缺口，而不是框架能力缺口；它不证明现金预留方案有效，因此下一项只允许验证该单一方案，不借机建设通用执行设施。
 
 ## 3. 数据规则
 
@@ -213,6 +215,21 @@ docs/ARCHITECTURE.md
 4. 尚未解决什么；
 5. 对架构有什么影响；
 6. 下一项研究决策是什么。
+
+`docs/goal.md` 只描述当前正在执行的 Goal，不承载永久架构、研究规则或已关闭结论。永久信息必须分别写入 `ARCHITECTURE.md`、`RESEARCH_RULES.md`、只追加的 `RESEARCH_LEDGER.md` 或 `research/results/`；`CURRENT_STATE.md` 只保留当前策略、决策、阻塞、最新决定性证据和下一项唯一实验。
+
+生成新 Goal 的信息层级固定为：
+
+```text
+ARCHITECTURE
++ RESEARCH_RULES
++ RESEARCH_LEDGER
++ research artifacts
++ CURRENT_STATE
+→ next Goal
+```
+
+研究账本只追加简短条目，不为其建设状态机、数据库或治理软件。关闭项只有在策略语义或 canonical 数据契约变化、框架变化使相关假设失效，或出现新矛盾证据时才能重开。
 
 只有完成验证后才可提交并推送。
 

@@ -1,0 +1,5 @@
+variant,rqalpha_version,distribution,partial_fill_on_insufficient_cash,total_return,cagr,max_drawdown,sharpe,transaction_cost,native_order_count,trade_count,cash_rejection_events,cash_residual_cancellation_events,volume_limited_events,material_execution_dates,material_review_months,cash_above_5pct_review_months,average_cash_ratio,mean_execution_deviation,mean_review_deviation,turnover
+5.6.5_control,5.6.5,PyPI,false,1.66723377,0.07873455,-0.22454678,0.44697492,68524.13243646,595,594,34,0,8,34,72,49,0.06219019,0.12174022,0.15758008,22.30350847
+6.3.0_compatibility_control,6.3.0,PyPI,false,1.66723377,0.07873455,-0.22454678,0.44708446,68524.13243646,595,594,34,0,8,34,72,49,0.06218990,0.12174022,0.15758008,22.30350847
+6.3.0_native_partial_fill,6.3.0,PyPI,true,1.36740698,0.06884268,-0.25411147,0.34177561,64843.52757197,630,630,0,32,5,5,39,2,0.00460779,0.01750108,0.04208240,22.90079366
+6.4.0_tag_native_partial_fill,6.4.0,GitHub_tag,true,1.36740698,0.06884268,-0.25411147,0.34177561,64843.52757197,630,630,0,32,5,5,39,2,0.00460779,0.01750108,0.04208240,22.90079366

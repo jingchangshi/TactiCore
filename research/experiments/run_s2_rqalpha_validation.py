@@ -124,7 +124,10 @@ def run_rqalpha_frozen_targets(
     start_date: str,
     end_date: str,
     bundle: Path,
+    *,
+    partial_fill_on_insufficient_cash: bool = False,
 ) -> tuple[dict[str, Any], pd.DataFrame, list[pd.Timestamp]]:
+    from rqalpha import __version__ as rqalpha_version
     from rqalpha import run_func
 
     if not bundle.is_dir():
@@ -132,7 +135,16 @@ def run_rqalpha_frozen_targets(
     events: list[dict[str, Any]] = []
     replayed_dates: list[pd.Timestamp] = []
     init, handle_bar = build_callbacks(schedule, mapping, events, replayed_dates)
-    rq_config = build_rqalpha_config(start_date, end_date, config, bundle)  # type: ignore[arg-type]
+    rq_config = build_rqalpha_config(
+        start_date,
+        end_date,
+        initial_cash=config.initial_cash,
+        fees=config.fees,
+        slippage=config.slippage,
+        bundle_path=bundle,
+        rqalpha_major_version=int(rqalpha_version.split(".", 1)[0]),
+        partial_fill_on_insufficient_cash=partial_fill_on_insufficient_cash,
+    )
     result = run_func(init=init, handle_bar=handle_bar, config=rq_config)
     if result is None:
         raise RuntimeError("RQAlpha 冻结目标验证失败")
@@ -152,6 +164,15 @@ def parse_native_results(analyser: dict[str, Any], order_events: pd.DataFrame) -
             & order_events["status"].isin(["REJECTED", "CANCELLED"])
         )
     ]
+    rejected_for_cash = failed.loc[
+        failed["status"].eq("REJECTED")
+        & failed["message"].str.contains("not enough money", na=False)
+    ]
+    cancelled_for_cash = order_events.loc[
+        order_events["event"].eq("ORDER_UNSOLICITED_UPDATE")
+        & order_events["status"].eq("CANCELLED")
+        & order_events["message"].str.contains("not enough money", na=False)
+    ]
     transaction_cost = float(trades.get("transaction_cost", pd.Series(dtype=float)).sum())
     return pd.DataFrame(
         [
@@ -166,6 +187,8 @@ def parse_native_results(analyser: dict[str, Any], order_events: pd.DataFrame) -
                 "cash_failure_events": int(
                     failed["message"].str.contains("not enough money", na=False).sum()
                 ),
+                "cash_rejection_events": len(rejected_for_cash),
+                "cash_residual_cancellation_events": len(cancelled_for_cash),
                 "volume_limited_events": int(
                     failed["message"].str.contains("current bar volume", na=False).sum()
                 ),
@@ -324,6 +347,8 @@ def main() -> None:
     parser = ArgumentParser(description=__doc__)
     parser.add_argument("--bundle", type=Path, default=BUNDLE)
     parser.add_argument("--output-dir", type=Path, default=ROOT / "research/results")
+    parser.add_argument("--output-prefix")
+    parser.add_argument("--partial-fill-on-insufficient-cash", action="store_true")
     args = parser.parse_args()
     prices = load_price_csv(ROOT / "data/canonical/etf_adjusted_close.csv")
     config = load_trend_config(ROOT / "config/strategy.toml")
@@ -331,7 +356,13 @@ def main() -> None:
     mapping = build_symbol_mapping(ROOT / "config/universe.csv", list(schedule.columns))
     start = prices.index[prices.index.get_loc(schedule.index[0]) - 1]
     analyser, order_events, replayed = run_rqalpha_frozen_targets(
-        schedule, mapping, config, str(start.date()), str(prices.index[-1].date()), args.bundle
+        schedule,
+        mapping,
+        config,
+        str(start.date()),
+        str(prices.index[-1].date()),
+        args.bundle,
+        partial_fill_on_insufficient_cash=args.partial_fill_on_insufficient_cash,
     )
     if replayed != list(schedule.index):
         raise RuntimeError("RQAlpha 实际回放日期与冻结目标日程不一致")
@@ -354,6 +385,14 @@ def main() -> None:
         metric_start=start,
     )
     native.insert(0, "engine", "RQAlpha")
+    from rqalpha import __version__ as rqalpha_version
+
+    native.insert(1, "rqalpha_version", rqalpha_version)
+    native.insert(
+        2,
+        "partial_fill_on_insufficient_cash",
+        args.partial_fill_on_insufficient_cash,
+    )
     native["vectorbt_total_return"] = float(
         vectorbt.equity.iloc[-1] / vectorbt.equity.loc[start] - 1
     )
@@ -367,15 +406,30 @@ def main() -> None:
         "total_absolute_weight_deviation"
     ].max()
     native["material_deviation_threshold"] = MATERIAL_DEVIATION
+    execution_tracking = tracking.loc[tracking["observation_type"].str.contains("execution")]
+    review_tracking = tracking.loc[tracking["observation_type"].str.contains("review")]
+    native["material_execution_dates"] = int(execution_tracking["materially_off_target"].sum())
+    native["material_review_months"] = int(review_tracking["materially_off_target"].sum())
+    native["cash_above_material_threshold_review_months"] = int(
+        review_tracking["cash_residual"].gt(MATERIAL_DEVIATION).sum()
+    )
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    outputs = {
-        "s2_v2_frozen_targets.csv": schedule.reset_index(),
-        "s2_rqalpha_native_summary.csv": native,
-        "s2_rqalpha_target_tracking.csv": tracking,
-        "s2_rqalpha_material_differences.csv": differences,
-        "s2_rqalpha_user_effort.csv": effort,
-    }
+    if args.output_prefix:
+        outputs = {
+            f"{args.output_prefix}_summary.csv": native,
+            f"{args.output_prefix}_target_tracking.csv": tracking,
+            f"{args.output_prefix}_material_differences.csv": differences,
+            f"{args.output_prefix}_user_effort.csv": effort,
+        }
+    else:
+        outputs = {
+            "s2_v2_frozen_targets.csv": schedule.reset_index(),
+            "s2_rqalpha_native_summary.csv": native,
+            "s2_rqalpha_target_tracking.csv": tracking,
+            "s2_rqalpha_material_differences.csv": differences,
+            "s2_rqalpha_user_effort.csv": effort,
+        }
     for filename, frame in outputs.items():
         frame.to_csv(
             args.output_dir / filename, index=False, float_format="%.8f", lineterminator="\n"

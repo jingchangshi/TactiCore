@@ -1,675 +1,819 @@
-# Goal: S2 RQAlpha Frozen-Target Execution Validation V1
+# Goal: TactiCore Architecture Convergence + S2 Upstream-Native Execution Closure
 
-Repository:
+## 0. Mission
 
-```text
-https://github.com/jingchangshi/TactiCore
-```
+TactiCore is a low-frequency multi-asset tactical allocation research system.
 
-Role:
+The repository must converge toward:
 
 ```text
-Principal Quant Research Engineer
+strategy semantics
 +
-Research Correctness Reviewer
+thin orchestration
++
+framework/community-native infrastructure
++
+explicit research evidence
++
+research decisions
 ```
 
----
-
-# 0. Goal
-
-The frozen S2 V2B strategy has already passed the VectorBT economic screen.
-
-Do NOT re-validate its basic signal semantics.
-
-Do NOT build new validation infrastructure.
-
-This Goal answers ONE question:
-
-> When the already-frozen S2 V2B target schedule is executed by RQAlpha's native China-market execution/accounting infrastructure, does the strategy remain economically and operationally viable?
-
-End with exactly one:
+and must NOT converge toward:
 
 ```text
-CONTINUE_S2_TO_ROBUSTNESS
-
-REVISE_S2_EXECUTION
-
-REJECT_S2_AFTER_RQALPHA
+a custom quant platform
+a third backtesting engine
+a custom execution simulator
+a custom accounting system
+a growing generic validation framework
 ```
+
+The latest repository state has already closed the broad S2 signal-credibility question.
+
+Do NOT repeat closed signal research.
+
+The current unresolved question is execution:
+
+> Can upstream RQAlpha native capabilities close the persistent target drift observed when the frozen S2 V2B target schedule is executed?
+
+Before implementing any TactiCore-specific cash-reserve workaround, inspect and validate current upstream/community capabilities.
 
 ---
 
 # 1. Repository First
 
-Read latest:
+Read latest `main`.
+
+Record:
+
+```text
+HEAD SHA
+recent commits
+working architecture
+current research state
+current dependencies
+existing S1/S2 artifacts
+```
+
+At minimum read:
 
 ```text
 README.md
+
 docs/ARCHITECTURE.md
 docs/RESEARCH_RULES.md
 docs/CURRENT_STATE.md
 docs/STRATEGY_CATALOG.md
+docs/goal.md
 
+config/strategy.toml
+config/universe.csv
+
+tacticore/data/*
+tacticore/strategies/global_dual_momentum.py
 tacticore/strategies/multi_asset_trend.py
 tacticore/engines/vectorbt_adapter.py
 tacticore/engines/rqalpha_adapter.py
 
+research/experiments/run_s2_decision_audit_v2.py
+research/experiments/run_s2_rqalpha_validation.py
+
 research/results/S2_DECISION_AUDIT_V2.md
+research/results/S2_RQALPHA_EXECUTION_VALIDATION_V1.md
+research/results/s2_v2_frozen_targets.csv
 ```
 
-Record current HEAD.
+Do not infer repository state from this Goal.
 
-Do not modify historical S1/S2 research artifacts.
+Repository content is authoritative.
 
 ---
 
-# 2. Permanent Rule Upgrade
+# 2. First Reorganize Architecture Documentation
 
-Update `docs/RESEARCH_RULES.md` and, if appropriate, `docs/ARCHITECTURE.md` with:
+Refactor documentation responsibilities.
 
-# Framework / Community First
+## README.md
 
-Before implementing infrastructure:
+Keep only:
 
 ```text
-1. Check existing TactiCore code.
-2. Check VectorBT / RQAlpha native API.
-3. Check official framework Mod / extension points.
-4. Check mature community implementation.
-5. Only then write the smallest TactiCore-specific adapter.
+project mission
+basic usage
+current high-level strategy status
+links to authoritative documents
+```
+
+Do not turn README into research history.
+
+## docs/ARCHITECTURE.md
+
+Rewrite it as the stable architecture source of truth.
+
+It must describe:
+
+```text
+Data
+Strategy Semantics
+Research Screening
+Execution Validation
+Evidence / Decision
+Future Production Decision
+```
+
+Define explicit ownership boundaries.
+
+### TactiCore owns
+
+```text
+economic hypothesis
+signal semantics
+desired portfolio targets
+strategy-specific execution policy decisions
+canonical data contracts
+thin framework orchestration
+bounded research-derived comparisons
+research evidence
+research decisions
+```
+
+### VectorBT owns
+
+```text
+fast portfolio research
+portfolio simulation
+research records
+returns / trades / drawdowns
+parameter and sensitivity research
+```
+
+### RQAlpha owns
+
+```text
+orders
+order sizing
+round lots
+matching
+cash
+positions
+portfolio accounting
+transaction costs
+slippage
+market restrictions
+corporate actions
+execution records
+```
+
+### TactiCore must not own
+
+```text
+generic portfolio accounting
+matching engine
+order lifecycle framework
+generic execution simulator
+third backtester
+generic data platform
+generic research governance platform
+```
+
+Remove transient strategy metrics and current Goal details from ARCHITECTURE.md.
+
+Those belong in CURRENT_STATE, STRATEGY_CATALOG or research artifacts.
+
+---
+
+# 3. Add Version-Aware Framework / Community First
+
+ARCHITECTURE.md and RESEARCH_RULES.md must permanently state:
+
+```text
+Existing TactiCore capability
+        ↓
+Current framework native API
+        ↓
+Official framework extension / Mod
+        ↓
+Latest compatible framework release
+        ↓
+Latest stable upstream release
+        ↓
+Mature community implementation
+        ↓
+Smallest possible TactiCore-specific adapter
 ```
 
 Custom implementation is the final option.
 
-Do not add another dependency merely because it exists.
-
-A community dependency must:
+Before implementing a workaround for a framework limitation:
 
 ```text
-solve a concrete current blocker
-+
-be materially simpler than local implementation
-+
-not duplicate VectorBT/RQAlpha
+inspect upstream changelog
+inspect upstream API
+inspect upstream issues / documented extensions when useful
+determine whether a newer supported release solved the problem
+run a frozen-input compatibility experiment
+```
+
+Do NOT blindly upgrade merely because a newer version exists.
+
+Upstream adoption requires evidence that the frozen strategy semantics remain unchanged.
+
+Community dependency adoption must satisfy all of:
+
+```text
+solves a concrete current blocker
+materially reduces local implementation
+does not duplicate VectorBT/RQAlpha
+has acceptable maintenance maturity
+```
+
+If upstream already implements the required capability, prefer upstream over a local workaround.
+
+---
+
+# 4. Create docs/RESEARCH_LEDGER.md
+
+Create a lightweight append-only research knowledge ledger.
+
+This is NOT a governance framework.
+
+Its purpose is:
+
+> prevent future Goals and agents from repeating already-closed research.
+
+Each entry should include:
+
+```text
+ID
+strategy
+question
+status
+scope
+conclusion
+evidence pointers
+data snapshot
+framework/version when relevant
+reopen condition
+```
+
+Statuses should remain simple:
+
+```text
+CLOSED
+REJECTED
+ACTIVE
+SUPERSEDED
+```
+
+Do not build software around this document.
+
+---
+
+# 5. Migrate Already-Closed Questions Into the Ledger
+
+Record existing validated conclusions.
+
+At minimum cover:
+
+```text
+Tushare canonical data provenance
+
+fund_daily / fund_adj interpretation already investigated
+
+missing values are not silently filled
+
+UNAVAILABLE != NEGATIVE_SIGNAL
+
+S2 uses per-asset latest valid observations
+
+signal date must itself have a valid price
+
+month-end signal cannot execute using the same close
+
+V1 continuous-row missing-data behavior was identified and rejected
+
+V1 → V2A availability-semantics effect is already measured
+
+V2A → V2B does not change signal targets;
+it changes target-submission behavior
+
+general S2 VectorBT economic screen is complete
+
+existing rolling-period evidence is complete
+
+existing cost-sensitivity evidence is complete
+
+generic S2 signal-credibility audit is CLOSED
+
+frozen S2 V2B target-change schedule is established
+
+RQAlpha 5.6.5 frozen-target replay is complete
+
+the dominant 5.6.5 execution failure is cash insufficiency
+followed by SIGNAL_CHANGE_ONLY persistence
+```
+
+Do not recompute those merely to populate the document.
+
+Link existing evidence.
+
+A closed item may only be reopened if:
+
+```text
+the underlying strategy semantics change
+the canonical data contract changes
+the framework change invalidates the relevant assumption
+or new contradictory evidence appears
 ```
 
 ---
 
-# 3. Previously Closed Questions Must Stay Closed
+# 6. CURRENT_STATE Must Become Small
 
-Do NOT redo broad investigations of:
+Rewrite `docs/CURRENT_STATE.md` to describe only:
 
 ```text
-Tushare fund_daily correctness
-fund_adj semantics
-200 valid-observation semantics
-UNAVAILABLE vs NEGATIVE_SIGNAL
-lookahead
-V1 missing-row bug
-V1 vs V2A
-V2A vs V2B
-cost sensitivity
-rolling 3Y / 5Y
-general S2 economic screen
+current active strategy
+current decision state
+current blocker
+latest decisive evidence
+the next ONE experiment
 ```
 
-These are already documented by S2 Decision Audit V2.
+Historical detail should link to:
 
-Re-open one only if the new RQAlpha execution result exposes a concrete contradictory observation.
+```text
+RESEARCH_LEDGER.md
+STRATEGY_CATALOG.md
+research/results/*
+```
 
-No repeated generic "signal credibility audit".
+Do not use CURRENT_STATE as an accumulating research notebook.
 
 ---
 
-# 4. Freeze Target Schedule
+# 7. goal.md Is Ephemeral
 
-Generate or load the exact frozen S2 V2B target-change schedule from the existing strategy implementation.
-
-Persist only if needed for reproducibility:
+Document permanently that:
 
 ```text
-execution_date
-target weights
+docs/goal.md
 ```
 
-The target schedule is the experiment input.
+is only the currently executing Goal.
 
-Do NOT recompute the S2 economic signal inside RQAlpha for the primary experiment.
+Permanent architecture decisions must not exist only in `goal.md`.
 
-Architecture:
+Permanent research rules must not exist only in `goal.md`.
+
+Closed research conclusions must not exist only in `goal.md`.
+
+The source hierarchy is:
 
 ```text
-Tushare canonical
-      ↓
-frozen S2 V2B targets
-      ↓
-RQAlpha
+ARCHITECTURE
++
+RESEARCH_RULES
++
+RESEARCH_LEDGER
++
+research artifacts
++
+CURRENT_STATE
+→ generate the next Goal
+```
+
+not the reverse.
+
+---
+
+# 8. Re-evaluate the Current S2 Next Step Using Upstream First
+
+The current repository proposes a local cost-derived cash reserve experiment.
+
+Do NOT implement it yet.
+
+First inspect the latest stable RQAlpha upstream.
+
+Specifically investigate official capabilities relevant to the already-observed failure:
+
+```text
+partial_fill_on_insufficient_cash
+order_target_portfolio
+order_target_portfolio_smart
+ETF support
+cash handling
+transaction-cost-aware portfolio targeting
+```
+
+Record exact upstream versions and official evidence.
+
+At the time this Goal was drafted, RQAlpha 6.x appeared to contain relevant native capabilities.
+
+Do not trust this Goal's statement.
+
+Verify upstream again.
+
+---
+
+# 9. Freeze Existing Evidence
+
+The experiment input must remain the existing S2 V2B frozen target schedule.
+
+Do not regenerate a new economic strategy.
+
+Verify the existing schedule/hash.
+
+The experiment architecture remains:
+
+```text
+existing Tushare canonical
+        ↓
+existing frozen S2 V2B targets
+        ↓
+RQAlpha execution
 ```
 
 NOT:
 
 ```text
-RQAlpha prices
-      ↓
-new S2 signal implementation
-      ↓
-RQAlpha
+RQAlpha data
+↓
+new signal implementation
+↓
+new target schedule
 ```
+
+The entire purpose is to isolate execution behavior.
 
 ---
 
-# 5. Reuse RQAlpha Native Infrastructure
+# 10. Run an Isolated RQAlpha Upgrade Compatibility Experiment
 
-Before adding code, inspect installed RQAlpha 5.6.5.
+Do not immediately change production dependency constraints.
 
-Prefer its native APIs and Mods.
+Use an isolated environment first.
 
-Specifically inspect whether the installed version provides an appropriate:
+Preserve the existing RQAlpha 5.6.5 result as the control.
 
-```text
-order_target_portfolio
-```
+Then evaluate the latest appropriate upstream version.
 
-API for ETF portfolios.
-
-If available and semantically appropriate:
-
-prefer it over manually recreating whole-portfolio target-order logic.
-
-Otherwise use existing documented target-percent APIs.
-
-Do NOT implement:
+Start with behavior closest to the existing implementation:
 
 ```text
-order sizing engine
-round-lot logic
-cash reservation
-fill simulator
-matching
-slippage simulator
-commission calculation
-position accounting
-portfolio accounting
-corporate actions
-price-limit rules
-volume limits
+same frozen targets
+same initial cash
+same fees
+same slippage
+same matching assumptions
+same evaluation interval
+same target-tracking metrics
 ```
 
-RQAlpha owns all of these.
+First determine whether a framework-version upgrade alone changes unrelated semantics.
 
 ---
 
-# 6. Use sys_analyser First
+# 11. Test Native Capability One Variable at a Time
 
-Enable and use RQAlpha's existing:
+Do not combine multiple fixes in the first experiment.
 
-```text
-sys_analyser
-```
-
-for authoritative records.
-
-Prefer its native outputs for:
+Preferred sequence:
 
 ```text
-orders
-trades
-portfolio
-positions
-returns
-risk metrics
+A. existing 5.6.5 result
+   control only; do not redo broad research
+
+B. newer RQAlpha
+   existing order_target_portfolio semantics
+
+C. newer RQAlpha
+   enable the native insufficient-cash handling capability
+   if supported and appropriate
+
+D. only if still decision-relevant:
+   test order_target_portfolio_smart for ETF targets
 ```
 
-Do NOT create parallel TactiCore ledgers for information already recorded by sys_analyser.
+Do not introduce a TactiCore cash buffer during these experiments.
 
-If useful, configure:
+Do not add retry logic.
 
-```text
-output_file
-or
-report_save_path
-```
+Do not add no-trade bands.
 
-outside temporary runtime areas as appropriate.
+Do not add volatility targeting.
 
-Only commit small derived research results.
-
-Do NOT commit the entire framework runtime dump if large.
+Do not change the 200-observation rule.
 
 ---
 
-# 7. Order / Trade Event Reuse
+# 12. Measure Only Decision-Relevant Execution Evidence
 
-If sys_analyser does not expose enough detail to explain a specific failed or rejected order:
+Reuse the existing bounded target-tracking analysis.
 
-use RQAlpha's existing order/trade event mechanisms.
-
-Relevant framework events may include:
-
-```text
-ORDER_CREATION_PASS
-ORDER_CREATION_REJECT
-ORDER_CANCELLATION_PASS
-ORDER_CANCELLATION_REJECT
-ORDER_UNSOLICITED_UPDATE
-TRADE
-```
-
-Use these only when required.
-
-Do NOT build a generic TactiCore order lifecycle state machine.
-
----
-
-# 8. Primary Experiment
-
-Replay frozen S2 V2B targets through RQAlpha.
+Do not build a new execution analysis framework.
 
 Compare:
 
 ```text
-VectorBT V2B intended strategy
-vs
-RQAlpha realized portfolio
-```
-
-Use a matched evaluation interval.
-
-Report native framework results including at least:
-
-```text
-total return
-CAGR
-Max Drawdown
-Sharpe
-transaction costs
+cash-insufficient failures
+volume-limit failures
+materially off-target execution dates
+persistent off-target review months
+cash residual
 orders
 trades
-cash
+transaction cost
+turnover
+CAGR
+maximum drawdown
+user intervention burden
 ```
 
-Use RQAlpha-native metrics where available.
+Use the existing 5% material-deviation reporting threshold unless there is strong evidence it is inappropriate.
 
-Do not recreate them locally merely to match old report formatting.
+Separate:
 
-If one project-specific annualization transformation is unavoidable, document it.
+```text
+cash-driven persistent drift
+```
+
+from:
+
+```text
+secondary market friction
+```
+
+Do not turn secondary friction into a generic taxonomy.
 
 ---
 
-# 9. Minimal Target-Tracking Analysis
+# 13. Success Criterion
 
-Do NOT build a "target tracking framework".
-
-The only local derived calculation needed is a bounded comparison:
+Native execution closure succeeds if upstream capability:
 
 ```text
-intended target weights
-vs
-actual RQAlpha positions
-```
-
-At:
-
-```text
-target-change execution dates
-+
-subsequent monthly review dates
-```
-
-Report only decision-relevant summaries such as:
-
-```text
-mean total absolute weight deviation
-maximum deviation
-months materially off target
-cash residual
-number of targets not fully reached
-```
-
-Keep implementation local to this research experiment unless a second real caller later needs it.
-
----
-
-# 10. Critical Economic Question
-
-Focus specifically on:
-
-```text
-signal-change-only
-+
-incomplete execution
-```
-
-Example:
-
-```text
-January desired A = 20%
-RQAlpha reaches only 17%
-
-February desired A still = 20%
-strategy target unchanged
-
-V2B emits no new order
-```
-
-Determine whether this causes persistent economically meaningful drift.
-
-Do NOT fix it yet.
-
----
-
-# 11. No Generic Execution-Friction Classifier
-
-Do NOT create a generic taxonomy/framework for:
-
-```text
-lot size
-cash
-volume
-limit
-suspension
-partial fill
-```
-
-Use RQAlpha-native statuses/events/logs to explain only material cases.
-
-A simple research table is enough:
-
-```text
-date
-symbol
-intended
-realized
-native order status / evidence
-brief reason if known
-```
-
-If not known:
-
-```text
-UNEXPLAINED_EXECUTION_DIFFERENCE
-```
-
-is acceptable.
-
----
-
-# 12. Signal Diagnostic Is Conditional Only
-
-Do NOT build a second full RQAlpha-native S2 signal path.
-
-Only if the primary frozen-target experiment produces an execution discrepancy that cannot be explained by RQAlpha execution/accounting:
-
-inspect that specific date/symbol using:
-
-```text
-history_bars
-instrument metadata
-volume
-suspension state
-adjust_type
-```
-
-This is:
-
-```text
-targeted diagnostic
-```
-
-not:
-
-```text
-second signal validation pipeline
-```
-
-Do NOT calculate a whole-history signal-agreement metric unless evidence proves it is necessary to resolve the final decision.
-
----
-
-# 13. No New Data Infrastructure
-
-Continue using:
-
-```text
-Tushare Pro
-```
-
-as the research data source.
-
-Continue using the existing:
-
-```text
-RQAlpha official bundle
-```
-
-for market execution semantics.
-
-Do NOT add:
-
-```text
-RQData
-AKShare
-yfinance
-new provider abstraction
-historical master database
-```
-
-in this Goal.
-
----
-
-# 14. No Parameter Work
-
-Freeze:
-
-```text
-trend_window = 200
-```
-
-Do not evaluate:
-
-```text
-150 / 200 / 250
-```
-
-yet.
-
-Do not add:
-
-```text
-volatility targeting
-risk parity
-no-trade bands
-cash buffer
-retry policy
-```
-
-yet.
-
-First determine whether the frozen strategy survives RQAlpha.
-
----
-
-# 15. User-Maintenance Evidence
-
-Use RQAlpha actual order/trade records to report:
-
-```text
-monthly reviews
-target-change months
-months with submitted orders
-months with actual fills
-number of instruments actually traded
-months where target remained materially unreached
-```
-
-Translate into:
-
-> If the owner actually followed the strategy, how many months per year would require intervention?
-
-Do not count a framework bookkeeping event as a user action.
-
----
-
-# 16. Decision
-
-## CONTINUE_S2_TO_ROBUSTNESS
-
-Use if:
-
-```text
-RQAlpha does not materially destroy risk-adjusted performance
+eliminates the dominant cash-insufficient rejection mechanism
 AND
-execution drift is manageable
+eliminates persistent cash-driven target drift
 AND
-manual intervention remains acceptable
+does not materially invalidate the strategy's economic evidence
 ```
 
-Next Goal:
+Volume-related isolated execution differences may remain documented if they do not produce persistent economically material divergence.
+
+Do not demand bit-identical VectorBT/RQAlpha returns.
+
+They have different execution/accounting semantics.
+
+---
+
+# 14. Decision
+
+End with exactly one primary decision.
+
+## ADOPT_UPSTREAM_RQALPHA_EXECUTION
+
+Use if upstream-native functionality closes the dominant execution problem.
+
+Then:
 
 ```text
-coarse parameter plateau / robustness
+update the supported RQAlpha dependency
+use the smallest native configuration/API change
+do not implement local cash reserve
+update evidence ledger
+```
+
+The next research stage becomes:
+
+```text
+S2 coarse parameter plateau / robustness
 ```
 
 ---
 
-## REVISE_S2_EXECUTION
+## FALL_BACK_TO_BOUNDED_CASH_RESERVE_EXPERIMENT
 
-Use if:
-
-```text
-trend economics survive
-BUT
-signal-change-only creates persistent material execution drift
-```
-
-Identify exactly ONE dominant failure mechanism.
-
-Recommend exactly ONE bounded execution-policy experiment.
-
-Do not implement it now.
-
----
-
-## REJECT_S2_AFTER_RQALPHA
-
-Use if:
+Use only if:
 
 ```text
-realistic execution destroys the economic advantage
+upstream upgrade is incompatible
 OR
-realized drawdown becomes unacceptable
-OR
-operational burden becomes incompatible with the project mission
+upstream native execution capability does not close the dominant drift
 ```
 
-Only then unlock S3.
+Then preserve all current signal evidence and create a separate next Goal for exactly one local cash-reserve experiment.
+
+Do not implement that fallback inside this Goal.
 
 ---
 
-# 17. Documentation
+## REASSESS_S2_EXECUTION_VIABILITY
 
-Update:
+Use if upstream-native execution reveals a larger structural execution problem that materially undermines the strategy.
 
-```text
-docs/CURRENT_STATE.md
-docs/ARCHITECTURE.md
-docs/STRATEGY_CATALOG.md
-docs/RESEARCH_RULES.md
-```
+Document the contradictory evidence.
 
-only where actual semantics changed.
-
-Every document must explain:
-
-```text
-what changed
-why
-what existing framework/community capability was reused
-what custom code remained
-what the evidence means
-what it does not prove
-next ONE direction
-```
+Do not proceed to parameter optimization.
 
 ---
 
-# 18. Architecture Drift Audit
+# 15. Small Existing Architecture Leak
 
-Explicitly answer:
+Inspect:
 
 ```text
-Did we duplicate RQAlpha sys_analyser?
-
-Did we duplicate RQAlpha order/account/position logic?
-
-Did we create a generic execution validation framework?
-
-Did we repeat an already-closed signal credibility audit?
-
-Did we add a dependency without a concrete blocker?
-
-Did this Goal add more infrastructure than economic evidence?
+tacticore.engines.rqalpha_adapter.build_rqalpha_config
 ```
 
-Any unjustified YES must be removed before commit.
+It is currently typed against the S1 `GlobalDualMomentumConfig`, while S2 reuses it with another strategy config and a type-ignore.
+
+If this code must be touched for the RQAlpha experiment, remove the strategy-specific coupling using the smallest possible change.
+
+Prefer explicit engine inputs such as:
+
+```text
+initial_cash
+fees
+slippage
+bundle_path
+```
+
+or a minimal structural Protocol.
+
+Do NOT create:
+
+```text
+strategy class hierarchy
+engine abstraction hierarchy
+generic execution framework
+```
+
+If no code change is required, record the issue and leave it for the first natural caller.
 
 ---
 
-# 19. Tests
+# 16. Tests
 
-Only add tests for TactiCore-owned logic:
+Test only TactiCore-owned semantics.
+
+Protect at least:
 
 ```text
-frozen target schedule is stable
+existing frozen target schedule remains unchanged
 
-only target-change dates are replayed
+target execution dates remain unchanged
 
-correct symbol mapping
+no target is executed before its frozen execution date
 
-no target is replayed before its execution date
+symbol mapping remains correct
 
-historical S2 V2 evidence is unchanged
+closed signal semantics are not changed by the execution experiment
 
-RQAlpha native results are parsed correctly
+version-specific RQAlpha configuration is explicit
 ```
 
-Do NOT unit-test RQAlpha's own:
+Do not unit-test RQAlpha internals.
+
+Do not write tests for:
 
 ```text
 matching
 round lots
 cash accounting
-commission
-slippage
+transaction cost calculation
+partial-fill implementation
 ```
 
-Those are framework responsibilities.
+Those belong upstream.
 
 ---
 
-# 20. Final Principle
+# 17. CI Observation
 
-TactiCore should increasingly become:
+The current repository does not have an active commit-status / workflow-run gate on the latest main commit.
 
-```text
-strategy logic
-+
-thin orchestration
-+
-research decisions
-```
+Do not build CI infrastructure as part of the execution experiment unless required.
 
-not:
+After the S2 execution decision is closed, a separate small maintenance Goal may add one minimal GitHub Actions workflow for:
 
 ```text
-a growing collection of validation infrastructure
+pytest
+ruff
+mypy
 ```
 
-Reuse community/framework capabilities before adding code.
+Its justification must be protecting already-closed TactiCore-owned semantics, not building a CI platform.
 
-One frozen target schedule
-→ RQAlpha native execution
-→ one research decision
-→ stop.
+---
+
+# 18. Documentation at Completion
+
+Update:
+
+```text
+README.md
+docs/ARCHITECTURE.md
+docs/RESEARCH_RULES.md
+docs/RESEARCH_LEDGER.md
+docs/CURRENT_STATE.md
+docs/STRATEGY_CATALOG.md
+docs/goal.md
+```
+
+according to their newly defined responsibilities.
+
+Do not rewrite historical research artifacts.
+
+Record:
+
+```text
+what was already known
+what was newly learned
+which upstream/community capability was considered
+which capability was adopted or rejected
+what custom code remains
+what remains unproven
+what the next ONE research direction is
+```
+
+---
+
+# 19. Final Architecture Drift Audit
+
+Before completion explicitly verify:
+
+```text
+Did we repeat a closed signal-credibility investigation?
+
+Did we implement something already provided by RQAlpha?
+
+Did we implement something already provided by VectorBT?
+
+Did we ignore a newer upstream solution?
+
+Did we add an unnecessary dependency?
+
+Did we promote experiment-local code into a generic framework?
+
+Did ARCHITECTURE contain transient research state?
+
+Did goal.md contain permanent knowledge not copied into the correct source-of-truth document?
+
+Did we change strategy semantics while claiming to test execution only?
+```
+
+Any unjustified YES must be corrected before completion.
+
+---
+
+# 20. Commit
+
+After all required validation succeeds:
+
+```text
+git status
+git diff
+tests
+lint
+type checks
+```
+
+Create one coherent commit and push it to the current GitHub branch.
+
+The final report must include:
+
+```text
+starting HEAD
+ending HEAD
+commit SHA
+files changed
+tests executed
+upstream/community evidence
+experiment result
+final decision
+next ONE direction
+```
+
+Final principle:
+
+```text
+Closed questions stay closed.
+
+Upstream capability before local workaround.
+
+TactiCore owns strategy and decisions.
+
+Community frameworks own generic quant infrastructure.
+```
+
+---
+
+# 21. 本 Goal 执行状态
+
+状态：已完成。永久架构、规则与关闭结论已分别写入 `ARCHITECTURE.md`、`RESEARCH_RULES.md`、`RESEARCH_LEDGER.md` 和研究报告；本文件只保留本次 Goal 及其结果指针。
+
+权威结果：`research/results/S2_RQALPHA_UPSTREAM_EXECUTION_CLOSURE_V1.md`
+
+ADOPT_UPSTREAM_RQALPHA_EXECUTION

@@ -1,0 +1,7 @@
+date,symbol,intended_weight,realized_weight,native_status,native_evidence
+2013-10-08,159920.SZ,0.50000000,0.33017528,CANCELLED,"Order Cancelled: market order 159920.XSHE volume 420800 is larger than 25.0 percent of current bar volume, fill 277600 actually"
+2014-02-07,510500.SS,0.33333333,0.25107591,CANCELLED,"Order Cancelled: not enough money to fill 510500.XSHG, fill 183100 actually"
+2014-02-07,159920.SZ,0.00000000,0.23189711,CANCELLED,"Order Cancelled: market order 159920.XSHE volume 402600 is larger than 25.0 percent of current bar volume, fill 208400 actually"
+2014-02-07,511010.SS,0.66666667,0.51699018,NO_ORDER_RECORDED,UNEXPLAINED_EXECUTION_DIFFERENCE
+2016-02-01,511010.SS,0.85714286,0.80705472,FILLED,sys_analyser 成交数量 800/800
+2016-05-03,513030.SS,0.14285714,0.07478279,CANCELLED,"Order Cancelled: market order 513030.XSHG volume 167100 is larger than 25.0 percent of current bar volume, fill 87500 actually"

@@ -111,6 +111,8 @@ def test_rqalpha_native_results_are_parsed_without_recomputing_risk() -> None:
     assert parsed["native_order_count"] == 1
     assert parsed["native_failed_order_events"] == 1
     assert parsed["cash_failure_events"] == 1
+    assert parsed["cash_rejection_events"] == 1
+    assert parsed["cash_residual_cancellation_events"] == 0
     assert parsed["trade_count"] == 2
 
 

@@ -12,17 +12,43 @@ from tacticore.strategies.global_dual_momentum import (
 
 
 def build_rqalpha_config(
-    start_date: str, end_date: str, strategy: GlobalDualMomentumConfig, bundle_path: str | Path
+    start_date: str,
+    end_date: str,
+    *,
+    initial_cash: float,
+    fees: float,
+    slippage: float,
+    bundle_path: str | Path,
+    rqalpha_major_version: int,
+    partial_fill_on_insufficient_cash: bool = False,
 ) -> dict[str, Any]:
     """生成显式 RQAlpha 配置；bundle 由用户在仓库外维护。"""
+    base: dict[str, Any] = {
+        "start_date": start_date,
+        "end_date": end_date,
+        "frequency": "1d",
+        "accounts": {"STOCK": initial_cash},
+        "data_bundle_path": str(bundle_path),
+    }
+    transaction_cost: dict[str, Any] = {
+        "stock_commission_multiplier": fees / 0.0008,
+        "tax_multiplier": 0,
+    }
+    if rqalpha_major_version >= 6:
+        base.update(
+            {
+                "capital_gain_tax_rate": 0,
+                "partial_fill_on_insufficient_cash": partial_fill_on_insufficient_cash,
+            }
+        )
+        transaction_cost["stock_min_commission"] = 0
+    else:
+        if partial_fill_on_insufficient_cash:
+            raise ValueError("RQAlpha 6.3.0 之前不支持资金不足时原生部分成交")
+        transaction_cost["cn_stock_min_commission"] = 0
+
     return {
-        "base": {
-            "start_date": start_date,
-            "end_date": end_date,
-            "frequency": "1d",
-            "accounts": {"STOCK": strategy.initial_cash},
-            "data_bundle_path": str(bundle_path),
-        },
+        "base": base,
         "extra": {"log_level": "error"},
         "mod": {
             "sys_analyser": {"enabled": True, "output_file": None},
@@ -32,13 +58,9 @@ def build_rqalpha_config(
                 "volume_limit": True,
                 "volume_percent": 0.25,
                 "slippage_model": "PriceRatioSlippage",
-                "slippage": strategy.slippage,
+                "slippage": slippage,
             },
-            "sys_transaction_cost": {
-                "stock_commission_multiplier": strategy.fees / 0.0008,
-                "cn_stock_min_commission": 0,
-                "tax_multiplier": 0,
-            },
+            "sys_transaction_cost": transaction_cost,
         },
     }
 
@@ -63,7 +85,7 @@ def build_callbacks(
         listed_symbols = {
             symbol
             for symbol in required_symbols
-            if instruments(source_to_rqalpha[symbol]).listing_at(context.now)
+            if instruments(source_to_rqalpha[symbol]).active_at(context.now)
         }
         momentum: dict[str, float] = {}
         for symbol in strategy.risk_symbols:
@@ -125,7 +147,17 @@ def run_rqalpha(
     if not bundle.is_dir():
         raise FileNotFoundError(f"RQAlpha bundle 目录不存在: {bundle}")
     init, _ = build_callbacks(strategy, universe_path, target_recorder)
-    config = build_rqalpha_config(start_date, end_date, strategy, bundle)
+    from rqalpha import __version__ as rqalpha_version
+
+    config = build_rqalpha_config(
+        start_date,
+        end_date,
+        initial_cash=strategy.initial_cash,
+        fees=strategy.fees,
+        slippage=strategy.slippage,
+        bundle_path=bundle,
+        rqalpha_major_version=int(rqalpha_version.split(".", 1)[0]),
+    )
     result = run_func(init=init, config=config)
     if result is None:
         raise RuntimeError("RQAlpha 验证失败；请检查其错误日志")

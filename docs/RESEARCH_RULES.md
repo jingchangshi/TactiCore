@@ -55,17 +55,26 @@ RQAlpha 用于：
 
 不要重复实现 VectorBT 或 RQAlpha 已承担的能力。
 
-### 2.2 框架能力检查（永久规则）
+### 2.2 框架与社区能力检查（永久规则）
 
-在编写回测、组合会计、订单、撮合、现金、费用、滑点、交易日历、复权、公司行动或绩效记录等通用能力前，必须先检查当前 VectorBT / RQAlpha 的公开 API、记录接口和文档化扩展机制。
+在编写回测、组合会计、订单、撮合、现金、费用、滑点、交易日历、复权、公司行动或绩效记录等通用能力前，必须依次检查：
+
+1. TactiCore 已有代码；
+2. VectorBT / RQAlpha 原生 API；
+3. 官方 Mod 与文档化扩展点；
+4. 成熟的社区实现；
+5. 最小的 TactiCore 专用适配。
 
 - VectorBT 优先使用 `Portfolio.from_orders`、returns accessor 以及 order、trade、drawdown records；
 - RQAlpha 优先使用官方 bundle、instrument/history/scheduler/order API、analyser 以及 DataSource/Mod 扩展点；
 - 薄适配器可以转换代码、字段或调用协议，但不得接管框架的通用职责；
 - 框架原生能力不能满足具体策略研究问题时，才可增加范围明确的本地计算，并记录为什么不可避免及其口径；
+- 不得仅因为社区依赖存在就引入它；依赖必须解决当前具体阻塞、显著简化本地实现，并且不重复 VectorBT/RQAlpha；
 - 复制框架已有功能一律视为架构漂移，必须在合并前删除或给出不可替代的证据。
 
-决策顺序固定为：检查原生 API → 检查官方扩展点 → 使用薄适配器 → 最后才考虑最小本地实现。TactiCore 拥有策略逻辑，VectorBT / RQAlpha 拥有通用量化基础设施。
+自定义实现永远是最后选项。TactiCore 拥有策略逻辑，VectorBT / RQAlpha 拥有通用量化基础设施。
+
+这项规则由 S2 冻结目标验证进一步确认：直接复用 RQAlpha 的组合目标 API、撮合/成本 Mod 与 `sys_analyser`，自定义代码只保留输入编排和有界目标追踪。结果暴露的是执行政策缺口，而不是框架能力缺口；它不证明现金预留方案有效，因此下一项只允许验证该单一方案，不借机建设通用执行设施。
 
 ## 3. 数据规则
 

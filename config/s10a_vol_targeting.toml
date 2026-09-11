@@ -1,0 +1,11 @@
+[volatility_targeting]
+symbols = ["510300.SS", "513500.SS", "518880.SS", "511010.SS"]
+base_weights = [0.25, 0.25, 0.25, 0.25]
+vol_window = 20
+target_volatility = 0.10
+max_scale = 1.0
+min_scale = 0.0
+rebalance_frequency = "monthly"
+fees = 0.001
+slippage = 0.0005
+initial_cash = 1000000.0

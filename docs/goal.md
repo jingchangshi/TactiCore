@@ -1,4 +1,4 @@
-# Goal: TactiCore Batch 00 — External Strategy Evidence Foundation
+# Goal: TactiCore Batch 02 — Evidence-Informed Validation
 
 Repository:
 
@@ -9,139 +9,92 @@ https://github.com/jingchangshi/TactiCore
 Role:
 
 ```text
-Principal Quant Research Architect
+Principal Quant Research Engineer
 +
-Systematic Strategy Literature Reviewer
+External Evidence Reviewer
 +
 Repository Architecture Maintainer
 ```
 
 ---
 
-# 0. Why This Work Exists
+# 0. Mission
 
-TactiCore 已经完成第一轮内部策略研究：
+TactiCore 已完成：
 
 ```text
-S2
-Multi-Asset Trend Following
-→ historical evidence PASS
-→ execution closure PASS
-→ parameter plateau PASS
-→ Research Candidate R1
-→ PROSPECTIVE_SHADOW_ACTIVE
-
-S3A
-Sector winner momentum
-→ REJECTED
-
-S3B
-Sector breadth global switch
-→ REJECTED
-
-S3C
-Sector sleeve trend
-→ REJECTED
-
-S4A
-Inverse-vol allocation
-→ REJECTED under its local gate
-
-S8A
-Equity/bond trend
-→ REJECTED
-
-S27A
-Trend + inverse-vol
-→ ADVANCE_TO_ROBUSTNESS
-
-S30
-Static diversified allocation
-→ REFERENCE_BASELINE
+Batch 00
+External Strategy Evidence Foundation
 ```
 
-但此前研究流程仍存在一个结构性缺口：
+因此从现在开始，禁止：
 
 ```text
-idea
-→ local hypothesis
-→ code
-→ backtest
+想到策略
+→ 直接实现
+→ 跑回测
 ```
 
-这会导致 TactiCore 重复研究金融学界、量化社区和成熟开源项目已经研究多年的问题。
-
-从本 Goal 开始，长期研究流程必须改变为：
+本 Goal 必须遵循：
 
 ```text
-External Literature
-+
-Practitioner Evidence
-+
-Community / Upstream Implementations
-        ↓
-External Strategy Evidence Registry
-        ↓
-What is already known?
-        ↓
-What remains unknown specifically for TactiCore?
+External Evidence Gate
         ↓
 Local Evidence Gap
         ↓
-Only then:
-strategy implementation / experiment
+Predeclared Protocol
+        ↓
+Implementation
+        ↓
+Protocol Freeze Commit
+        ↓
+Historical Experiment
+        ↓
+Evidence + Decision
+        ↓
+STOP for Principal Review
 ```
 
-核心原则：
+本批次：
 
 ```text
-Literature first for strategy ideas.
-
-Upstream first for implementations.
-
-Local research only for the remaining evidence gap.
+BATCH_02_EVIDENCE_INFORMED_VALIDATION
 ```
 
-以及：
+只研究三条已由 registry 支持的高相关性 gap：
 
 ```text
-Prior literature is evidence,
-not merely inspiration.
+Track A
+S27A Robustness
+
+Track B
+S4B Canonical ERC / Risk Parity ETF Transfer
+
+Track C
+S10A Unlevered Volatility Targeting Adjudication
+```
+
+三个问题属于不同研究类型：
+
+```text
+S27A
+E3 / LOCAL_ADJUDICATION
+→ 已通过 baseline，现在检验 robustness
+
+S4B ERC
+E2 / UPSTREAM_COMPARE
+→ 成熟方法，本地检验 transfer，不重新证明 risk parity
+
+S10A Volatility Targeting
+E3 / LOCAL_ADJUDICATION
+→ 文献有支持和反证，本地做裁决
 ```
 
 ---
 
-# 1. This Goal Is NOT a Strategy Backtest
+# 1. Repository First
 
-本 Goal：
-
-```text
-NO new strategy backtest
-NO new parameter experiment
-NO robustness run
-NO RQAlpha run
-NO new historical data
-NO Theme Rotation implementation
-NO Batch 02 strategy implementation
-```
-
-目标只有：
-
-```text
-建立 External Strategy Evidence Foundation
-
-+
-把这一原则永久写入
-architecture / rules / agent routing / strategy documents
-```
-
-完成后停止。
-
----
-
-# 2. Repository First
-
-开始前重新读取最新 remote `main`。
+重新读取最新 remote `main`。
 
 执行：
 
@@ -151,118 +104,109 @@ git status
 git log --oneline -20
 ```
 
-不要相信本 Prompt 写死的 HEAD。
+不要相信本 Prompt 写死的 SHA。
 
-阅读：
+必须阅读：
 
 ```text
 AGENTS.md
-
-README.md
 
 docs/ARCHITECTURE.md
 docs/RESEARCH_RULES.md
 docs/RESEARCH_LEDGER.md
 docs/STRATEGY_CATALOG.md
+docs/STRATEGY_RESEARCH_MAP.md
 docs/CURRENT_STATE.md
 docs/goal.md
 
+research/strategy_evidence/STRATEGY_EVIDENCE_REGISTRY.yaml
+
 research/results/BATCH_01_TRANSPARENT_STRATEGY_SCREEN.md
-research/results/INVALID_RUN_BATCH_01_R1.md
 research/results/S27A_TREND_INVERSE_VOL_BASELINE_V1.md
 research/results/S30_STATIC_STRATEGIC_ALLOCATION_V1.md
+research/results/S4A_INVERSE_VOL_BASELINE_V1.md
 
 research/batches/batch_01/PROTOCOL.md
 research/batches/batch_01/PROTOCOL_V2.md
 
+config/s27_trend_inverse_vol.toml
+config/s4_inverse_vol.toml
+
+tacticore/strategies/trend_inverse_vol.py
+tacticore/strategies/inverse_vol_allocation.py
+tacticore/engines/vectorbt_adapter.py
+
 research/shadow/s2_r1/candidate_manifest.json
 ```
-
-检查当前源代码和 relevant artifacts。
 
 记录：
 
 ```text
 starting HEAD
-recent commits
-working tree
 
 S2 R1 status
-Batch 01 status
-S27A status
-S30 status
 
-latest S27 corrected comparator values
+S27A baseline state
+S27A baseline hashes
+
+S30 state
+
+S4A state
+
+External evidence entries:
+VOL_SCALED_TREND
+ERC_RISK_PARITY
+VOL_TARGETING
+
+canonical data hashes
+framework versions
 ```
 
-Repository evidence 优先。
+仓库事实覆盖本 Prompt。
 
 ---
 
-# 3. First Fix the Existing S27A Ledger Drift
+# 2. Current Local State Must Remain Intact
 
-当前最新仓库疑似存在：
-
-```text
-S27A main report
-vs
-RESEARCH_LEDGER RL-023
-```
-
-之间 corrected comparator 数字不同。
-
-必须先核实：
+确认：
 
 ```text
-research/results/S27A_TREND_INVERSE_VOL_BASELINE_V1.md
-
-research/results/s27a_trend_inverse_vol_comparison_v1.csv
-
-research/results/BATCH_01_TRANSPARENT_STRATEGY_SCREEN.md
-
-research/results/INVALID_RUN_BATCH_01_R1.md
-
-research/batches/batch_01/PROTOCOL_V2.md
-
-docs/RESEARCH_LEDGER.md
+S2 R1
+=
+FROZEN / PROSPECTIVE_SHADOW_ACTIVE
 ```
 
-确认 corrected authoritative values。
-
-如果确实只有：
+确认：
 
 ```text
-RL-023
+S27A
+=
+ADVANCE_TO_ROBUSTNESS
 ```
 
-残留旧 comparator 数值：
-
-只修正账本文字。
-
-不要：
+确认：
 
 ```text
-rerun S27
-change strategy
-change protocol
-change decision
+S3A/S3B/S3C/S4A/S8A
+=
+closed/rejected
 ```
 
-这是：
+确认：
 
 ```text
-documentation consistency correction
+S30
+=
+REFERENCE_BASELINE
 ```
 
-不是重新研究。
-
-在 commit/report 中明确记录原因。
+不得重新打开这些 baseline。
 
 ---
 
-# 4. Protect S2 R1
+# 3. Protect S2 R1
 
-开始前运行：
+开始前：
 
 ```bash
 uv run python research/experiments/run_s2_r1_shadow.py \
@@ -271,9 +215,7 @@ uv run python research/experiments/run_s2_r1_shadow.py \
 
 必须 PASS。
 
-不得修改 S2 frozen inputs。
-
-尤其：
+禁止修改：
 
 ```text
 config/strategy.toml
@@ -289,375 +231,1679 @@ tacticore/engines/rqalpha_adapter.py
 research/shadow/s2_r1/candidate_manifest.json
 ```
 
-本 Goal 与 S2 candidate semantics 无关。
-
----
-
-# 5. New Architecture Concept: External Evidence Layer
-
-修改：
+尤其禁止为了 Batch 02：
 
 ```text
-docs/ARCHITECTURE.md
-```
-
-这是本 Goal 的真实 architecture change。
-
-当前链路：
-
-```text
-数据
-↓
-策略语义
-↓
-研究筛选
-...
-```
-
-升级为类似：
-
-```text
-External Strategy Evidence
-        ↓
-Local Evidence Gap
-        ↓
-Data + Strategy Semantics
-        ↓
-Historical Research Screen
-        ↓
-Robustness
-        ↓
-Execution Validation
-        ↓
-Prospective Candidate
-        ↓
-Future Production Decision
-```
-
-重点不是具体排版，而是表达：
-
-> TactiCore 不从“想到一个策略”开始，而从“外部世界已经知道什么，以及当前交易域还不知道什么”开始。
-
----
-
-# 6. Architecture Ownership Boundary
-
-在 `ARCHITECTURE.md` 中新增明确职责。
-
-## External literature / community
-
-拥有：
-
-```text
-canonical strategy definitions
-published empirical evidence
-replications
-contradictory findings
-known implementation methods
-```
-
-TactiCore 不拥有这些知识本身。
-
-TactiCore 只：
-
-```text
-curate
-scope
-map
-interpret
+改变 S2 universe
+改变 S2 trend_window
+改变 S2 fallback
+改变 S2 manifest hashes
 ```
 
 ---
 
-## TactiCore External Evidence Registry
+# 4. Phase A — Targeted External Evidence Hardening
 
-拥有：
+在任何新策略代码或 robustness experiment 前，只针对本 Batch 三条 entry 做有界 evidence refresh。
 
-```text
-external evidence snapshot
-canonical strategy mapping
-evidence tier
-known limitations
-TactiCore applicability
-remaining local evidence gap
-upstream implementation pointers
-```
+不要刷新整个 registry。
 
-它不是：
+目标 entry：
 
 ```text
-bibliographic database
-paper crawler
-academic search engine
-knowledge graph
+VOL_SCALED_TREND
+
+ERC_RISK_PARITY
+
+VOL_TARGETING
 ```
 
 ---
 
-## TactiCore local research
+# 5. S27A External Evidence Gate
 
-只拥有：
-
-```text
-domain transfer
-local replication
-local adjudication
-new local hypotheses
-execution verification
-prospective evidence
-```
-
----
-
-# 7. Dual Evidence Authority
-
-在架构中明确：
-
-对于 repository/local facts：
+必须回答：
 
 ```text
-source code
+Canonical mapping:
+trend / time-series momentum
 +
-frozen artifacts
->
-repository documentation
+volatility-based sizing
+
+External tier:
+E3_MIXED_CONDITIONAL
+
+What is externally mature?
+
+What part remains conditional?
+
+Does canonical TSMOM literature already use
+volatility scaling?
+
+Is inverse-vol allocation itself alpha?
+NO.
+
+What did TactiCore actually add?
+A long-only ETF transfer with
+S2 trend state + inverse-vol active sizing.
+
+Remaining local gap:
+parameter / period / cost stability.
 ```
 
-对于 external research claims：
+不得把：
 
 ```text
-primary publication
->
-high-quality independent replication/review
->
-original practitioner research
->
-secondary explanation
+S27A historical PASS
 ```
 
-External Evidence Registry 是：
+包装成：
 
 ```text
-versioned local synthesis
-```
-
-不是比原始论文更高的 authority。
-
----
-
-# 8. Permanent Research Rule: Literature Gate
-
-修改：
-
-```text
-docs/RESEARCH_RULES.md
-```
-
-新增永久规则：
-
-# External Evidence / Literature Gate
-
-任何新的 strategy family、signal、allocator 或 tactical overlay 在写代码前必须回答：
-
-```text
-1. What is its canonical name?
-
-2. Has this already been studied?
-
-3. What does the strongest external evidence say?
-
-4. Is the evidence supportive, mixed,
-   method-only, or insufficient?
-
-5. What market / asset class / implementation
-   did that evidence actually study?
-
-6. Does a mature upstream implementation exist?
-
-7. What exact question remains unanswered
-   for TactiCore?
-
-8. Has that local question already been
-   answered by RESEARCH_LEDGER?
-
-9. What is the simplest appropriate comparator?
-
-10. Why is new code necessary?
-```
-
-如果这些问题无法回答：
-
-```text
-NO STRATEGY CODE
+new anomaly discovery
 ```
 
 ---
 
-# 9. External Evidence Tiers
+# 6. ERC External Evidence Gate
 
-把以下 taxonomy 写入：
+至少重新核实：
 
 ```text
-docs/RESEARCH_RULES.md
+Maillard / Roncalli / Teiletche
+Equal Risk Contribution
+
+current Riskfolio-Lib official documentation
+
+current supported Riskfolio-Lib version
 ```
 
-并在 registry/map 中统一使用。
+必须确认 upstream 是否能直接支持：
+
+```text
+long-only
+equal risk budget
+variance-based ERC
+fully invested portfolio
+```
+
+优先使用：
+
+```text
+Riskfolio-Lib
+```
+
+原生 risk-parity API。
+
+禁止首先编写：
+
+```text
+erc_solver.py
+risk_parity_optimizer.py
+custom convex optimizer
+```
+
+如果 upstream 无法在当前 Python / dependency 环境可靠运行：
+
+```text
+BLOCK_S4B_UPSTREAM_DEPENDENCY
+```
+
+而不是自己补一套 solver。
 
 ---
 
-## E1_MATURE
+# 7. Volatility-Targeting External Evidence Gate
 
-定义：
+必须至少核实：
 
 ```text
-多篇高质量研究、
-跨样本/跨市场或长期历史证据，
-某一现象本身已有成熟外部证据。
+Moreira & Muir
+Volatility-Managed Portfolios
+
+Cederburg et al.
+contradictory / qualification evidence
+
+recent China-specific evidence
+if directly relevant
 ```
 
-典型 action：
+必须明确：
 
 ```text
-TRANSFER_VALIDATE
+original factor / portfolio domain
+
+leverage assumptions
+
+normalization assumptions
+
+previous-month realized variance semantics
+
+difference from a long-only ETF implementation
 ```
 
-不得重新问：
+不得：
 
 ```text
-Does this anomaly exist?
+只引用 Moreira/Muir 的支持结论
 ```
 
-只能研究：
+而忽略反证。
+
+---
+
+# 8. Evidence Update
+
+只有发现有意义的新信息时，才更新：
 
 ```text
-Does the canonical finding transfer
-to TactiCore's tradable domain?
+research/strategy_evidence/STRATEGY_EVIDENCE_REGISTRY.yaml
+
+docs/STRATEGY_RESEARCH_MAP.md
+```
+
+更新：
+
+```text
+canonical sources
+contradictory sources
+evidence_as_of
+scope
+limitations
+remaining_gap
+```
+
+不要：
+
+```text
+改变 tier 来迎合后续结果
+```
+
+External evidence freeze 必须先于 performance。
+
+---
+
+# 9. Batch 02 Protocol
+
+新增：
+
+```text
+research/batches/batch_02/PROTOCOL.md
+```
+
+在任何真实 performance run 前冻结：
+
+```text
+three research questions
+
+source evidence snapshot
+
+exact implementations
+
+all parameter sets
+
+all comparison rules
+
+all decision gates
+
+data hashes
+
+baseline hashes
+
+prohibited post-result changes
 ```
 
 ---
 
-## E2_ESTABLISHED_METHOD
+# 10. Protocol Freeze Discipline
 
-定义：
-
-```text
-方法/组合构建算法已经成熟，
-但并不意味着其一定产生 alpha
-或稳定优于简单 benchmark。
-```
-
-典型：
+顺序必须严格：
 
 ```text
-1/N
-inverse volatility
-ERC / risk parity
-minimum variance
-HRP
-Black-Litterman
+Evidence review
+        ↓
+Implement semantics + synthetic tests
+        ↓
+Write complete decision functions
+        ↓
+Write PROTOCOL.md
+        ↓
+NO PERFORMANCE RESULTS YET
+        ↓
+Protocol Freeze Commit
+        ↓
+Only then run historical experiments
 ```
 
-典型 action：
+如果任意真实收益数字已经被看到：
+
+不得再修改：
+
+```text
+strategy semantics
+parameter neighborhood
+decision thresholds
+primary comparator
+```
+
+除 correctness bug。
+
+---
+
+# Track A — S27A Robustness
+
+# 11. Do NOT Modify the Frozen S27A Baseline
+
+以下保持不变：
+
+```text
+config/s27_trend_inverse_vol.toml
+
+tacticore/strategies/trend_inverse_vol.py
+
+research/results/S27A_TREND_INVERSE_VOL_BASELINE_V1.md
+
+Batch 01 artifacts
+```
+
+当前 baseline identity：
+
+```text
+trend_window = 200
+vol_window = 60
+monthly
+fallback = 511010.SS
+fees = 10bps
+slippage = 5bps
+```
+
+---
+
+# 12. S27A Robustness Must Be Experiment-Layer Only
+
+新增：
+
+```text
+research/experiments/run_s27a_robustness.py
+```
+
+如需通用化 baseline evaluator：
+
+放在：
+
+```text
+research/experiments/
+```
+
+不要为了 robustness 修改 frozen strategy implementation。
+
+必须首先证明：
+
+```text
+generalized evaluator
+@ trend=200, vol=60
+```
+
+能够 reproduce Batch 01 corrected baseline。
+
+如果不能：
+
+```text
+BLOCK_S27A_ROBUSTNESS_REPRODUCTION
+```
+
+---
+
+# 13. S27A One-Factor-at-a-Time Parameter Plateau
+
+禁止二维 grid search。
+
+只运行：
+
+## Trend dimension
+
+固定：
+
+```text
+vol_window = 60
+```
+
+测试：
+
+```text
+trend_window =
+160
+180
+200
+220
+240
+```
+
+这些窗口与既有 S2 plateau 邻域一致。
+
+---
+
+## Volatility dimension
+
+固定：
+
+```text
+trend_window = 200
+```
+
+测试：
+
+```text
+vol_window =
+40
+60
+80
+```
+
+禁止：
+
+```text
+5 × 3 Cartesian grid
+```
+
+因为这会扩大研究自由度。
+
+---
+
+# 14. No Best Parameter Selection
+
+本 Goal 绝对禁止：
+
+```text
+choose best trend_window
+choose best vol_window
+```
+
+中心 baseline 永远：
+
+```text
+200 / 60
+```
+
+robustness 只回答：
+
+```text
+Does the surrounding neighborhood
+support the same economic conclusion?
+```
+
+---
+
+# 15. S27A Period Stability
+
+复用既有 S2 robustness 的：
+
+```text
+fixed-period definitions
+rolling 3Y methodology
+rolling 5Y methodology
+```
+
+不得为了 S27A 新挑历史断点。
+
+如果现有 artifact 中已有明确 period boundaries：
+
+原样复用。
+
+---
+
+# 16. S27A Cost Sensitivity
+
+复用现有 S2：
+
+```text
+15 bps
+30 bps
+50 bps
+```
+
+成本场景定义和实现方式。
+
+不要设计新的 cost grid。
+
+---
+
+# 17. S27A Primary Comparator
+
+Primary comparator：
+
+```text
+S2 fixed-sleeve trend
+```
+
+必须保持：
+
+```text
+same trend window
+same risk universe
+same data
+same timing
+same risk-budget semantics
+```
+
+差异只允许：
+
+```text
+active-sleeve weighting
+
+S2:
+equal fixed sleeves
+
+S27A:
+inverse-vol active sizing
+```
+
+---
+
+# 18. S27A Contextual Comparator
+
+必须同时报告：
+
+```text
+S30 static strategic allocation
+```
+
+但：
+
+```text
+S27A does NOT automatically fail
+just because S30 has higher Sharpe.
+```
+
+因为 S30 不隔离同一机制。
+
+必须回答：
+
+> S27A 的复杂度究竟带来了什么，而 S30 没有？
+
+例如：
+
+```text
+lower drawdown
+different exposure path
+different crisis behavior
+```
+
+仅报告事实，不创造综合分数。
+
+---
+
+# 19. S27A Robustness Gate
+
+Protocol freeze 前实现 decision function。
+
+至少要求：
+
+### Baseline reproduction
+
+```text
+PASS
+```
+
+### Trend neighborhood
+
+5 个 trend windows 中：
+
+```text
+all CAGR > 0
+```
+
+且至少 4/5：
+
+```text
+retain >= 70% of baseline CAGR
+retain >= 70% of baseline Sharpe
+MaxDD > -25%
+```
+
+### Volatility neighborhood
+
+40 / 60 / 80 三个全部：
+
+```text
+CAGR > 0
+Sharpe > 0
+MaxDD > -25%
+```
+
+且至少 2/3：
+
+```text
+retain >= 80% of baseline Sharpe
+```
+
+### Fixed periods
+
+不得由单一历史时期贡献全部正面结论。
+
+至少要求所有既有固定 periods：
+
+```text
+CAGR > 0
+```
+
+除非现有 S2 robustness methodology 明确采用其他预声明标准，则优先复用已存在标准。
+
+### Rolling
+
+至少：
+
+```text
+rolling 3Y positive-CAGR share >= 90%
+
+rolling 5Y positive-CAGR share >= 95%
+```
+
+### Cost
+
+最高预声明成本场景：
+
+```text
+CAGR > 0
+Sharpe >= 0.50
+```
+
+---
+
+# 20. S27A Decision
+
+只能输出：
+
+```text
+ADVANCE_S27A_TO_EXECUTION_REVIEW
+
+REJECT_S27A_ROBUSTNESS
+
+BLOCK_S27A_ROBUSTNESS_REPRODUCTION
+```
+
+即使 ADVANCE：
+
+本 Goal 也：
+
+```text
+DO NOT run RQAlpha
+```
+
+只是获得：
+
+```text
+execution-review eligibility
+```
+
+---
+
+# Track B — S4B ERC / Risk Parity Transfer
+
+# 21. Research Identity
+
+新增：
+
+```text
+S4B_ERC_RISK_PARITY_V1
+```
+
+Canonical mapping：
+
+```text
+Equal Risk Contribution
+/
+Vanilla Risk Parity
+```
+
+External tier：
+
+```text
+E2_ESTABLISHED_METHOD
+```
+
+Research action：
 
 ```text
 UPSTREAM_COMPARE
 ```
 
-而不是：
+问题不是：
 
 ```text
-DISCOVER_ALPHA
+Does risk parity work?
+```
+
+而是：
+
+> 在 TactiCore 当前无杠杆、多资产 ETF universe 中，correlation-aware ERC 是否相对简单 equal-weight / inverse-vol allocation 提供足够的本地增量价值？
+
+---
+
+# 22. S4B Upstream Dependency
+
+优先调查当前：
+
+```text
+Riskfolio-Lib
+```
+
+稳定版本。
+
+如果当前稳定官方版本与 Python 3.10–3.12 和项目环境兼容：
+
+新增 research-only optional dependency，例如：
+
+```toml
+[project.optional-dependencies]
+research = [
+  "riskfolio-lib>=<verified-version>,<next-major>"
+]
+```
+
+实际版本必须以执行时官方稳定版本为准。
+
+不要盲目照抄本 Prompt。
+
+不要把 Riskfolio 变成核心 runtime dependency。
+
+---
+
+# 23. S4B Exact Universe
+
+复用 S4A 使用的：
+
+```text
+multi-asset risk universe
+```
+
+从 frozen repository config 只读获得。
+
+不得修改：
+
+```text
+config/strategy.toml
+config/universe.csv
+```
+
+fallback：
+
+```text
+511010.SS
 ```
 
 ---
 
-## E3_MIXED_CONDITIONAL
+# 24. S4B Observation Window
 
-定义：
+为了隔离：
 
 ```text
-已有大量研究，
-但结果存在冲突、
-强烈依赖样本、实现或市场状态。
+inverse-vol
+vs
+correlation-aware ERC
 ```
 
-典型 action：
+固定：
+
+```text
+risk estimation window = 60 daily returns
+```
+
+与 S4A 的 60-return horizon 对齐。
+
+不测试其他 window。
+
+---
+
+# 25. S4B Aligned Covariance Semantics
+
+ERC 需要 covariance，因此必须使用真实共同日期。
+
+每个 month-end：
+
+1. 取截至 signal date 的最近 61 个 canonical observations；
+2. asset 在这 61 个 observation 中必须都有有效价格；
+3. 得到 60 个 aligned daily returns；
+4. 至少：
+
+```text
+6 assets
+```
+
+满足才进入 ERC；
+
+否则：
+
+```text
+fallback = 100%
+```
+
+严禁：
+
+```text
+forward fill missing price
+zero fill
+pairwise covariance with silent PSD repair
+```
+
+如果 aligned data 不足：
+
+保持不可用。
+
+---
+
+# 26. S4B Canonical ERC
+
+使用 Riskfolio-Lib 官方：
+
+```text
+Classic
+variance / MV risk
+equal risk budgets
+long-only
+fully invested
+```
+
+等价官方 vanilla ERC / risk-parity 模式。
+
+不要：
+
+```text
+expected-return optimization
+shorting
+leverage
+custom risk budgets
+CVaR risk parity
+drawdown risk parity
+```
+
+本轮只测试最经典、最低自由度版本。
+
+---
+
+# 27. S4B Execution
+
+```text
+month-end estimation
+        ↓
+target weights
+        ↓
+next canonical observation
+        ↓
+VectorBT
+```
+
+月度 target 是真实新估计，因此允许月度 rebalance。
+
+---
+
+# 28. S4B Comparators
+
+Primary 1：
+
+```text
+SAME_ELIGIBLE_SET_INVERSE_VOL
+```
+
+Primary 2：
+
+```text
+SAME_ELIGIBLE_SET_EQUAL_WEIGHT
+```
+
+必须：
+
+```text
+same dates
+same eligible assets
+same timing
+same costs
+same initial capital
+```
+
+这样唯一主要差异是：
+
+```text
+weighting algorithm
+```
+
+S4A historical result只作为 contextual evidence。
+
+S30 也是 contextual reference。
+
+---
+
+# 29. S4B Gate
+
+要求：
+
+```text
+CAGR > 0
+Sharpe >= 0.50
+MaxDD > -35%
+```
+
+相对 SAME_ELIGIBLE_SET_INVERSE_VOL：
+
+```text
+CAGR >= comparator CAGR - 1.5pp
+
+MaxDD no worse by > 2pp
+
+AND
+
+Sharpe >= comparator Sharpe + 0.03
+OR
+Calmar >= comparator Calmar + 0.05
+```
+
+并要求：
+
+```text
+turnover <= 1.5 × inverse-vol turnover
+```
+
+报告：
+
+```text
+max weight
+median max weight
+95th-percentile max weight
+effective number of assets
+```
+
+不要因为 concentration 不好就事后加 cap。
+
+---
+
+# 30. S4B Decision
+
+只能：
+
+```text
+ADVANCE_S4B_ERC_TRANSFER_TO_ROBUSTNESS
+
+DO_NOT_ADVANCE_S4B_ERC_TRANSFER
+
+BLOCK_S4B_UPSTREAM_DEPENDENCY
+
+BLOCK_S4B_DATA_COVERAGE
+```
+
+本地失败：
+
+```text
+!=
+risk parity globally invalid
+```
+
+---
+
+# Track C — S10A Unlevered Volatility Targeting
+
+# 31. Research Identity
+
+新增：
+
+```text
+S10A_UNLEVERED_VOL_TARGETING_V1
+```
+
+Canonical mapping：
+
+```text
+volatility targeting
+/
+volatility-managed portfolio family
+```
+
+External tier：
+
+```text
+E3_MIXED_CONDITIONAL
+```
+
+Research action：
 
 ```text
 LOCAL_ADJUDICATION
 ```
 
-必须同时记录：
+---
+
+# 32. Why Use S30 as the Base
+
+不要同时发明新的 alpha portfolio。
+
+直接使用最简单、已经存在的：
 
 ```text
-supporting evidence
-contradicting evidence
+S30
+25% China equity
+25% US equity
+25% Gold
+25% China bond
 ```
 
-不能只引用支持自己想法的论文。
+作为 base allocation。
+
+问题只问：
+
+> 对这个已经很强的简单组合加无杠杆 volatility scaling，是否能进一步改善风险调整表现？
+
+这样能够隔离：
+
+```text
+volatility timing
+```
+
+而不是：
+
+```text
+asset-selection alpha
+```
 
 ---
 
-## E4_OPEN_LOCAL
+# 33. S10A Fixed Specification
 
-定义：
+本轮只运行一个透明 specification：
 
 ```text
-公开证据不足，
-或问题高度依赖中国 ETF、
-本地交易工具、PIT universe、
-实际流动性等具体约束。
+base weights:
+25 / 25 / 25 / 25
+
+volatility lookback:
+20 valid daily portfolio returns
+
+annualized target volatility:
+10%
+
+max exposure scale:
+1.0
+
+min exposure scale:
+0.0
+
+leverage:
+NO
 ```
 
-典型 action：
+如果 Phase A 文献核实发现这一 specification 与 canonical volatility-targeting 含义存在重大错误：
+
+允许在第一次 protocol freeze 前修正。
+
+修正必须：
 
 ```text
-NEW_HYPOTHESIS
+based on external evidence,
+not TactiCore performance.
 ```
 
-但必须先证明：
+一旦 protocol freeze：
+
+不可改。
+
+---
+
+# 34. S10A Realized Volatility
+
+构造当前 base portfolio 的 daily return：
 
 ```text
-reasonable literature search
-did not already answer the question
+r_base =
+0.25 * China equity return
++
+0.25 * US equity return
++
+0.25 * Gold return
++
+0.25 * China bond return
+```
+
+使用过去：
+
+```text
+20 valid aligned daily observations
+```
+
+计算 annualized realized volatility。
+
+禁止：
+
+```text
+future data
+full-sample volatility
 ```
 
 ---
 
-# 10. Evidence Tier Does NOT Equal Local Decision
+# 35. S10A Exposure
 
-永久写入规则：
-
-```text
-External E1
-does NOT imply
-TactiCore local PASS
-```
-
-例如：
+月末：
 
 ```text
-global time-series momentum evidence may be strong
-while a particular China ETF implementation can fail.
+scale =
+min(
+    1.0,
+    target_vol / realized_vol
+)
 ```
 
-反过来：
+若 volatility 不可用：
 
 ```text
-TactiCore REJECT
-does NOT falsify
-the canonical strategy globally.
+scale = 0
 ```
 
-同样：
+然后：
 
 ```text
-TactiCore PASS
-does NOT upgrade
-an external evidence tier.
+China equity = 0.25 * scale
+US equity    = 0.25 * scale
+Gold         = 0.25 * scale
+Bond         = 0.25 * scale + (1 - scale)
 ```
 
-必须严格区分：
+因此：
+
+```text
+sum(weights) = 1
+no leverage
+```
+
+---
+
+# 36. S10A Primary Comparator
+
+建立：
+
+```text
+MONTHLY_STATIC_25_25_25_25
+```
+
+必须和 S10A：
+
+```text
+same signal dates
+same monthly execution dates
+same costs
+same initial capital
+```
+
+区别只有：
+
+```text
+volatility scaling
+```
+
+原始 annual-rebalance S30：
+
+```text
+REFERENCE CONTEXT ONLY
+```
+
+这样避免把：
+
+```text
+monthly rebalance effect
+```
+
+误认为 volatility-management alpha。
+
+---
+
+# 37. S10A Diagnostics
+
+至少输出：
+
+```text
+realized_vol
+scale
+risk_reduction
+bond_weight
+
+average_scale
+median_scale
+min_scale
+max_scale
+
+months scale < 1
+
+target-change months
+turnover
+```
+
+---
+
+# 38. S10A Non-Degeneration
+
+如果：
+
+```text
+average scale >= 0.95
+```
+
+则：
+
+```text
+REJECT_S10A_FILTER_DEGENERATION
+```
+
+因为策略几乎没工作。
+
+如果：
+
+```text
+average scale <= 0.40
+```
+
+则：
+
+```text
+REJECT_S10A_DEFENSIVE_DEGENERATION
+```
+
+因为几乎退化为 bond-heavy allocation。
+
+---
+
+# 39. S10A Economic Gate
+
+绝对：
+
+```text
+CAGR > 0
+Sharpe >= 0.80
+MaxDD > -25%
+```
+
+相对 monthly static comparator：
+
+```text
+MaxDD improvement >= 2pp
+
+CAGR >= comparator CAGR - 1.5pp
+
+AND
+
+Sharpe > comparator Sharpe
+OR
+Calmar > comparator Calmar
+```
+
+不要求它必须：
+
+```text
+beat annual S30 CAGR
+```
+
+但必须完整报告。
+
+---
+
+# 40. S10A Decision
+
+只能：
+
+```text
+ADVANCE_S10A_VOL_TARGETING_TO_ROBUSTNESS
+
+REJECT_S10A_VOL_TARGETING
+
+REJECT_S10A_FILTER_DEGENERATION
+
+REJECT_S10A_DEFENSIVE_DEGENERATION
+
+BLOCK_S10A_DATA
+```
+
+不得在失败后尝试：
+
+```text
+8% target
+12% target
+15% target
+40-day vol
+60-day vol
+```
+
+救结果。
+
+---
+
+# 41. No Other Strategies in Batch 02
+
+禁止实现：
+
+```text
+Minimum Variance
+Shrinkage MinVar
+HRP
+HERC
+Maximum Diversification
+Black-Litterman
+
+Theme Rotation
+Asset-Class Breadth
+Defensive Asset Rotation
+PIT Sector Rotation
+```
+
+这些保留给未来 Principal Review。
+
+尤其：
+
+```text
+S4B ERC pass/fail
+```
+
+不得在同一 Goal 触发：
+
+```text
+“顺手试试 MinVar”
+```
+
+---
+
+# 42. Expected Implementation
+
+合理新增：
+
+```text
+research/batches/batch_02/
+  PROTOCOL.md
+  EVIDENCE_GATE.md
+
+research/experiments/
+  run_s27a_robustness.py
+  run_s4b_erc_transfer.py
+  run_s10a_vol_targeting.py
+
+tacticore/strategies/
+  erc_risk_parity.py
+  volatility_targeting.py
+
+config/
+  s4b_erc_risk_parity.toml
+  s10a_vol_targeting.toml
+
+research/results/
+  S27A_ROBUSTNESS_V1.md
+  S4B_ERC_TRANSFER_V1.md
+  S10A_VOL_TARGETING_V1.md
+  BATCH_02_EVIDENCE_INFORMED_VALIDATION.md
+
+  relevant small CSV artifacts
+```
+
+S27A baseline代码保持冻结。
+
+---
+
+# 43. Dependency Rule
+
+如果需要 Riskfolio-Lib：
+
+只作为：
+
+```text
+research optional dependency
+```
+
+不得把整个 Riskfolio 逻辑复制进仓库。
+
+需要记录：
+
+```text
+package version
+official API used
+why it is required
+why VectorBT alone does not own ERC optimization
+```
+
+VectorBT 仍负责：
+
+```text
+portfolio simulation
+```
+
+Riskfolio 只负责：
+
+```text
+ERC target-weight optimization
+```
+
+---
+
+# 44. No New Generic Framework
+
+禁止创建：
+
+```text
+OptimizerEngine
+AllocationFramework
+StrategyRegistry
+ResearchManager
+BacktestFramework
+RobustnessPlatform
+EvidenceDatabase
+```
+
+如果三个 runner 共享少量 metric helpers：
+
+可以继续复用：
+
+```text
+research/experiments/batch_01_common.py
+```
+
+或抽取一个很小的 experiment helper。
+
+不要提升成平台。
+
+---
+
+# 45. Protocol Freeze Commit
+
+完成：
+
+```text
+External Evidence Gate
++
+configs
++
+strategy semantics
++
+runners
++
+decision functions
++
+synthetic tests
++
+PROTOCOL.md
+```
+
+但还没有运行真实历史 performance 后：
+
+运行：
+
+```bash
+uv sync --extra dev
+```
+
+如 S4B 使用 research extra：
+
+```bash
+uv sync --extra dev --extra research
+```
+
+然后：
+
+```bash
+uv run pytest
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy
+```
+
+以及：
+
+```bash
+uv run python research/experiments/run_s2_r1_shadow.py \
+  --verify-candidate
+```
+
+全部通过。
+
+创建：
+
+```text
+Commit A
+```
+
+建议：
+
+```text
+freeze batch 2 evidence informed validation protocol
+```
+
+push。
+
+记录：
+
+```text
+BATCH_02_PROTOCOL_FREEZE_SHA
+```
+
+---
+
+# 46. No Post-Freeze Design Changes
+
+Protocol freeze 后：
+
+禁止修改：
+
+```text
+S27 robustness neighborhoods
+
+ERC semantics
+
+ERC estimator/window
+
+volatility target
+
+volatility lookback
+
+decision gates
+
+primary comparators
+```
+
+---
+
+# 47. Correctness-Bug Exception
+
+如果 performance 后发现明确：
+
+```text
+lookahead
+wrong comparator
+incorrect execution timing
+incorrect Riskfolio call
+target-sum bug
+incorrect eligibility
+```
+
+必须：
+
+```text
+mark run INVALID_RUN
+```
+
+然后：
+
+```text
+document bug
+fix it
+create Protocol V2
+commit V2 freeze
+rerun entire affected track
+```
+
+不得静默修复。
+
+遵循 Batch 01 已经建立的良好 precedent。
+
+---
+
+# 48. Run Entire Batch
+
+Protocol freeze 后统一执行：
+
+```bash
+uv run python research/experiments/run_s27a_robustness.py
+
+uv run python research/experiments/run_s4b_erc_transfer.py
+
+uv run python research/experiments/run_s10a_vol_targeting.py
+```
+
+单条失败不应提前结束其他独立 track。
+
+只有：
+
+```text
+S2 integrity failure
+canonical data corruption
+shared correctness bug
+```
+
+才中断整批。
+
+---
+
+# 49. Batch Summary
+
+生成：
+
+```text
+research/results/BATCH_02_EVIDENCE_INFORMED_VALIDATION.md
+```
+
+统一表：
+
+| Track           | Evidence Tier | Research Action    | Local Question              | Decision |
+| --------------- | ------------- | ------------------ | --------------------------- | -------- |
+| S27A Robustness | E3            | LOCAL_ADJUDICATION | sizing 是否稳定                 |          |
+| S4B ERC         | E2            | UPSTREAM_COMPARE   | correlation-aware ERC 是否有增量 |          |
+| S10A Vol Target | E3            | LOCAL_ADJUDICATION | 无杠杆 ETF vol timing 是否有效     |          |
+
+性能表至少：
+
+| Strategy | CAGR | MaxDD | Sharpe | Calmar | Turnover | Decision |
+| -------- | ---: | ----: | -----: | -----: | -------: | -------- |
+
+不要做：
+
+```text
+overall strategy score
+```
+
+---
+
+# 50. Cross-Track Questions
+
+Batch summary 必须回答：
+
+```text
+1. Did S27A survive parameter,
+   period and cost robustness?
+
+2. Is S27A's inverse-vol improvement
+   structural or narrow?
+
+3. Did correlation-aware ERC improve
+   on simple inverse-vol?
+
+4. Did ERC justify its additional
+   optimizer dependency?
+
+5. Did unlevered volatility targeting
+   add value after controlling
+   monthly rebalance mechanics?
+
+6. Did volatility targeting merely
+   lower average risk exposure?
+
+7. How do surviving dynamic strategies
+   compare contextually with S30?
+
+8. Which external claims transferred
+   successfully?
+
+9. Which did not?
+
+10. What remains local and unproven?
+```
+
+---
+
+# 51. Research Ledger
+
+追加独立 local questions：
+
+建议：
+
+```text
+RL-025 S27A Robustness
+
+RL-026 S4B ERC ETF Transfer
+
+RL-027 S10A Volatility Targeting Adjudication
+```
+
+实际编号以最新 ledger 为准。
+
+只记录：
+
+```text
+question
+external mapping
+external tier
+local gap
+frozen protocol
+decision
+evidence
+reopen condition
+```
+
+不要复制整篇文献综述。
+
+---
+
+# 52. External Registry After Results
+
+结果完成后更新相关 entry 的：
+
+```text
+local_mapping
+local_status
+local_evidence_refs
+remaining_gap
+```
+
+不得根据本地结果改变：
+
+```text
+external evidence tier
+external consensus
+```
+
+除非本 Goal 的外部文献审计本身发现新的外部证据。
+
+---
+
+# 53. Strategy Research Map
+
+更新：
+
+```text
+docs/STRATEGY_RESEARCH_MAP.md
+```
+
+反映：
+
+```text
+S27A robustness result
+
+S4B local mapping/result
+
+S10A local mapping/result
+```
+
+继续严格区分：
 
 ```text
 external evidence
@@ -667,1825 +1913,205 @@ local evidence
 
 ---
 
-# 11. Research Action Vocabulary
+# 54. STRATEGY_CATALOG
 
-永久采用：
-
-```text
-TRANSFER_VALIDATE
-
-UPSTREAM_COMPARE
-
-LOCAL_ADJUDICATION
-
-NEW_HYPOTHESIS
-
-REFERENCE_ONLY
-
-DO_NOT_PURSUUE
-```
-
-如果仓库已有更合适命名，可统一成等价命名。
-
-不要建设状态机。
-
-这些只是 research semantics。
-
----
-
-# 12. Complexity Hurdle Rule
-
-更新 `RESEARCH_RULES.md`：
-
-任何复杂策略必须回答：
-
-```text
-Why not the simpler benchmark?
-```
-
-适当 comparator 可以是：
-
-```text
-1/N
-S30
-buy-and-hold
-same-universe equal weight
-same-risk-exposure comparator
-canonical unmanaged version
-```
-
-不是所有策略都强制比较同一个 benchmark。
-
-必须选择：
-
-```text
-the simplest comparator
-that isolates the added mechanism
-```
-
----
-
-# 13. Community Implementation Rule — Expand Existing Rule
-
-当前社区优先主要针对：
-
-```text
-VectorBT / RQAlpha infrastructure
-```
-
-扩展为：
-
-```text
-strategy implementation also follows upstream-first
-```
-
-对于经典 allocator / optimizer：
-
-先检查：
-
-```text
-existing TactiCore capability
-
-VectorBT
-
-PyPortfolioOpt
-
-Riskfolio-Lib
-
-official/reference implementation
-
-other mature community implementation
-```
-
-然后才允许：
-
-```text
-minimal local implementation
-```
-
-但不要因为 registry 中列出项目就立即引入 dependency。
-
-依赖只有在未来具体实验需要时才评估。
-
----
-
-# 14. Do Not Create Research Infrastructure
-
-本 Goal 禁止创建：
-
-```text
-literature crawler
-paper downloader
-citation database
-SQL database
-strategy registry service
-research knowledge graph
-web scraper
-agent workflow engine
-```
-
-只创建轻量：
-
-```text
-one machine-readable registry
-+
-one human-readable research map
-```
-
----
-
-# 15. New Machine-Readable Evidence Registry
-
-新增：
-
-```text
-research/strategy_evidence/STRATEGY_EVIDENCE_REGISTRY.yaml
-```
-
-不要增加 YAML runtime dependency。
-
-这是 version-controlled research artifact，不需要软件运行它。
-
-每个 entry 建议至少：
-
-```yaml
-strategy_id:
-
-canonical_name:
-
-family:
-
-strategy_type:
-  # anomaly
-  # allocation_method
-  # tactical_rule
-  # benchmark
-  # overlay
-  # local_hypothesis
-
-external_evidence:
-  tier:
-  consensus:
-  summary:
-  evidence_as_of:
-
-canonical_sources:
-  - title:
-    authors:
-    year:
-    venue:
-    doi_or_identifier:
-    role:
-      # canonical
-      # replication
-      # contradiction
-      # review
-      # practitioner
-
-known_limitations:
-
-implementation_prior:
-  upstream_available:
-  known_projects:
-  preferred_action:
-
-tacticore:
-  relevance:
-  local_mapping:
-  local_status:
-  local_evidence_refs:
-  remaining_gap:
-
-research_action:
-
-do_not_research:
-```
-
-字段可以合理收敛，但必须保留这些语义。
-
----
-
-# 16. No Fake Precision
-
-registry 不得包含：
-
-```text
-evidence_score = 87
-confidence = 93%
-strategy_quality = 8.7
-```
-
-这种伪精确评分。
-
-只使用：
-
-```text
-tier
-consensus
-scope
-limitations
-remaining gap
-```
-
----
-
-# 17. Source Quality Rule
-
-优先：
-
-```text
-peer-reviewed primary publication
-
-major academic working paper
-when no published version exists
-
-independent replication/review
-
-original practitioner paper
-for practitioner-origin strategy
-
-official upstream documentation/source
-for implementation claims
-```
-
-避免用：
-
-```text
-SEO blogs
-strategy marketing pages
-random Medium posts
-uncited summaries
-```
-
-替代原始证据。
-
-如果只能找到 practitioner evidence：
-
-必须明确：
-
-```text
-PRACTITIONER_EVIDENCE
-```
-
-不能包装成 academic consensus。
-
----
-
-# 18. Contradictory Evidence Is Mandatory
-
-对于：
-
-```text
-E3_MIXED_CONDITIONAL
-```
-
-必须主动搜索：
-
-```text
-negative replication
-OOS failure
-recent contradictory paper
-implementation sensitivity
-```
-
-不能只收集 supporting literature。
-
----
-
-# 19. Minimum Strategy Universe
-
-本轮建立：
-
-```text
->= 35
-```
-
-个与 TactiCore 有合理相关性的 canonical strategy/method entries。
-
-不要为了数量加入大量：
-
-```text
-intraday
-options
-high-frequency
-single-stock microstructure
-```
-
-策略。
-
-重点覆盖以下五类。
-
----
-
-# 20. Family A — Trend / Momentum
-
-至少覆盖：
-
-```text
-time-series momentum / trend following
-
-cross-sectional momentum
-
-asset-class relative momentum
-
-industry momentum
-
-dual momentum
-
-moving-average tactical allocation / GTAA
-
-multi-horizon trend / trend ensemble
-
-volatility-scaled trend
-
-trend + inverse-volatility allocation
-
-defensive momentum / defensive asset rotation
-```
-
----
-
-# 21. Family B — Portfolio / Risk Allocation
-
-至少覆盖：
-
-```text
-1/N equal weight
-
-static diversified allocation
-
-inverse volatility
-
-equal risk contribution
-
-risk parity
-
-mean-variance optimization
-
-minimum variance
-
-shrinkage minimum variance
-
-maximum diversification
-
-Black-Litterman
-
-HRP
-
-HERC
-```
-
----
-
-# 22. Family C — Volatility / Tactical Risk
-
-至少覆盖：
-
-```text
-volatility targeting
-
-volatility-managed portfolios
-
-equity/bond tactical trend
-
-multi-asset tactical trend
-
-drawdown-control approaches
-
-asset-class breadth
-```
-
----
-
-# 23. Family D — Established Return Premia
-
-至少覆盖与低频 ETF allocation 有潜在关系的：
-
-```text
-value
-
-momentum
-
-value + momentum
-
-carry
-
-low-volatility / defensive equity
-
-quality / profitability
-```
-
-对于 stock-level evidence：
-
-必须标：
-
-```text
-TactiCore relevance = MEDIUM/LOW
-```
-
-如果不能直接迁移 ETF allocation。
-
----
-
-# 24. Family E — China / ETF-Specific Open Questions
-
-至少覆盖：
-
-```text
-China A-share momentum
-
-China industry momentum
-
-China sector ETF rotation
-
-China theme ETF rotation
-
-China ETF defensive asset rotation
-
-ETF liquidity-aware allocation
-
-PIT ETF universe effects
-
-fund-launch / survivorship effects
-
-China ETF transaction-cost implementation
-```
-
-其中某些是：
-
-```text
-research concerns
-```
-
-而非 standalone strategy。
-
-允许使用：
-
-```text
-strategy_type = research_problem
-```
-
-如果更准确。
-
----
-
-# 25. Mandatory Canonical Source Seeds
-
-这些只是最低起点。
-
-必须自行搜索最新、原始和反证来源，不得只使用本列表。
-
-至少核实：
-
-```text
-Moskowitz, Ooi, Pedersen
-"Time Series Momentum"
-Journal of Financial Economics, 2012
-
-Hurst, Ooi, Pedersen
-"A Century of Evidence on Trend-Following Investing"
-
-Moskowitz, Grinblatt
-"Do Industries Explain Momentum?"
-Journal of Finance, 1999
-
-Asness, Moskowitz, Pedersen
-"Value and Momentum Everywhere"
-Journal of Finance, 2013
-
-DeMiguel, Garlappi, Uppal
-"Optimal Versus Naive Diversification:
-How Inefficient Is the 1/N Portfolio Strategy?"
-Review of Financial Studies, 2009
-
-Maillard, Roncalli, Teiletche
-"On the Properties of Equally-Weighted
-Risk Contributions Portfolios"
-
-Moreira, Muir
-"Volatility-Managed Portfolios"
-Journal of Finance, 2017
-
-Cederburg, O'Doherty, Wang, Yan
-"On the Performance of Volatility-Managed Portfolios"
-Journal of Financial Economics, 2020
-
-Faber
-"A Quantitative Approach to Tactical Asset Allocation"
-
-López de Prado
-"Building Diversified Portfolios
-that Outperform Out-of-Sample"
-```
-
-同时搜索：
-
-```text
-later replications
-contradictory evidence
-China-specific literature
-```
-
----
-
-# 26. Current Upstream Implementation Seeds
-
-至少调查当前状态：
-
-```text
-PyPortfolioOpt
-
-Riskfolio-Lib
-
-VectorBT
-
-RQAlpha
-```
-
-只记录与 strategy implementation 直接相关的能力。
-
-例如：
-
-```text
-minimum volatility
-mean-variance
-Black-Litterman
-HRP/HERC
-risk measures
-portfolio simulation
-execution validation
-```
-
-不要立即安装任何新 dependency。
-
----
-
-# 27. Human-Readable Strategy Research Map
-
-新增：
-
-```text
-docs/STRATEGY_RESEARCH_MAP.md
-```
-
-这是以后 Principal / Agent 选择研究方向的入口。
-
-至少包含：
-
-```text
-1. Purpose
-
-2. External Evidence Tier Definitions
-
-3. Strategy Families
-
-4. Mature External Findings
-
-5. Established Allocation Methods
-
-6. Mixed / Contested Strategies
-
-7. Open / Local Questions
-
-8. Existing TactiCore Mapping
-
-9. Closed Local Questions
-
-10. Current Transfer Gaps
-
-11. Candidate Future Research
-
-12. Strategies We Should NOT Re-study From Scratch
-```
-
----
-
-# 28. Strategy Map Summary Table
-
-至少给出：
-
-| Canonical Strategy | Family | External Tier | External Conclusion | TactiCore Mapping | Local Status | Remaining Gap | Action |
-| ------------------ | ------ | ------------- | ------------------- | ----------------- | ------------ | ------------- | ------ |
-
-不要用一个：
-
-```text
-overall strategy score
-```
-
-排序。
-
----
-
-# 29. Existing TactiCore Strategy Mapping
-
-必须映射所有现有策略。
-
-至少：
-
-## S1
-
-判断其 canonical mapping。
-
-明确：
-
-```text
-local rejection
-!=
-global momentum rejection
-```
-
----
-
-## S2
-
-映射至：
-
-```text
-time-series momentum / trend following
-```
-
-外部 evidence 应反映成熟 trend literature。
-
-本地 gap：
-
-```text
-long-only ETF transfer
-China/global ETF proxy
-fallback semantics
-execution
-prospective stability
-```
-
-本地状态：
-
-```text
-PROSPECTIVE_SHADOW_ACTIVE
-```
-
----
-
-## S3A
-
-映射至：
-
-```text
-industry momentum / sector momentum
-```
-
-说明：
-
-```text
-canonical phenomenon has external literature
-but this exact China ETF implementation failed
-```
-
----
-
-## S3B
-
-更接近：
-
-```text
-local aggregate breadth regime hypothesis
-```
-
-不要硬包装成已有成熟策略。
-
-如果外部 evidence 不足：
-
-```text
-E4_OPEN_LOCAL
-```
-
----
-
-## S3C
-
-映射至：
-
-```text
-per-sector time-series trend transfer
-```
-
-明确：
-
-```text
-exact local implementation rejected
-```
-
-不是：
-
-```text
-trend following globally rejected
-```
-
----
-
-## S4A
-
-映射至：
-
-```text
-inverse-volatility allocation
-```
-
-应归：
-
-```text
-established allocation method
-```
-
-本地 gate rejection 只说明：
-
-```text
-this implementation did not justify
-incremental local complexity
-```
-
----
-
-## S8A
-
-映射到最贴近的：
-
-```text
-moving-average tactical allocation
-or
-single-asset time-series trend
-```
-
-根据文献审计决定准确归类。
-
----
-
-## S27A
-
-映射至：
-
-```text
-time-series trend
-+
-inverse-volatility sizing
-```
-
-明确：
-
-```text
-composite of mature/established components
-```
-
-而不是：
-
-```text
-novel TactiCore anomaly
-```
-
-本地状态：
-
-```text
-ADVANCE_TO_ROBUSTNESS
-```
-
-但 robustness 是否应立即执行：
-
-```text
-NOT decided in this Goal
-```
-
----
-
-## S30
-
-映射至：
-
-```text
-naive/static diversification
-```
-
-强调其角色：
-
-```text
-complexity hurdle
-```
-
-而不是待寻找 alpha 的 strategy。
-
----
-
-# 30. Update STRATEGY_CATALOG
-
-修改：
+更新：
 
 ```text
 docs/STRATEGY_CATALOG.md
 ```
 
-不要重写已有 local evidence。
-
-对每个 local strategy 增加或统一表达：
-
-```text
-Canonical external mapping
-
-External evidence tier
-
-Local research question
-
-Local lifecycle status
-
-What the local result does NOT prove
-```
-
-原则：
-
-```text
-STRATEGY_CATALOG
-=
-what TactiCore implemented
-and what happened locally
-```
-
-而：
-
-```text
-STRATEGY_RESEARCH_MAP
-=
-what the wider research world knows
-and where TactiCore gaps remain
-```
-
-不要混为一份巨型文档。
-
----
-
-# 31. Update AGENTS.md — Mandatory
-
-这一步非常重要。
-
-修改根：
-
-```text
-AGENTS.md
-```
-
-因为未来 Agent 必须自动读取这套思路。
-
-启动检查增加：
-
-```text
-docs/STRATEGY_RESEARCH_MAP.md
-
-research/strategy_evidence/
-STRATEGY_EVIDENCE_REGISTRY.yaml
-```
-
-规则：
-
-> Any Goal that proposes, implements, compares, tunes, or extends a strategy must perform the External Evidence Gate before touching strategy code.
-
-如果已有 registry entry：
-
-```text
-read it first
-```
-
-如果没有：
-
-```text
-perform literature review
-and add/update the entry
-before coding
-```
-
----
-
-# 32. AGENTS Strategy Proposal Gate
-
-在 `AGENTS.md` 写明：
-
-未来 Agent 不得直接：
-
-```text
-"I propose strategy X"
-→ code
-```
-
-必须先输出内部判断：
-
-```text
-Canonical mapping:
-External tier:
-External conclusion:
-Relevant contradictions:
-Upstream implementation:
-Existing TactiCore evidence:
-Remaining local gap:
-Research action:
-```
-
-然后才能继续 Goal。
-
----
-
-# 33. AGENTS Closed-Question Interaction
-
-External evidence 和 local ledger 必须同时检查。
-
-未来新 strategy proposal：
-
-```text
-External registry
-        +
-RESEARCH_LEDGER
-        ↓
-Is there actually a new question?
-```
-
-如果：
-
-```text
-external literature already answers existence
-AND
-local ledger already answers transfer
-```
-
-则：
-
-```text
-DO_NOT_PURSUUE
-```
-
-不得换名字重新研究。
-
----
-
-# 34. Update Architecture Information Flow
-
-更新 `ARCHITECTURE.md` 的 Goal 生成信息层级。
-
-从当前：
-
-```text
-ARCHITECTURE
-+ RESEARCH_RULES
-+ RESEARCH_LEDGER
-+ research artifacts
-+ CURRENT_STATE
-→ next Goal
-```
-
-升级成：
-
-```text
-ARCHITECTURE
-+
-RESEARCH_RULES
-+
-EXTERNAL STRATEGY EVIDENCE
-+
-RESEARCH_LEDGER
-+
-LOCAL RESEARCH ARTIFACTS
-+
-STRATEGY_CATALOG
-+
-CURRENT_STATE
-→ next Goal
-```
-
-`docs/STRATEGY_RESEARCH_MAP.md` 是导航/综合视图。
-
----
-
-# 35. Update RESEARCH_RULES Research Sequence
-
-长期研究顺序升级为：
-
-```text
-External Evidence Gate
-        ↓
-Canonical Strategy Mapping
-        ↓
-Local Evidence Gap
-        ↓
-Predeclared Research Question
-        ↓
-Strategy / Upstream Implementation
-        ↓
-Historical Screen
-        ↓
-Robustness
-        ↓
-Execution Validation
-        ↓
-Prospective Candidate
-```
-
-不得跳过前三步。
-
----
-
-# 36. Batch Design Rule
-
-把以下永久规则写入 `RESEARCH_RULES.md`：
-
-批次研究优先选择：
-
-```text
-economically orthogonal gaps
-```
-
-而不是：
-
-```text
-five nearby variants
-of the same strategy
-```
-
-一个 batch 中：
-
-```text
-one strategy's observed result
-must not alter another strategy's
-already frozen design
-```
-
-对于 mature external strategy：
-
-Batch 应称：
-
-```text
-Replication / Transfer Batch
-```
-
-而不是：
-
-```text
-Discovery Batch
-```
-
----
-
-# 37. Rejected Strategy Rule
-
-把现有规则进一步明确：
-
-如果一个：
-
-```text
-local implementation
-```
-
-被 REJECT：
-
-禁止：
-
-```text
-quietly reinterpret it
-as rejection of the entire
-canonical literature family
-```
+只记录本地生命周期。
 
 例如：
 
 ```text
-S3A rejected
-≠ industry momentum disproved
-
-S4A rejected
-≠ inverse-volatility useless
-
-S8A rejected
-≠ trend following invalid
-```
-
----
-
-# 38. External Evidence Refresh Rule
-
-registry 是：
-
-```text
-evidence snapshot
-```
-
-每条 entry 必须有：
-
-```text
-evidence_as_of
-```
-
-未来 Goal：
-
-只更新：
-
-```text
-relevant entries
-```
-
-不要求每次刷新整个 registry。
-
-如果发现：
-
-```text
-new major replication
-new contradiction
-new meta-analysis
-major upstream implementation change
-```
-
-则更新对应 entry。
-
-不要制造周期性维护系统。
-
----
-
-# 39. Evidence Search Stop Rule
-
-Literature research 也不能无限扩展。
-
-对于普通 strategy entry：
-
-通常达到以下即可停止：
-
-```text
-canonical source identified
-
-at least one independent confirmation/review
-when available
-
-material contradiction searched
-
-market / implementation scope understood
-
-TactiCore gap identifiable
-```
-
-不追求：
-
-```text
-complete academic bibliography
-```
-
----
-
-# 40. Current Literature Map Must Be Honest
-
-不要预设所有 tier。
-
-本 Prompt 中的候选 tier 只是方向。
-
-Codex 必须根据实际 evidence 决定。
-
-特别：
-
-```text
-China momentum
-industry momentum transfer
-HRP superiority
-volatility targeting
-GTAA
-```
-
-可能存在：
-
-```text
-mixed / conditional evidence
-```
-
-必须如实分类。
-
----
-
-# 41. No Citation Laundering
-
-如果二级文章说：
-
-```text
-"paper X proves Y"
-```
-
-必须尽可能找到：
-
-```text
-paper X
-```
-
-本身。
-
-不要让 blog/marketing page 成为：
-
-```text
-canonical evidence
-```
-
----
-
-# 42. No Abstract Overreach
-
-论文研究：
-
-```text
-futures
-long-short
-leveraged volatility-scaled portfolio
-```
-
-不能直接登记为：
-
-```text
-proven for long-only China ETF
-```
-
-必须记录 domain mismatch。
-
-这是 External Evidence Registry 最重要的作用之一。
-
----
-
-# 43. Upstream Implementation Does Not Equal Evidence
-
-例如存在：
-
-```text
-PyPortfolioOpt HRP
-Riskfolio ERC
-```
-
-只证明：
-
-```text
-implementation exists
-```
-
-不证明：
-
-```text
-strategy economically superior
-```
-
-必须把：
-
-```text
-research evidence
-```
-
-和：
-
-```text
-software availability
-```
-
-分开。
-
----
-
-# 44. Update CURRENT_STATE
-
-完成 Batch 00 后：
-
-`CURRENT_STATE.md` 应表达：
-
-```text
-S2 R1:
-PROSPECTIVE_SHADOW_ACTIVE
-
-Batch 01:
-architect review completed
-
 S27A:
-historical baseline ADVANCE,
-robustness eligible but not automatically started
+baseline → robustness result
 
-External Evidence Foundation:
-ESTABLISHED
+S4B:
+ERC transfer baseline → result
 
-Current research frontier:
-EVIDENCE_INFORMED_STRATEGY_SELECTION
+S10A:
+vol-target adjudication → result
 ```
 
-下一步写成类似：
-
-```text
-AWAIT_EXTERNAL_EVIDENCE_ARCHITECT_REVIEW
-```
-
-不要自动开始：
-
-```text
-S27 robustness
-Batch 02
-Theme Rotation
-```
+不要把 external literature 全部塞进 catalog。
 
 ---
 
-# 45. Update docs/goal.md
+# 55. CURRENT_STATE
 
-用本 Goal 替换已经完成的 Batch 01 Goal。
+完成 Batch 02 后只保留当前前沿。
 
-完成时末尾记录：
+如果某些 track advance：
+
+写：
+
+```text
+which tracks earned next-stage eligibility
+```
+
+如果全部 fail：
+
+如实关闭。
+
+最终状态必须：
+
+```text
+BATCH_02_COMPLETE
+AWAIT_BATCH_02_ARCHITECT_REVIEW
+```
+
+不得自动开始下一阶段。
+
+---
+
+# 56. ARCHITECTURE / RESEARCH_RULES / AGENTS
+
+正常：
+
+```text
+UNCHANGED
+```
+
+因为 Batch 00 已经完成永久规则升级。
+
+不要把：
+
+```text
+ERC 60 days
+S10 target vol 10%
+S27 parameter neighborhood
+```
+
+写进永久规则。
+
+这些属于 strategy-specific protocol。
+
+---
+
+# 57. docs/goal.md
+
+用本 Goal 替换完成的 Batch 00 Goal。
+
+结束写：
 
 ```text
 Status: completed
 
-Goal:
-BATCH_00_EXTERNAL_STRATEGY_EVIDENCE_FOUNDATION
+Batch:
+BATCH_02_EVIDENCE_INFORMED_VALIDATION
 
 Starting HEAD:
 ...
 
-Ending HEAD:
+Protocol Freeze SHA:
 ...
 
-Registry entries:
+Results SHA:
 ...
 
-External evidence tiers:
-...
-
-Existing TactiCore strategies mapped:
-...
-
-Next state:
-AWAIT_EXTERNAL_EVIDENCE_ARCHITECT_REVIEW
-```
-
----
-
-# 46. RESEARCH_LEDGER
-
-不要把全部 external literature 塞进：
-
-```text
-RESEARCH_LEDGER.md
-```
-
-Ledger 继续只拥有：
-
-```text
-TactiCore local research decisions
-```
-
-External literature 属于：
-
-```text
-STRATEGY_EVIDENCE_REGISTRY
-```
-
-本 Goal 只：
-
-1. 修复确认存在的 RL-023 corrected-value drift；
-2. 如果确实产生一个需要永久记录的 local meta-decision，可追加一个非常短的 entry，例如：
-
-```text
-External Evidence Gate adopted
-```
-
-但优先把永久方法放：
-
-```text
-RESEARCH_RULES
-```
-
-不要让 ledger 变成 governance log。
-
----
-
-# 47. README
-
-可以最小更新：
-
-```text
-README.md
-```
-
-增加入口：
-
-```text
-Strategy Research Map
-External Strategy Evidence Registry
-```
-
-不要扩大 README。
-
----
-
-# 48. Documentation Ownership After This Goal
-
-最终明确：
-
-```text
-AGENTS.md
-=
-future agent startup / routing
-
-ARCHITECTURE.md
-=
-system stages and ownership
-
-RESEARCH_RULES.md
-=
-permanent research method
-
-STRATEGY_EVIDENCE_REGISTRY.yaml
-=
-external evidence snapshot
-
-STRATEGY_RESEARCH_MAP.md
-=
-human-readable external/local research map
-
-RESEARCH_LEDGER.md
-=
-append-only local decisions
-
-STRATEGY_CATALOG.md
-=
-implemented local strategy lifecycle
-
-research/results/*
-=
-detailed local experiment evidence
-
-CURRENT_STATE.md
-=
-current frontier
-
-goal.md
-=
-current ephemeral task
-```
-
-不得混淆职责。
-
----
-
-# 49. Important Existing Strategy Interpretation
-
-完成后，至少能在 map/catalog 中直接回答：
-
-```text
-S2:
-Is this a novel anomaly?
-NO.
-
-What is it?
-A local long-only ETF transfer
-of mature trend / TSMOM ideas.
-
-What remains?
-Prospective local evidence.
-```
-
-```text
 S27A:
-Is this a novel anomaly?
-NO / mostly NO.
+...
 
-What is it?
-Trend signal
-+
-established inverse-volatility sizing.
+S4B:
+...
 
-What happened locally?
-Historical baseline advanced.
+S10A:
+...
 
-What remains?
-Robustness and later execution,
-if Principal Review authorizes it.
-```
-
-```text
-S30:
-Is this alpha?
-NO.
-
-What is it?
-Simple-diversification complexity hurdle.
+Next:
+AWAIT_BATCH_02_ARCHITECT_REVIEW
 ```
 
 ---
 
-# 50. Required Strategy Research Map: Mature / Known
+# 58. S2 Final Integrity Gate
 
-The finished map should clearly identify strategies for which TactiCore should normally NOT research existence from scratch.
-
-Expected examples include, subject to actual literature verification:
-
-```text
-time-series momentum
-
-cross-sectional momentum
-
-industry momentum
-
-value
-
-value + momentum
-
-naive diversification
-
-classical portfolio optimization methods
-```
-
-Their remaining questions should be:
-
-```text
-transfer
-implementation
-local constraints
-robustness
-```
-
-not rediscovery.
-
----
-
-# 51. Required Map: Established Methods
-
-Expected method-oriented entries include:
-
-```text
-inverse volatility
-
-ERC / risk parity
-
-minimum variance
-
-shrinkage covariance allocation
-
-maximum diversification
-
-HRP/HERC
-
-Black-Litterman
-```
-
-Research action usually:
-
-```text
-UPSTREAM_COMPARE
-```
-
-not:
-
-```text
-prove alpha exists
-```
-
----
-
-# 52. Required Map: Mixed / Conditional
-
-Actively identify strategies where external evidence is materially contested.
-
-Likely examples requiring verification:
-
-```text
-volatility-managed portfolios
-
-volatility targeting
-
-some China momentum formulations
-
-GTAA / moving-average tactical allocation
-
-HRP superiority claims
-```
-
-These are valuable future:
-
-```text
-LOCAL_ADJUDICATION
-```
-
-candidates.
-
----
-
-# 53. Required Map: Open / Local
-
-Identify problems for which TactiCore can plausibly add new evidence:
-
-```text
-China tradable ETF transfer
-
-China theme ETF rotation
-
-PIT ETF universe
-
-ETF launch / survivor effects
-
-defensive ETF selection
-
-China-specific liquidity effects
-
-local execution-cost effects
-
-sector/theme overlap
-
-asset-class breadth in available ETF universe
-```
-
-Do not automatically implement them.
-
----
-
-# 54. Future Goal Template Rule
-
-`RESEARCH_RULES.md` or `AGENTS.md` should require every future strategy Goal to begin with a short section:
-
-```text
-External Evidence Gate
-
-Canonical strategy:
-External tier:
-External consensus:
-Canonical sources:
-Contradictory evidence:
-Original implementation domain:
-TactiCore domain mismatch:
-Upstream implementation:
-Existing local evidence:
-Remaining local gap:
-Research action:
-```
-
-Only after this section may the Goal define:
-
-```text
-implementation
-experiment
-```
-
----
-
-# 55. Future Batch Selection Rule
-
-Future Batch 02 should NOT be chosen by:
-
-```text
-highest historical CAGR
-most exciting idea
-current market narrative
-```
-
-It should be chosen from:
-
-```text
-remaining local evidence gaps
-```
-
-with preference for:
-
-```text
-high TactiCore relevance
-
-external evidence quality
-
-economic orthogonality
-
-simple implementability
-
-ability to distinguish mechanisms
-
-low data-mining freedom
-```
-
-No composite score is required.
-
----
-
-# 56. S27A Special Handling
-
-Do not start S27A robustness in this Goal.
-
-Instead registry/map must first determine:
-
-```text
-Which components are externally mature?
-
-Which claims are already established?
-
-What exactly did Batch 01 add locally?
-
-What remains a legitimate robustness question?
-```
-
-Then Principal Review will decide whether:
-
-```text
-S27A robustness
-```
-
-deserves the next batch.
-
----
-
-# 57. S30 Special Handling
-
-S30 should become a permanent example of:
-
-```text
-simple benchmark before complexity
-```
-
-But do NOT hard-code:
-
-```text
-every strategy must beat S30
-```
-
-because comparator must isolate the actual mechanism.
-
-Instead rule is:
-
-```text
-every complex strategy must face
-an appropriate simple complexity hurdle
-```
-
-S30 is one important such hurdle.
-
----
-
-# 58. Validation
-
-本 Goal 主要修改文档，因此仍需运行现有 repository validation：
-
-```bash
-uv sync --extra dev
-
-uv run pytest
-
-uv run ruff check .
-uv run ruff format --check .
-uv run mypy
-```
-
-再次：
+所有实验和文档完成后再次：
 
 ```bash
 uv run python research/experiments/run_s2_r1_shadow.py \
   --verify-candidate
 ```
 
-必须 PASS。
+必须：
+
+```text
+PASS
+```
+
+否则：
+
+```text
+BATCH_02_INVALID
+```
+
+不得更新 S2 manifest。
 
 ---
 
-# 59. Evidence Artifact Review
+# 59. Full Validation
 
-提交前人工/Agent 自检 registry：
+执行：
 
-```text
->=35 relevant entries
+```bash
+uv run pytest
 
-no duplicate strategy IDs
+uv run ruff check .
 
-all entries have evidence tier
+uv run ruff format --check .
 
-all entries have evidence_as_of
-
-all entries have research_action
-
-all HIGH-relevance entries have remaining_gap
-
-E3 entries include contradictory search
-
-existing S1/S2/S3/S4/S8/S27/S30 mappings complete
-
-no unsupported "proven" claims
-
-no external claim presented as China ETF evidence
-without transfer support
+uv run mypy
 ```
 
-不要为了这个检查写一个 framework。
+如果新增 research dependency：
+
+同时从 clean sync 验证：
+
+```bash
+uv sync --extra dev --extra research
+```
 
 ---
 
 # 60. Architecture Drift Audit
 
-逐项回答：
+最终逐项回答：
 
 ```text
-Did we add a literature crawler?
-Did we add a research database?
-Did we add a strategy registry service?
-Did we add a workflow engine?
-Did we run new backtests?
-Did we tune existing strategies?
-Did we modify S2 frozen inputs?
-Did we start S27 robustness?
-Did we start Batch 02?
-Did we start Theme Rotation?
-Did we introduce a dependency without a current need?
-Did we confuse upstream implementation with empirical evidence?
-Did we treat local rejection as global rejection?
-Did we treat external evidence as local validation?
+Did we modify S2 R1?
+
+Did we reopen rejected S3/S4A/S8A?
+
+Did we tune old failed strategies?
+
+Did we run a Cartesian parameter search?
+
+Did we pick best S27 parameters?
+
+Did we write our own ERC solver?
+
+Did we confuse Riskfolio implementation
+with economic evidence?
+
+Did we ignore contradictory
+volatility-management evidence?
+
+Did we add leverage?
+
+Did we run RQAlpha?
+
+Did we start MinVar/HRP/Theme?
+
+Did one track's performance alter
+another frozen track?
+
+Did we change external tiers
+because of local performance?
+
+Did we add generic research infrastructure?
 ```
 
 正常全部：
@@ -2496,229 +2122,138 @@ NO
 
 ---
 
-# 61. Required Diff
+# 61. Commit B
 
-Expected meaningful changes:
-
-```text
-AGENTS.md
-
-README.md                     # minimal, if useful
-
-docs/ARCHITECTURE.md
-
-docs/RESEARCH_RULES.md
-
-docs/STRATEGY_RESEARCH_MAP.md # new
-
-docs/STRATEGY_CATALOG.md
-
-docs/CURRENT_STATE.md
-
-docs/RESEARCH_LEDGER.md       # only factual correction / minimal local decision
-
-docs/goal.md
-
-research/strategy_evidence/
-  STRATEGY_EVIDENCE_REGISTRY.yaml
-```
-
-Normally NO changes to:
-
-```text
-tacticore/**
-config/**
-data/**
-research/experiments/**
-research/results/**
-research/shadow/**
-tests/**
-```
-
-unless required only to fix a proven existing correctness/document inconsistency.
-
----
-
-# 62. Commit
-
-完成全部工作、验证后：
+完成结果、文档和 validation 后：
 
 ```bash
 git status
 git diff
 ```
 
-创建一个 coherent commit。
-
-建议 intent：
+创建：
 
 ```text
-establish external evidence first strategy research
+Commit B
 ```
 
-然后：
+建议：
 
-```bash
-git push
+```text
+evaluate batch 2 evidence informed strategy gaps
+```
+
+push。
+
+---
+
+# 62. Final User Report
+
+最终必须报告：
+
+```text
+Starting HEAD
+Protocol Freeze SHA
+Results SHA
+Ending HEAD
+
+S2 verification before/after
+
+External sources added/updated
+
+Riskfolio version
+Riskfolio API used
+
+S27A:
+baseline reproduction
+trend neighborhood
+vol neighborhood
+fixed periods
+rolling 3Y/5Y
+cost sensitivity
+decision
+
+S4B:
+coverage
+ERC metrics
+inverse-vol comparator
+equal-weight comparator
+concentration
+turnover
+decision
+
+S10A:
+average scale
+months scaled down
+CAGR
+MaxDD
+Sharpe
+Calmar
+monthly-static comparator
+annual S30 context
+decision
 ```
 
 ---
 
-# 63. Final Report
+# 63. Mandatory Stop
 
-最终向用户报告：
-
-```text
-starting HEAD
-ending HEAD
-commit SHA
-
-S2 verification before
-S2 verification after
-
-Batch 01 current authoritative decisions
-
-S27 ledger inconsistency:
-confirmed? yes/no
-corrected? yes/no
-
-number of registry entries
-
-number of:
-E1
-E2
-E3
-E4
-
-number HIGH/MEDIUM/LOW relevance
-
-existing TactiCore strategies mapped
-
-canonical academic sources reviewed
-
-contradictory evidence captured
-
-upstream projects reviewed
-
-files changed
-
-architecture changes
-
-permanent rule changes
-
-AGENTS routing changes
-```
-
-并明确：
+完成 Batch 02 后：
 
 ```text
-Did this Goal run strategy backtests?
-NO
-
-Did this Goal start S27 robustness?
-NO
-
-Did this Goal start Batch 02?
-NO
-
-Did this Goal modify S2 R1?
-NO
-
-Does S2 candidate verification still pass?
-YES
+STOP
 ```
+
+禁止自动：
+
+```text
+run S27 RQAlpha
+run ERC robustness
+run vol-target robustness
+
+implement MinVar
+implement HRP
+implement Theme Rotation
+
+start Batch 03
+```
+
+等待 Principal Review。
 
 ---
 
-# 64. Stop Condition
-
-完成以下全部即停止：
+# 64. Final Principle
 
 ```text
-External Evidence Registry built
+External evidence tells us
+which question is worth asking.
 
-Strategy Research Map built
+It does not answer
+the TactiCore local question.
 
-Architecture updated
+S27A earned robustness.
+Test robustness.
 
-Research Rules updated
+ERC is established.
+Reuse upstream and test transfer.
 
-AGENTS routing updated
+Volatility targeting is contested.
+Adjudicate locally.
 
-Strategy Catalog mapped
+Do not invent canonical methods.
 
-Current State updated
+Do not optimize rejected ideas.
 
-existing factual drift corrected
+Do not let one historical result
+rewrite another experiment.
 
-S2 candidate intact
-```
-
-不要继续实现任何新策略。
-
-状态：
-
-```text
-BATCH_00_EXTERNAL_EVIDENCE_FOUNDATION_COMPLETE
-
-AWAIT_EXTERNAL_EVIDENCE_ARCHITECT_REVIEW
-```
-
----
-
-# 65. Final Principle
-
-```text
-Do not rediscover what the community already knows.
-
-External literature
-defines the prior.
-
-TactiCore
-defines the local gap.
-
-Mature anomaly
-→ transfer validation.
-
-Established method
-→ upstream comparison.
-
-Mixed literature
-→ local adjudication.
-
-Open local problem
-→ new hypothesis.
-
-Local failure
-does not invalidate global evidence.
-
-External success
-does not guarantee local success.
-
-Implementation existence
-does not prove economic superiority.
-
-Simple benchmark
-is the complexity hurdle.
+One frozen batch.
+Three orthogonal gaps.
+Then stop and review.
 
 Literature first.
 Upstream first.
-Local evidence second.
+Local evidence next.
+Prospective evidence later.
 Infrastructure last.
 ```
-
----
-
-Status: completed
-
-Goal: BATCH_00_EXTERNAL_STRATEGY_EVIDENCE_FOUNDATION
-
-Starting HEAD: f64bfc1c8e41e757e558599b461c07ce3f8a069f
-
-Ending HEAD: recorded by completion commit
-
-Registry entries: 38 (E1=11, E2=8, E3=11, E4=8; HIGH=23, MEDIUM=10, LOW=5)
-
-Existing TactiCore strategies mapped: S1, S2, S3A, S3B, S3C, S4A, S8A, S27A, S30
-
-Next state: AWAIT_EXTERNAL_EVIDENCE_ARCHITECT_REVIEW

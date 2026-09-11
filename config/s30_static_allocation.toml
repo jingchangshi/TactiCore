@@ -1,0 +1,7 @@
+[static_strategic_allocation]
+symbols = ["510300.SS", "513500.SS", "518880.SS", "511010.SS"]
+weights = [0.25, 0.25, 0.25, 0.25]
+rebalance_frequency = "annual"
+fees = 0.001
+slippage = 0.0005
+initial_cash = 1000000.0

@@ -1,4 +1,4 @@
-# Goal: S3C China Sector Sleeve Trend Filter — Transparent Baseline V1
+# Goal: TactiCore Batch 01 — Diverse Transparent Strategy Screens
 
 Repository:
 
@@ -11,104 +11,143 @@ Role:
 ```text
 Principal Quant Research Engineer
 +
-Strategy Research Reviewer
+Research Integrity Reviewer
 +
 Repository Architecture Maintainer
 ```
 
 ---
 
-# 0. Why This Work Exists
+# 0. Mission
 
-TactiCore 当前已经得到三类重要证据：
+不要继续采用：
 
 ```text
-S2
-Multi-Asset Trend Following
-→ Research Candidate R1
-→ FROZEN / PROSPECTIVE_SHADOW_ACTIVE
+实现一个策略
+→ 等人工检查
+→ 再设计一个策略
+→ 再运行
 ```
 
+本 Goal 改为：
+
 ```text
-S3A
-Cross-sectional top-3 sector winner picking
-→ REJECTED
+一次性冻结一批相互独立的 economic hypotheses
+                ↓
+一次性实现
+                ↓
+先提交 immutable protocol
+                ↓
+统一运行 historical screens
+                ↓
+统一生成结果矩阵
+                ↓
+一次提交完整证据
+                ↓
+由后续人工 / Principal Reviewer
+决定下一批研究方向
 ```
 
+本批次编号：
+
 ```text
-S3B
-Aggregate sector breadth binary risk switch
-→ REJECTED
+BATCH_01_DIVERSE_TRANSPARENT_BASELINES
 ```
 
-S3A 表明：
+一次研究以下五个对象：
 
 ```text
-集中选择相对动量 winner
+S3C  Sector Sleeve Trend Filter
+S4A  Multi-Asset Inverse-Vol Allocation
+S8A  Equity/Bond Trend Allocation
+S27A Trend + Inverse-Vol Allocation
+S30  Static Strategic Allocation Benchmark
 ```
 
-没有优于 broad sector exposure。
-
-S3B 表明：
+其中：
 
 ```text
-行业趋势信息
+S30 = reference benchmark
 ```
 
-确实包含一定风险价值：
+不是待优化策略。
+
+其他四个：
 
 ```text
-Max Drawdown improvement = 8.52pp
+S3C
+S4A
+S8A
+S27A
 ```
 
-但：
+各自独立 PASS / REJECT。
+
+---
+
+# 1. Core Research Principle
+
+整个 Batch 必须遵守：
 
 ```text
-whole-portfolio RISK_ON / RISK_OFF
+freeze all hypotheses
+BEFORE
+seeing any new performance result
 ```
 
-过于粗糙，造成：
+严禁：
 
 ```text
-CAGR sacrifice = 2.64pp
-Sharpe ↓
-Calmar ↓
+跑 S3C
+→ 看结果
+→ 修改 S4A
+
+跑 S4A
+→ 看结果
+→ 修改 S27A
 ```
 
-因此下一步不应该：
+因此本 Goal 强制采用：
 
 ```text
-调 S3A top_k
-调 S3A lookback
-调 S3B breadth threshold
-调 S3B lookback
-```
+Commit A
+=
+Protocol Freeze
 
-而应该提出一个新的、独立经济假设：
+then
 
-> 行业趋势的价值可能存在于“逐行业局部风险过滤”，而不是横截面选赢家，也不是整个行业组合统一开关。给每个行业一个固定风险预算 sleeve；行业自身趋势为正时持有该行业，趋势为负或不可用时，仅将该行业自己的 sleeve 转向防御资产，可能在保持广泛行业参与度的同时降低尾部风险，并减少 S3B 全局 risk-off 对长期复利的损害。
+run all experiments
 
-定义新策略：
+then
 
-```text
-S3C China Sector Sleeve Trend Filter V1
+Commit B
+=
+Results
 ```
 
 ---
 
-# 1. Repository First
+# 2. Repository First
 
 从最新 remote `main` 开始。
 
-不要把本 Prompt 中的状态视为仓库真相。
+不要相信本 Prompt 中写死的 SHA。
 
-首先读取：
+第一步：
+
+```bash
+git fetch origin
+git status
+git log --oneline -15
+```
+
+读取：
 
 ```text
 AGENTS.md
 ```
 
-然后至少读取：
+并按其 routing contract 阅读至少：
 
 ```text
 README.md
@@ -121,30 +160,29 @@ docs/STRATEGY_CATALOG.md
 docs/LESSONS_FROM_DAILYETF.md
 docs/goal.md
 
+config/strategy.toml
+config/universe.csv
+config/s3_sector_universe.csv
 config/s3_sector_rotation.toml
 config/s3_sector_breadth.toml
-config/s3_sector_universe.csv
 
+data/canonical/provenance.json
 data/canonical/s3_sector_rotation_v1/provenance.json
 
+tacticore/strategies/global_dual_momentum.py
+tacticore/strategies/multi_asset_trend.py
 tacticore/strategies/china_sector_rotation.py
 tacticore/strategies/china_sector_breadth.py
-tacticore/strategies/multi_asset_trend.py
+
 tacticore/engines/vectorbt_adapter.py
+tacticore/engines/rqalpha_adapter.py
 
-research/experiments/run_s3_sector_baseline.py
-research/experiments/run_s3b_sector_breadth_baseline.py
-
+research/results/S2_PARAMETER_PLATEAU_V1.md
 research/results/S3_SECTOR_BASELINE_V1.md
 research/results/S3B_SECTOR_BREADTH_BASELINE_V1.md
-research/results/s3_sector_benchmark_comparison_v1.csv
-research/results/s3b_sector_breadth_comparison_v1.csv
 
 research/shadow/s2_r1/candidate_manifest.json
-research/shadow/s2_r1/README.md
 ```
-
-检查相关 tests。
 
 记录：
 
@@ -152,38 +190,68 @@ research/shadow/s2_r1/README.md
 starting HEAD
 recent commits
 working tree
-dependency versions
 
-S2 R1 integrity
-RL-018 state
-RL-019 state
-S3A decision
-S3B decision
+Python version
+VectorBT version
+Pandas version
+NumPy version
 
-S3 universe hash
-S3 price/calendar/provenance hashes
+canonical hashes
+sector canonical hashes
+
+S2 R1 state
+S3A state
+S3B state
 ```
 
-如果 repository evidence 与本 Goal 冲突：
+Repository evidence 永远优先。
+
+---
+
+# 3. Preserve All Closed Evidence
+
+必须确认：
 
 ```text
-repository evidence wins
+S2 R1
+=
+FROZEN / PROSPECTIVE_SHADOW_ACTIVE
+```
+
+```text
+RL-018 S3A
+=
+REJECTED
+```
+
+```text
+RL-019 S3B
+=
+REJECTED
+```
+
+不得重新打开：
+
+```text
+S3A top-k winner picking
+S3B 50% breadth binary switch
+S2 parameter plateau
 ```
 
 ---
 
-# 2. Protect S2 R1
+# 4. S2 Candidate Integrity Gate
 
-在任何代码修改前运行：
+任何修改前：
 
 ```bash
 uv run python research/experiments/run_s2_r1_shadow.py \
   --verify-candidate
 ```
 
-必须通过。
+必须 PASS。
 
-本 Goal 不得修改任何 S2 R1 frozen input：
+不得修改：
 
 ```text
 config/strategy.toml
@@ -199,414 +267,214 @@ tacticore/engines/rqalpha_adapter.py
 research/shadow/s2_r1/candidate_manifest.json
 ```
 
-禁止更新 manifest hash 来掩盖修改。
-
----
-
-# 3. Closed Questions Stay Closed
-
-确认：
+这些文件允许：
 
 ```text
-RL-018 S3A
-= REJECTED
-
-RL-019 S3B
-= REJECTED
+READ
 ```
 
-不得重新运行或修改以下问题：
+但不得：
 
 ```text
-S3A top-k winner selection
-S3A 120/top-3 baseline
-S3B 50% majority breadth
-S3B binary RISK_ON / RISK_OFF
-```
-
-禁止尝试：
-
-```text
-S3A top_k = 2/4
-S3A lookback = 100/140
-S3B threshold = 40/45/55/60%
-S3B lookback = 100/140/160
-```
-
-S3C 必须作为新的：
-
-```text
-economic mechanism
-strategy identity
-config
-research artifact
-ledger entry
-```
-
-出现。
-
----
-
-# 4. S3C Is a New Economic Hypothesis
-
-明确记录 hypothesis provenance：
-
-```text
-S3C was proposed after observing:
-
-S3A:
-winner picking failed
-
-S3B:
-aggregate breadth reduced drawdown
-but sacrificed too much return
-```
-
-因此 S3C：
-
-```text
-IS historical follow-up research
-```
-
-不是：
-
-```text
-untouched OOS
-prospective
-independent confirmation
-```
-
-即使 S3C 表现很好，也只能称为：
-
-```text
-historical hypothesis screen
+WRITE
 ```
 
 ---
 
-# 5. Core Isolation
+# 5. No New Historical Data Download
 
-S3A：
+本 Batch 不重新下载历史行情。
 
-```text
-relative ranking
-→ top 3 sectors
-→ concentrated selection
-```
+使用两份已经存在的 canonical：
 
-S3B：
+## Multi-asset strategies
 
 ```text
-aggregate breadth
-→ whole portfolio risk-on/off
+data/canonical/
 ```
 
-S3C：
+供：
 
 ```text
-each sector
-→ independent absolute trend
-→ own fixed sleeve
-→ sector OR fallback
+S4A
+S8A
+S27A
+S30
 ```
 
-因此：
+使用。
 
-```text
-NO ranking
-NO top_k
-NO global breadth threshold
-NO binary whole-portfolio regime
-```
-
----
-
-# 6. Reuse Frozen S3 Universe
-
-继续使用：
-
-```text
-config/s3_sector_universe.csv
-```
-
-不得重新选择 ETF。
-
-保持现有 11 个行业：
-
-```text
-消费
-医药
-证券
-军工
-银行
-有色
-房地产
-传媒
-钢铁
-煤炭
-电子
-```
-
-以及：
-
-```text
-511010.SS
-```
-
-作为 fallback。
-
-不要根据：
-
-```text
-S3A performance
-S3B performance
-selection frequency
-current market narrative
-```
-
-删除或增加行业。
-
----
-
-# 7. Reuse Exactly the Same Historical Data
-
-直接使用：
+## Sector strategy
 
 ```text
 data/canonical/s3_sector_rotation_v1/
 ```
 
-不要重新下载。
-
-不要建立新的 identical dataset。
-
-要求验证并记录：
+供：
 
 ```text
-prices SHA-256
-calendar SHA-256
-provenance SHA-256
-universe SHA-256
+S3C
 ```
 
-这样 S3A / S3B / S3C 的主要区别只来自：
+使用。
+
+这样保证本 Batch 的差异来自：
 
 ```text
-economic semantics
+strategy semantics
 ```
 
-而不是数据变化。
-
----
-
-# 8. Independent S3C Config
-
-新增：
+而不是：
 
 ```text
-config/s3_sector_sleeve_trend.toml
-```
-
-不要修改：
-
-```text
-config/s3_sector_rotation.toml
-config/s3_sector_breadth.toml
-```
-
-预声明唯一 V1：
-
-```toml
-[china_sector_sleeve_trend]
-trend_window = 120
-absolute_momentum_threshold = 0.0
-rebalance_frequency = "monthly"
-execution_policy = "SIGNAL_CHANGE_ONLY"
-fallback_symbol = "511010.SS"
-fees = 0.001
-slippage = 0.0005
-initial_cash = 1000000.0
-```
-
-不包含：
-
-```text
-top_k
-breadth_threshold
-ranking
+new data vintage
 ```
 
 ---
 
-# 9. Why Keep 120 Observations
+# 6. Batch Protocol Artifact
 
-继续使用：
-
-```text
-120 valid observations
-```
-
-不是因为它被证明最优。
-
-原因是：
-
-> S3A、S3B、S3C 首轮实验保持相同趋势 horizon，使 S3C 尽量只改变 portfolio construction mechanism。
-
-本 Goal 禁止：
+在运行任何 performance experiment 前新增：
 
 ```text
-lookback optimization
+research/batches/batch_01/PROTOCOL.md
 ```
+
+它必须冻结：
+
+```text
+batch id
+
+starting HEAD
+
+dataset hashes
+
+五个 strategy IDs
+
+五个 exact semantics
+
+所有参数
+
+所有 primary comparators
+
+所有 PASS / REJECT gates
+
+evaluation-start rules
+
+known hypothesis provenance
+
+prohibited searches
+```
+
+不要记录任何 performance result。
 
 ---
 
-# 10. Exact Sector Trend Semantics
+# 7. Strategy 1 — S3C Sector Sleeve Trend Filter
 
-对于每个行业 ETF，在每个月最后一个 canonical observation：
-
-要求：
+ID:
 
 ```text
-signal-date price exists
+S3C_V1
 ```
 
-且至少存在足够有效 observation。
+Research question：
 
-使用现有：
-
-```text
-valid_observation_momentum(...)
-```
-
-如果其语义已经正确。
-
-定义：
-
-```text
-momentum =
-current adjusted close
-/
-120 valid observations ago adjusted close
-- 1
-```
-
-分类：
-
-```text
-momentum > 0
-→ POSITIVE
-
-momentum <= 0
-→ NEGATIVE_SIGNAL
-
-cannot calculate
-→ UNAVAILABLE
-```
-
-必须保持：
-
-```text
-UNAVAILABLE != NEGATIVE_SIGNAL
-```
+> 行业趋势是否更适合作为逐行业局部风险过滤，而不是 S3A 的 winner picking 或 S3B 的全局 risk switch？
 
 ---
 
-# 11. Fixed Sleeve Architecture
+## S3C Universe
 
-Universe 有：
-
-```text
-N = 11 sectors
-```
-
-每个行业永久拥有：
+使用：
 
 ```text
-sector_sleeve = 1 / N
+config/s3_sector_universe.csv
 ```
 
-即当前约：
+禁止修改。
+
+11 个 sector ETF。
+
+N：
+
+```text
+11
+```
+
+每个 sector 固定拥有：
 
 ```text
 1 / 11
 ```
 
-这是固定风险预算。
-
-不得因为某月只有 8 个 eligible sector 就把其余 8 个重新归一化到：
-
-```text
-1 / 8
-```
-
-每个行业的 sleeve 不因其他行业状态变化而改变。
+风险 sleeve。
 
 ---
 
-# 12. Exact Portfolio Rule
-
-对行业 `i`：
-
-## POSITIVE
+## S3C Signal
 
 ```text
-weight(sector_i) = 1 / N
+trend_window = 120 valid observations
+threshold = 0
 ```
 
-## NEGATIVE_SIGNAL
+对于 sector i：
 
 ```text
-weight(sector_i) = 0
-```
+momentum_i > 0
+→ POSITIVE
 
-该行业的：
+momentum_i <= 0
+→ NEGATIVE_SIGNAL
 
-```text
-1 / N
-```
-
-转给：
-
-```text
-fallback
-```
-
-## UNAVAILABLE
-
-同样：
-
-```text
-weight(sector_i) = 0
-```
-
-其 sleeve 暂时放入 fallback。
-
-但 diagnostics 中必须保持：
-
-```text
-UNAVAILABLE
-```
-
-与：
-
-```text
-NEGATIVE_SIGNAL
-```
-
-分离。
-
-最终：
-
-```text
-fallback weight =
-(number_negative + number_unavailable) / N
+insufficient data / missing signal-day price
+→ UNAVAILABLE
 ```
 
 ---
 
-# 13. Example
+## S3C Allocation
 
-假设 11 个行业：
+POSITIVE：
+
+```text
+sector i = 1/N
+```
+
+NEGATIVE：
+
+```text
+sector i = 0
+fallback += 1/N
+```
+
+UNAVAILABLE：
+
+```text
+sector i = 0
+fallback += 1/N
+```
+
+但：
+
+```text
+UNAVAILABLE != NEGATIVE
+```
+
+必须保留不同诊断状态。
+
+---
+
+## S3C Important Invariant
+
+不能：
+
+```text
+renormalize remaining positive sectors
+```
+
+例如：
 
 ```text
 7 positive
@@ -617,1038 +485,1429 @@ fallback weight =
 则：
 
 ```text
-7 sectors:
-each = 1/11
-
-fallback:
-4/11
-```
-
-总和：
-
-```text
-1.0
-```
-
-没有：
-
-```text
-top-k
-ranking
-renormalization
+7 sectors × 1/11
+fallback = 4/11
 ```
 
 ---
 
-# 14. Why Fixed Sleeves Matter
-
-固定 sleeve 避免：
+## S3C Timing
 
 ```text
-winner concentration
+month-end close
+→ signal
+→ next canonical observation
+→ execution
 ```
 
-同时避免 S3B 的：
+使用：
 
 ```text
-all sectors on
-OR
-all sectors off
-```
-
-策略风险敞口可以逐步变化：
-
-```text
-0/11
-1/11
-2/11
-...
-11/11
-```
-
-而不是：
-
-```text
-0%
-or
-100%
-```
-
-这正是 S3C 要验证的经济机制。
-
----
-
-# 15. New Strategy Implementation
-
-新增：
-
-```text
-tacticore/strategies/china_sector_sleeve_trend.py
-```
-
-保持很小。
-
-建议只包含：
-
-```text
-ChinaSectorSleeveTrendConfig
-
-load_sector_sleeve_trend_config
-
-sector_trend_states
-
-build_month_end_targets
-
-build_execution_weights
-```
-
-优先复用现有：
-
-```text
-valid_observation_momentum
-```
-
-以及可以无语义变化复用的 timing helper。
-
-不要创建：
-
-```text
-AllocationFramework
-TrendFramework
-SleeveEngine
-SectorEngine
-StrategyBase
+SIGNAL_CHANGE_ONLY
 ```
 
 ---
 
-# 16. Do Not Refactor Historical S3 Implementations
-
-正常情况下保持不变：
+## S3C Primary Comparator
 
 ```text
-tacticore/strategies/china_sector_rotation.py
-tacticore/strategies/china_sector_breadth.py
+UNGATED_FIXED_SLEEVE_SECTOR_BASKET
 ```
 
-它们属于已经完成的 historical evidence。
-
-不要为了 DRY：
+相同：
 
 ```text
-move everything into common_strategy.py
+11 sleeves
+availability
+timing
+costs
 ```
 
-如果只有一两个纯函数真正可安全复用：
+区别仅为：
 
 ```text
-direct import
-```
-
-即可。
-
----
-
-# 17. Timing
-
-严格：
-
-```text
-month-end canonical close
-        ↓
-calculate each sector trend
-        ↓
-generate target
-        ↓
-next canonical observation
-        ↓
-execution
-```
-
-禁止：
-
-```text
-same-close execution
+不使用 trend filter
 ```
 
 ---
 
-# 18. SIGNAL_CHANGE_ONLY
+## S3C Gate
 
-只有目标权重改变时提交新 target。
-
-例如：
-
-如果：
-
-```text
-7 positive sectors
-```
-
-且下个月仍然是完全相同的 7 个：
-
-```text
-NO new target
-```
-
-不要机械恢复实际持仓到理论 `1/11`。
-
-这继续保持：
-
-```text
-low maintenance
-```
-
----
-
-# 19. Primary Comparator
-
-必须创建：
-
-```text
-UNGATED_FIXED_SLEEVE_BASKET
-```
-
-其目的仅是隔离：
-
-```text
-per-sector trend filter
-```
-
-本身的经济价值。
-
-Comparator 使用同样：
-
-```text
-same 11 sleeves
-same data
-same timing
-same SIGNAL_CHANGE_ONLY
-same fees/slippage
-same initial cash
-```
-
-但忽略趋势正负。
-
-规则：
-
-对于每个 sector：
-
-```text
-if AVAILABLE:
-    sector = 1/N
-else:
-    fallback receives that 1/N sleeve
-```
-
-因此 comparator 不把剩余 eligible sector 重新归一化。
-
----
-
-# 20. Why Not Use Old Equal-Weight as Primary Comparator
-
-S3A 的行业等权 comparator 和 S3B ungated basket 都可以作为：
-
-```text
-contextual historical benchmarks
-```
-
-但 S3C 的 primary comparator 必须具有相同：
-
-```text
-fixed-sleeve mechanics
-```
-
-否则无法准确隔离：
-
-```text
-trend filtering
-```
-
-的增量。
-
----
-
-# 21. Other Contextual Benchmarks
-
-最终报告同时引用：
-
-```text
-510300.SS buy-and-hold
-
-S3A V1
-
-S3B V1
-
-S3A historical sector equal-weight
-```
-
-但它们不是 primary decision comparator。
-
----
-
-# 22. Evaluation Range
-
-继续采用已有 S3 coverage discipline。
-
-评价期起点：
-
-> 首个至少 8 个行业已经具备完整 120-observation trend history，并且下一 canonical observation 可执行的日期。
-
-不要根据 S3C performance 调整起点。
-
-如果 evaluation start 与 S3A/S3B 不一致：
-
-必须解释原因。
-
----
-
-# 23. Required State Artifact
-
-生成：
-
-```text
-research/results/s3c_sector_sleeve_states_v1.csv
-```
-
-每个月至少记录：
-
-```text
-signal_date
-
-eligible_sector_count
-positive_sector_count
-negative_sector_count
-unavailable_sector_count
-
-risk_asset_weight
-fallback_weight
-
-target_changed
-execution_date
-```
-
-可以增加逐行业：
-
-```text
-POSITIVE
-NEGATIVE_SIGNAL
-UNAVAILABLE
-```
-
-但不要建设 feature store。
-
----
-
-# 24. Performance Metrics
-
-S3C 与 primary comparator 至少报告：
-
-```text
-CAGR
-Max Drawdown
-Sharpe
-Calmar
-worst year
-
-turnover
-trade count
-average holding days
-
-target-change months
-annualized target-change months
-```
-
-另外报告：
-
-```text
-average risk-asset allocation
-median risk-asset allocation
-minimum risk-asset allocation
-maximum risk-asset allocation
-
-average fallback weight
-
-months with:
-0–25% risk
-25–50% risk
-50–75% risk
-75–100% risk
-```
-
----
-
-# 25. Sector-Level Diagnostics
-
-至少回答：
-
-```text
-每个行业多少个月 POSITIVE？
-多少个月 NEGATIVE？
-多少个月 UNAVAILABLE？
-
-每个行业发生多少次趋势状态切换？
-
-是否存在某几个行业几乎永远 positive？
-
-防御 allocation 是否主要由某一行业贡献？
-```
-
-仅做 diagnostics。
-
-不要因此加入新 signal。
-
----
-
-# 26. No Parameter Search
-
-本 Goal 只能运行：
-
-```text
-trend_window = 120
-threshold = 0
-fixed sleeve = 1/11
-```
-
-禁止：
-
-```text
-80 / 100 / 120 / 160 / 200
-```
-
-比较。
-
-禁止：
-
-```text
-different fallback ratios
-partial sleeve
-volatility-scaled sleeve
-```
-
-禁止 optimizer。
-
----
-
-# 27. Predeclare Decision Gate Before Running Results
-
-在读取 S3C performance 之前把 decision function 写死。
-
-本策略的目标：
-
-> 相比同机制 ungated fixed-sleeve basket，通过逐行业局部趋势过滤显著改善风险调整收益，同时避免 S3B 那种过大的长期收益牺牲。
-
----
-
-# 28. Coverage Gate
-
-要求：
+Coverage：
 
 ```text
 >= 8 eligible sectors
+in >= 80% evaluated month-ends
 ```
 
-至少出现在：
+Absolute：
 
 ```text
-80%
+CAGR > 0
+Sharpe >= 0.45
+MaxDD > -35%
+target-change months/year <= 10
 ```
 
-的 evaluated month-end observations。
-
-否则：
+Relative to ungated：
 
 ```text
+MaxDD improvement >= 5pp
+
+CAGR >= comparator CAGR - 1.5pp
+
+Sharpe > comparator Sharpe
+
+Calmar > comparator Calmar
+```
+
+Degeneration：
+
+```text
+average risk allocation >= 30%
+average risk allocation <= 95%
+```
+
+Possible result：
+
+```text
+ADVANCE_S3C_TO_ROBUSTNESS
+
+REJECT_S3C_BASELINE
+
+REJECT_S3C_DEFENSIVE_DEGENERATION
+
+REJECT_S3C_FILTER_DEGENERATION
+
 BLOCK_S3C_COVERAGE
 ```
 
 ---
 
-# 29. Absolute Economic Floor
+# 8. Strategy 2 — S30 Static Strategic Allocation
 
-要求：
+ID:
 
 ```text
-after-cost CAGR > 0
-
-Sharpe >= 0.45
-
-Max Drawdown > -35%
-
-annualized target-change months <= 10
+S30_REFERENCE_V1
 ```
 
-所有门槛必须预先写入代码和报告。
+This is a CONTROL.
+
+不是 alpha hypothesis。
+
+目的：
+
+> TactiCore 的动态策略必须证明自己比非常简单的长期分散配置值得维护。
 
 ---
 
-# 30. Primary Relative Gate
+## S30 Assets
 
-与：
-
-```text
-UNGATED_FIXED_SLEEVE_BASKET
-```
-
-比较。
-
-必须满足全部：
-
-## Drawdown
+固定：
 
 ```text
-S3C max drawdown
-至少改善 5 percentage points
+510300.SS  China Equity   25%
+513500.SS  US Equity      25%
+518880.SS  Gold           25%
+511010.SS  China Bond     25%
 ```
 
-## Return preservation
-
-```text
-S3C CAGR
->=
-UNGATED CAGR - 1.5 percentage points
-```
-
-## Sharpe
-
-```text
-S3C Sharpe
->
-UNGATED Sharpe
-```
-
-## Calmar
-
-```text
-S3C Calmar
->
-UNGATED Calmar
-```
-
-即：
-
-> 这一次不能只靠降低回撤通过；必须真正提高风险调整效率。
+不得根据 historical return 改权重。
 
 ---
 
-# 31. Low-Maintenance Gate
+## S30 Execution
 
-要求：
-
-```text
-annualized target-change months <= 10
-```
-
-并报告：
+初始：
 
 ```text
-trade_count
-average_holding_days
+first common valid evaluation date
+→ establish 25/25/25/25
 ```
 
-不要构造复合 maintenance score。
+之后：
+
+```text
+annual rebalance only
+```
+
+year-end close 后：
+
+```text
+next canonical observation
+```
+
+执行。
 
 ---
 
-# 32. No Degenerate Exposure
-
-必须报告 risk exposure distribution。
-
-如果：
+## S30 Costs
 
 ```text
-average risk allocation < 30%
-```
-
-则标记：
-
-```text
-REJECT_S3C_DEFENSIVE_DEGENERATION
-```
-
-因为该策略基本退化成 bond allocation。
-
-如果：
-
-```text
-average risk allocation > 95%
-```
-
-且趋势过滤几乎从不工作：
-
-```text
-REJECT_S3C_FILTER_DEGENERATION
-```
-
-不要通过修改 threshold 救援。
-
----
-
-# 33. Final Decisions
-
-只能输出以下之一。
-
-## ADVANCE_S3C_TO_ROBUSTNESS
-
-条件：
-
-```text
-coverage PASS
-
-absolute floor PASS
-
-drawdown improvement PASS
-
-CAGR preservation PASS
-
-Sharpe improvement PASS
-
-Calmar improvement PASS
-
-maintenance PASS
-
-non-degenerate PASS
-```
-
-含义仅为：
-
-```text
-S3C historical baseline
-worth further robustness research
-```
-
-不是：
-
-```text
-production candidate
-OOS validated
+fees = 10 bps
+slippage = 5 bps
+initial_cash = 1,000,000
 ```
 
 ---
 
-## REJECT_S3C_BASELINE
+## S30 Metrics
 
-经济 floor 或 primary relative gate 未通过。
-
-停止该 hypothesis。
-
----
-
-## REJECT_S3C_DEFENSIVE_DEGENERATION
-
-风险资产暴露过低。
-
----
-
-## REJECT_S3C_FILTER_DEGENERATION
-
-趋势过滤几乎不产生风险差异。
-
----
-
-## BLOCK_S3C_COVERAGE
-
-数据覆盖不满足要求。
-
----
-
-## REVISE_S3C_SEMANTICS
-
-仅当发现明确：
+至少：
 
 ```text
-lookahead bug
-availability bug
-incorrect sleeve accounting
-target sum error
-timing error
-benchmark error
+CAGR
+MaxDD
+Sharpe
+Calmar
+worst year
+
+turnover
+trades
+average holding days
 ```
 
-时允许。
-
-收益不好不能触发 REVISE。
-
----
-
-# 34. Expected Implementation Scope
-
-预计新增：
+以及：
 
 ```text
-config/s3_sector_sleeve_trend.toml
-
-tacticore/strategies/china_sector_sleeve_trend.py
-
-research/experiments/run_s3c_sector_sleeve_baseline.py
-
-research/results/S3C_SECTOR_SLEEVE_BASELINE_V1.md
-research/results/s3c_sector_sleeve_comparison_v1.csv
-research/results/s3c_sector_sleeve_states_v1.csv
-
-tests/test_china_sector_sleeve_trend.py
-tests/test_s3c_sector_sleeve_baseline.py
+annual returns
 ```
 
-不要机械增加无实际价值 artifact。
-
----
-
-# 35. Existing Files Normally Unchanged
-
-正常情况下：
+S30 不输出：
 
 ```text
-AGENTS.md
+PASS
+FAIL
+```
 
-docs/ARCHITECTURE.md
-docs/RESEARCH_RULES.md
-docs/LESSONS_FROM_DAILYETF.md
+只输出：
 
-config/strategy.toml
-config/universe.csv
-
-config/s3_sector_rotation.toml
-config/s3_sector_breadth.toml
-config/s3_sector_universe.csv
-
-data/canonical/*
-
-tacticore/strategies/multi_asset_trend.py
-tacticore/strategies/china_sector_rotation.py
-tacticore/strategies/china_sector_breadth.py
-
-tacticore/engines/vectorbt_adapter.py
-tacticore/engines/rqalpha_adapter.py
-
-research/results/S3_SECTOR_BASELINE_V1.md
-research/results/S3B_SECTOR_BREADTH_BASELINE_V1.md
-
-research/shadow/s2_r1/candidate_manifest.json
+```text
+REFERENCE_BASELINE
 ```
 
 ---
 
-# 36. Reuse VectorBT
+# 9. Strategy 3 — S4A Multi-Asset Inverse Volatility
+
+ID:
+
+```text
+S4A_INVERSE_VOL_V1
+```
+
+这是 Risk Allocation family 的透明 baseline。
+
+注意：
+
+```text
+S4A != full covariance Equal Risk Contribution
+```
+
+本轮不实现复杂 ERC solver。
 
 使用：
 
 ```text
-tacticore.engines.vectorbt_adapter.run_target_weights
+inverse volatility
 ```
 
-禁止新增：
+作为最透明的 risk-allocation baseline。
+
+---
+
+## S4A Universe
+
+读取现有：
 
 ```text
-sleeve_backtester
-sector_backtester
-portfolio_engine
-reference_engine
+config/strategy.toml
 ```
 
-VectorBT 继续负责：
+中的 multi-asset risk universe。
+
+只读。
+
+不要修改。
+
+fallback：
 
 ```text
-portfolio simulation
-accounting
-orders
-trades
-records
+511010.SS
+```
+
+不参与 inverse-vol risk asset ranking。
+
+---
+
+## S4A Volatility
+
+唯一预声明：
+
+```text
+vol_window = 60 valid daily returns
+```
+
+定义：
+
+```text
+vol_i = std(last 60 valid daily returns)
+```
+
+月末计算。
+
+---
+
+## S4A Eligibility
+
+asset 必须：
+
+```text
+signal-day price exists
+AND
+60 valid return observations exist
+```
+
+否则：
+
+```text
+UNAVAILABLE
+```
+
+要求至少：
+
+```text
+min_eligible_assets = 6
+```
+
+否则：
+
+```text
+fallback = 100%
 ```
 
 ---
 
-# 37. No RQAlpha Yet
+## S4A Weight
 
-本 Goal：
-
-```text
-NO S3C RQAlpha validation
-```
-
-顺序：
+对于 eligible assets：
 
 ```text
-transparent economic screen
-        ↓
-robustness
-        ↓
-execution validation
+raw_i = 1 / vol_i
+
+weight_i =
+raw_i / sum(raw)
 ```
 
-如果 baseline 被拒绝，就不做 RQAlpha。
+fallback：
+
+```text
+0
+```
+
+若不足 6 个 eligible：
+
+```text
+fallback = 1
+```
+
+不要：
+
+```text
+weight cap
+covariance
+correlation
+optimizer
+risk-budget solver
+```
 
 ---
 
-# 38. No Theme Rotation Yet
-
-Theme Rotation 继续保持：
+## S4A Timing
 
 ```text
-NOT STARTED
+monthly
+month-end signal
+next observation execution
 ```
 
-本轮不要增加：
+由于 volatility 本身每月变化：
 
 ```text
-半导体
-AI
-创新药
-机器人
-算力
-新能源主题
+monthly target
 ```
 
-等 theme universe。
+是实际新信号。
 
-先关闭 S3C hypothesis。
+不需要伪装成 SIGNAL_CHANGE_ONLY。
+
+完全相同 target 才可省略。
 
 ---
 
-# 39. No Additional Signals
-
-禁止加入：
+## S4A Primary Comparator
 
 ```text
-breadth filter
-market index trend
-volatility targeting
-valuation
-fund flow
-macro
-northbound flow
-news
-sentiment
-RSI
-MACD
-AI scoring
+ELIGIBLE_EQUAL_WEIGHT_MULTI_ASSET
 ```
 
-S3C 只有：
+使用完全相同：
 
 ```text
-per-sector absolute trend
-+
-fixed sleeve
-+
+eligible set
+minimum coverage
+timing
+fees
+slippage
+```
+
+区别只有：
+
+```text
+equal weight
+vs
+inverse volatility
+```
+
+---
+
+## S4A Advance Gate
+
+Coverage：
+
+```text
+>=6 eligible
+in >=80% evaluated month-ends
+```
+
+Absolute：
+
+```text
+CAGR > 0
+Sharpe >= 0.45
+MaxDD > -35%
+```
+
+Relative：
+
+```text
+MaxDD improvement >= 3pp
+
+CAGR >= equal-weight CAGR - 1.5pp
+
+Sharpe >= equal-weight Sharpe + 0.03
+```
+
+Concentration diagnostic：
+
+报告：
+
+```text
+max target weight
+median max target weight
+95th percentile max target weight
+```
+
+若：
+
+```text
+max asset weight > 50%
+in > 5% evaluated months
+```
+
+输出额外警告：
+
+```text
+CONCENTRATION_RISK
+```
+
+但不要偷偷加入 cap。
+
+Possible result：
+
+```text
+ADVANCE_S4A_TO_ROBUSTNESS
+
+REJECT_S4A_BASELINE
+
+BLOCK_S4A_COVERAGE
+```
+
+---
+
+# 10. Strategy 4 — S8A Equity/Bond Trend Allocation
+
+ID:
+
+```text
+S8A_EQUITY_BOND_TREND_V1
+```
+
+Research question：
+
+> 一个极简单的股债趋势切换，是否已经能够显著降低股票回撤，同时保留大部分长期复利？
+
+---
+
+## Assets
+
+仅：
+
+```text
+510300.SS
+511010.SS
+```
+
+不要加入其他 ETF。
+
+---
+
+## Signal
+
+对：
+
+```text
+510300.SS
+```
+
+使用：
+
+```text
+trend_window = 200 valid observations
+```
+
+月末：
+
+```text
+equity momentum > 0
+→ EQUITY
+
+equity momentum <= 0
+→ BOND
+
+unavailable
+→ BOND
+```
+
+---
+
+## Allocation
+
+EQUITY：
+
+```text
+510300 = 100%
+```
+
+BOND：
+
+```text
+511010 = 100%
+```
+
+---
+
+## Timing
+
+```text
+month-end close
+→ signal
+→ next canonical observation
+→ trade
+```
+
+仅 regime 改变时产生 target。
+
+---
+
+## S8A Primary Comparators
+
+Comparator 1：
+
+```text
+510300 BUY_AND_HOLD
+```
+
+Comparator 2：
+
+```text
+50/50 EQUITY_BOND
+```
+
+50/50 comparator：
+
+```text
+annual rebalance
+```
+
+不要 monthly rebalance。
+
+---
+
+## S8A Gate
+
+Absolute：
+
+```text
+CAGR > 0
+Sharpe >= 0.45
+MaxDD > -35%
+target changes/year <= 6
+```
+
+Against 510300：
+
+```text
+MaxDD improvement >= 10pp
+
+CAGR >= 510300 CAGR - 2pp
+
+Sharpe > 510300 Sharpe
+
+Calmar > 510300 Calmar
+```
+
+Against static 50/50：
+
+在以下四项：
+
+```text
+CAGR
+MaxDD
+Sharpe
+Calmar
+```
+
+至少：
+
+```text
+2 / 4
+```
+
+严格更优，
+
+且：
+
+```text
+MaxDD cannot be worse than 50/50
+```
+
+Possible result：
+
+```text
+ADVANCE_S8A_TO_ROBUSTNESS
+
+REJECT_S8A_BASELINE
+```
+
+---
+
+# 11. Strategy 5 — S27A Trend + Inverse Volatility
+
+ID:
+
+```text
+S27A_TREND_INVERSE_VOL_V1
+```
+
+Research question：
+
+> S2 已证明 fixed-sleeve time-series trend 值得继续观察，那么在保持 S2 总风险暴露逻辑不变的情况下，用 inverse volatility 在 active risk assets 内重新分配风险，是否可以进一步提高风险调整效率？
+
+这是：
+
+```text
+historical follow-up hypothesis
+```
+
+不是新的 OOS evidence。
+
+---
+
+# 12. S27A Trend Signal
+
+使用和 S2 相同的：
+
+```text
+200 valid observations
+```
+
+趋势定义。
+
+但不要修改 S2 source。
+
+如现有 S2 helper 可以只读复用：
+
+```text
+import
+```
+
+即可。
+
+不要复制后再改变语义。
+
+---
+
+# 13. S27A Risk Budget
+
+假设：
+
+```text
+N = total risk assets
+P = number of positive-trend eligible assets
+```
+
+总 risk budget：
+
+```text
+P / N
+```
+
+fallback budget：
+
+```text
+1 - P/N
+```
+
+这保持 S2 的核心风险暴露结构。
+
+---
+
+# 14. S27A Active Asset Weighting
+
+对 positive-trend assets：
+
+计算：
+
+```text
+60 valid daily return volatility
+```
+
+然后：
+
+```text
+raw_i = 1 / vol_i
+
+active_weight_i =
+(P/N) × raw_i / sum(raw)
+```
+
+fallback：
+
+```text
+1 - P/N
+```
+
+因此：
+
+```text
+sum(weights) = 1
+```
+
+---
+
+# 15. Important S27A Isolation
+
+S2：
+
+```text
+positive sector/asset
+→ fixed equal sleeve
+```
+
+S27A：
+
+```text
+same trend state
+same total risk budget
+→ inverse-vol distribution within active risk budget
+```
+
+所以主要实验变量只有：
+
+```text
+active risk allocation method
+```
+
+而不是同时更换：
+
+```text
+trend window
+risk exposure
+universe
 fallback
 ```
 
 ---
 
-# 40. Tests
-
-至少覆盖：
-
-## Fixed sleeves
-
-```text
-N sectors
-→ each sleeve = 1/N
-```
-
-无论其他行业状态如何，单个 sector sleeve 不变化。
-
-## Positive
-
-```text
-POSITIVE
-→ own sleeve allocated to sector
-```
-
-## Negative
-
-```text
-NEGATIVE_SIGNAL
-→ own sleeve allocated to fallback
-```
-
-## Unavailable
-
-```text
-UNAVAILABLE
-→ own sleeve allocated to fallback
-```
-
-但 state 仍保持 UNAVAILABLE。
-
-## Portfolio invariant
-
-```text
-weights >= 0
-sum(weights) == 1
-sector weight <= 1/N
-```
-
-## No ranking
-
-输入 momentum 排名改变、但正负集合不变时：
-
-```text
-target unchanged
-```
-
-这是一个非常重要的测试。
-
-## Timing
+# 16. S27A Timing
 
 ```text
 month-end signal
 next observation execution
-no same-close
 ```
 
-## SIGNAL_CHANGE_ONLY
+由于 volatility sizing 每月改变：
 
-如果正负状态集合不变：
+允许：
 
 ```text
-no new target
+monthly target
 ```
-
-## No lookahead
-
-signal_date 之后的数据不能影响 target。
 
 ---
 
-# 41. Regression Protection
+# 17. S27A Primary Comparator
 
-完成后必须确认：
+Primary：
 
 ```text
-S3A artifacts unchanged
-S3B artifacts unchanged
-S3 universe unchanged
-S3 historical canonical unchanged
-S2 frozen inputs unchanged
+S2 V2B
 ```
 
-并再次运行：
+但禁止重新进行：
+
+```text
+parameter plateau
+robustness research
+execution research
+```
+
+Comparator 优先读取已有 frozen research artifacts。
+
+如果现有 artifact 缺少某个必要指标：
+
+允许做：
+
+```text
+read-only reproduction
+```
+
+但必须明确标记：
+
+```text
+COMPARATOR_REPRODUCTION_ONLY
+```
+
+不得产生任何新的 S2 decision。
+
+---
+
+# 18. S27A Gate
+
+Absolute：
+
+```text
+CAGR >= 5%
+Sharpe >= 0.60
+MaxDD > -30%
+```
+
+Relative to S2：
+
+```text
+CAGR >= S2 CAGR - 1pp
+
+MaxDD >= S2 MaxDD - 2pp
+
+Sharpe > S2 Sharpe
+
+Calmar >= S2 Calmar
+
+turnover <= 1.5 × S2 turnover
+```
+
+Possible result：
+
+```text
+ADVANCE_S27A_TO_ROBUSTNESS
+
+REJECT_S27A_BASELINE
+```
+
+---
+
+# 19. Strategies Explicitly NOT in Batch 01
+
+不要实现：
+
+```text
+S5 Trend + full Risk Parity
+S9 Tri-Asset dynamic allocation
+S23 Minimum Variance
+S24 Maximum Diversification
+S14 Theme Rotation
+```
+
+原因：
+
+```text
+S5 partially overlaps S27A
+
+S9 currently overlaps information
+already tested by S30/S4A/S8A
+
+S23/S24 require covariance estimation
+and optimizer choices
+
+Theme rotation requires a new universe
+and introduces selection bias
+```
+
+这些留给：
+
+```text
+Batch 02 candidate selection
+```
+
+在 Batch 01 审计后决定。
+
+---
+
+# 20. Implement All Five BEFORE Performance Runs
+
+在 Protocol Freeze 阶段实现：
+
+```text
+configs
+strategy semantics
+experiment runners
+unit tests
+decision functions
+comparators
+```
+
+但是：
+
+```text
+DO NOT run historical performance yet
+```
+
+可以运行：
+
+```text
+unit tests
+lint
+type check
+synthetic-data tests
+```
+
+确保逻辑正确。
+
+---
+
+# 21. Expected New Config Files
+
+建议：
+
+```text
+config/s3_sector_sleeve_trend.toml
+config/s4_inverse_vol.toml
+config/s8_equity_bond_trend.toml
+config/s27_trend_inverse_vol.toml
+config/s30_static_allocation.toml
+```
+
+不要把它们塞进：
+
+```text
+config/strategy.toml
+```
+
+因为该文件属于 S2 R1 frozen identity。
+
+---
+
+# 22. Expected Strategy Modules
+
+合理新增：
+
+```text
+tacticore/strategies/china_sector_sleeve_trend.py
+tacticore/strategies/inverse_vol_allocation.py
+tacticore/strategies/equity_bond_trend.py
+tacticore/strategies/trend_inverse_vol.py
+tacticore/strategies/static_strategic_allocation.py
+```
+
+如果 static benchmark 很简单，也可以仅存在 experiment 层，不必强行做 production-style strategy class。
+
+---
+
+# 23. Do Not Build a Strategy Framework
+
+禁止因为一次实现五个策略就创建：
+
+```text
+BaseStrategy
+StrategyRegistry
+StrategyFactory
+GenericSignalEngine
+GenericAllocationEngine
+ExperimentDatabase
+BacktestManager
+ResearchOrchestrator
+```
+
+除非当前 repository 已有明确能力需要复用。
+
+允许抽取：
+
+```text
+非常小的 pure helper
+```
+
+仅当至少三个策略真正需要完全相同语义。
+
+但：
+
+```text
+prefer duplication of 5 clear lines
+over premature framework abstraction
+```
+
+---
+
+# 24. Use Existing VectorBT Adapter
+
+统一复用：
+
+```text
+tacticore.engines.vectorbt_adapter.run_target_weights
+```
+
+不要新建任何：
+
+```text
+custom backtester
+reference portfolio engine
+accounting engine
+```
+
+---
+
+# 25. Common Metrics
+
+四个 candidate strategies + S30 + comparators 必须尽量统一输出：
+
+```text
+CAGR
+MaxDD
+Sharpe
+Calmar
+worst year
+
+turnover
+trade_count
+average_holding_days
+
+target_change_count
+annualized_target_change_count
+```
+
+根据策略再补：
+
+```text
+risk exposure
+fallback allocation
+concentration
+regime count
+sector states
+```
+
+---
+
+# 26. Common Historical Interpretation
+
+所有 Batch 01 结果必须称为：
+
+```text
+historical economic screen
+```
+
+不得称：
+
+```text
+prospective
+untouched OOS
+future validation
+production validation
+```
+
+尤其：
+
+```text
+S3C
+S27A
+```
+
+都是在已有 S3/S2 evidence 后设计的 follow-up hypotheses。
+
+---
+
+# 27. Protocol Freeze Commit
+
+确认五个策略：
+
+```text
+semantics
+parameters
+comparators
+decision gates
+```
+
+全部完成。
+
+执行：
+
+```bash
+uv run pytest
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy
+```
+
+以及：
 
 ```bash
 uv run python research/experiments/run_s2_r1_shadow.py \
   --verify-candidate
 ```
 
-必须 PASS。
+全部通过后：
+
+```bash
+git status
+git diff
+```
+
+确认尚未生成任何真实 performance outputs。
+
+创建：
+
+```text
+Commit A
+```
+
+建议：
+
+```text
+freeze batch 1 transparent strategy screen protocol
+```
+
+然后：
+
+```bash
+git push
+```
+
+记录：
+
+```text
+PROTOCOL_FREEZE_SHA
+```
 
 ---
 
-# 42. Main Research Report
+# 28. Critical Rule After Protocol Freeze
+
+一旦：
+
+```text
+PROTOCOL_FREEZE_SHA
+```
+
+存在：
+
+禁止修改：
+
+```text
+all five configs
+
+all five strategy semantics
+
+all decision gates
+
+primary comparator definitions
+```
+
+然后才运行 performance。
+
+---
+
+# 29. If a Correctness Bug Is Found After Freeze
+
+如果运行时发现：
+
+```text
+implementation bug
+lookahead bug
+target-sum bug
+incorrect eligibility
+incorrect comparator
+```
+
+不得看到收益后直接修复并继续。
+
+必须：
+
+1. 标记当前受影响结果：
+
+```text
+INVALID_RUN
+```
+
+2. 删除/隔离无效 result artifact；
+3. 修复 correctness；
+4. 更新 protocol revision；
+5. 创建新的：
+
+```text
+PROTOCOL_FREEZE_SHA_V2
+```
+
+6. 才允许重新运行。
+
+最终报告必须披露：
+
+```text
+protocol revision occurred
+why
+whether performance had already been observed
+```
+
+不得静默修改。
+
+---
+
+# 30. Batch Execution
+
+Protocol freeze 后才统一运行五项。
+
+建议：
+
+```bash
+uv run python research/experiments/run_s3c_sector_sleeve_baseline.py
+
+uv run python research/experiments/run_s4_inverse_vol_baseline.py
+
+uv run python research/experiments/run_s8_equity_bond_trend_baseline.py
+
+uv run python research/experiments/run_s27_trend_inverse_vol_baseline.py
+
+uv run python research/experiments/run_s30_static_allocation.py
+```
+
+不要根据某一个结果：
+
+```text
+stop batch early
+```
+
+除非出现：
+
+```text
+correctness blocker
+data corruption
+S2 candidate integrity failure
+```
+
+即使前三个 REJECT：
+
+也完成整批五项。
+
+---
+
+# 31. Individual Result Artifacts
 
 生成：
 
 ```text
 research/results/S3C_SECTOR_SLEEVE_BASELINE_V1.md
+
+research/results/S4A_INVERSE_VOL_BASELINE_V1.md
+
+research/results/S8A_EQUITY_BOND_TREND_BASELINE_V1.md
+
+research/results/S27A_TREND_INVERSE_VOL_BASELINE_V1.md
+
+research/results/S30_STATIC_STRATEGIC_ALLOCATION_V1.md
 ```
 
-至少包含：
+可以生成必要 CSV。
+
+不要生成大量日志型 artifact。
+
+---
+
+# 32. Batch Summary
+
+额外生成：
 
 ```text
-1. Research Question
-2. Hypothesis Provenance
-3. Why S3C Is Not S3A/S3B Tuning
-4. Frozen Universe
-5. Frozen Data
-6. Exact Trend Definition
-7. Availability Semantics
-8. Fixed Sleeve Definition
-9. Portfolio Construction
-10. Timing
-11. SIGNAL_CHANGE_ONLY
-12. Primary Comparator
-13. Predeclared Decision Gate
-14. Full-Sample Results
-15. Drawdown Comparison
-16. Return Preservation
-17. Sharpe / Calmar Comparison
-18. Risk Exposure Distribution
-19. Sector-Level Diagnostics
-20. Turnover / Maintenance
-21. Biases / Limitations
-22. Decision
-23. What This Does NOT Prove
-24. Next ONE Direction
+research/results/BATCH_01_TRANSPARENT_STRATEGY_SCREEN.md
+```
+
+必须有统一 comparison matrix。
+
+例如：
+
+| Strategy | Mechanism           | CAGR | MaxDD | Sharpe | Calmar | Turnover | Decision  |
+| -------- | ------------------- | ---: | ----: | -----: | -----: | -------: | --------- |
+| S3C      | local sector trend  |      |       |        |        |          |           |
+| S4A      | inverse volatility  |      |       |        |        |          |           |
+| S8A      | equity/bond timing  |      |       |        |        |          |           |
+| S27A     | trend + inverse vol |      |       |        |        |          |           |
+| S30      | static allocation   |      |       |        |        |          | REFERENCE |
+
+但不要基于：
+
+```text
+highest CAGR wins
+```
+
+宣布 winner。
+
+---
+
+# 33. Batch-Level Classification
+
+Batch summary 只分类：
+
+```text
+ADVANCE
+REJECT
+REFERENCE
+BLOCKED
+```
+
+不要创建综合：
+
+```text
+strategy score
+```
+
+不要人为：
+
+```text
+CAGR 30%
+Sharpe 30%
+MaxDD 20%
+...
+```
+
+组合成一个分数。
+
+这会重新引入任意权重。
+
+---
+
+# 34. Cross-Strategy Interpretation
+
+报告必须回答：
+
+### Return prediction
+
+```text
+S3C
+S8A
+S27A
+```
+
+趋势类策略是否真正增加 value？
+
+### Risk allocation
+
+```text
+S4A
+```
+
+仅通过 risk sizing 是否已经足够？
+
+### Complexity hurdle
+
+```text
+S30
+```
+
+简单静态配置有多强？
+
+### Incremental complexity
+
+复杂策略相比 S30：
+
+```text
+what exactly is gained?
 ```
 
 ---
 
-# 43. Bias Disclosure
+# 35. Important Comparison With S2
 
-必须明确：
+S2 R1 是当前唯一 prospective candidate。
 
-```text
-S3C hypothesis was proposed
-after observing S3A and S3B.
-```
+Batch 01 中任何策略即使 historical screen 很强：
 
-因此结果存在：
+也不得直接替代：
 
 ```text
-researcher degrees of freedom
-hypothesis-generation bias
-same-sample reuse
-current-universe bias
-survivorship bias
-fund-launch bias
+S2 R1
 ```
 
-如果 PASS：
+更不能修改它。
 
-不能称：
+需要后续：
 
 ```text
-OOS confirmed
+robustness
+execution
+prospective candidate freeze
 ```
 
-只能称：
-
-```text
-historically promising follow-up hypothesis
-```
+完整链路。
 
 ---
 
-# 44. Research Ledger
+# 36. Research Ledger Updates
 
-在：
+Batch 完成后追加：
 
 ```text
-docs/RESEARCH_LEDGER.md
+RL-020 S3C
+RL-021 S4A
+RL-022 S8A
+RL-023 S27A
+RL-024 S30 Reference Baseline
 ```
 
-追加：
+每项记录：
 
 ```text
-RL-020 S3C Sector Sleeve Trend Filter Baseline
-```
-
-包括：
-
-```text
-strategy
 question
-status
 hypothesis provenance
 scope
-frozen universe/data
+data
 exact semantics
 decision
 evidence
-framework version
+framework
 reopen condition
 ```
 
-完成后：
-
-如果 PASS：
+对于 candidate：
 
 ```text
-CLOSED
+PASS baseline
+→ CLOSED
 ```
 
-表示 baseline screen 问题已经关闭，下一问题是 robustness。
+因为：
+
+```text
+baseline question closed
+next question = robustness
+```
 
 如果 FAIL：
 
@@ -1656,13 +1915,21 @@ CLOSED
 REJECTED
 ```
 
-禁止参数救援。
+S30：
+
+```text
+CLOSED / REFERENCE
+```
+
+按现有 ledger status vocabulary 适配。
+
+不要新增 ledger software。
 
 ---
 
-# 45. STRATEGY_CATALOG
+# 37. STRATEGY_CATALOG Update
 
-保持：
+必须保持：
 
 ```text
 S2 R1
@@ -1675,275 +1942,545 @@ S3B
 REJECTED
 ```
 
-新增：
+增加 Batch 01 各策略的简短生命周期状态：
 
 ```text
-S3C Sector Sleeve Trend Filter V1
+S3C
+S4A
+S8A
+S27A
+S30
 ```
 
-记录：
+不要把全部数字复制进去。
+
+详细数字指向：
 
 ```text
-hypothesis
-signal
-portfolio
-economic screen
-decision
-remaining unproven questions
-```
-
-Theme Rotation 仍：
-
-```text
-NOT STARTED
+research/results/*
 ```
 
 ---
 
-# 46. CURRENT_STATE
+# 38. CURRENT_STATE Update
 
-完成后只记录当前前沿。
+完成后不要写五页历史。
 
-如果 S3C PASS：
-
-```text
-S2 R1:
-PROSPECTIVE_SHADOW_ACTIVE
-
-S3A:
-REJECTED
-
-S3B:
-REJECTED
-
-S3C:
-ADVANCE_S3C_TO_ROBUSTNESS
-
-next unique active direction:
-S3C robustness
-```
-
-如果 S3C FAIL：
+只写：
 
 ```text
-S2 R1:
-PROSPECTIVE_SHADOW_ACTIVE
+S2:
+current prospective candidate
 
-S3A:
-REJECTED
+Batch 01:
+which strategies advanced
+which were rejected
 
-S3B:
-REJECTED
-
-S3C:
-REJECTED
-
-next unique direction:
-select a new independent hypothesis
+current research frontier:
+await Principal Review before Batch 02
 ```
 
-不要在同一 Goal 自动实现下一个 hypothesis。
+非常重要：
+
+Batch 结束后：
+
+```text
+DO NOT automatically choose Batch 02
+```
+
+状态写：
+
+```text
+AWAIT_BATCH_01_ARCHITECT_REVIEW
+```
+
+或仓库现有风格中的等价自然语言。
 
 ---
 
-# 47. Document Ownership
+# 39. docs/goal.md
+
+用本 Batch Goal 替换此前完成的单策略 Goal。
+
+完成后：
+
+```text
+Status: completed
+
+Batch:
+BATCH_01_DIVERSE_TRANSPARENT_BASELINES
+
+Protocol Freeze SHA:
+<sha>
+
+Results SHA:
+<sha>
+```
+
+以及各策略 decision。
+
+---
+
+# 40. ARCHITECTURE / RULES / AGENTS
 
 正常：
 
 ```text
 AGENTS.md
 UNCHANGED
-```
 
-正常：
-
-```text
 docs/ARCHITECTURE.md
 UNCHANGED
-```
 
-正常：
-
-```text
 docs/RESEARCH_RULES.md
+UNCHANGED
+
+docs/LESSONS_FROM_DAILYETF.md
 UNCHANGED
 ```
 
-因为：
+除非发现真正新的：
 
 ```text
-120-day trend
-1/11 sleeve
-S3C decision gate
+permanent architectural boundary
 ```
 
-都是 strategy-specific research semantics，不是永久架构或方法论。
+本 Batch 不应产生这种变化。
 
-必须更新：
+---
+
+# 41. Test Requirements — S3C
+
+至少测试：
 
 ```text
+fixed 1/N sleeves
+
+positive → sector
+negative → fallback
+unavailable → fallback
+
+unavailable != negative
+
+ranking changes do not matter
+
+sum(weights) == 1
+
+no same-close execution
+```
+
+---
+
+# 42. Test Requirements — S4A
+
+至少测试：
+
+```text
+60 valid return volatility
+
+missing asset excluded
+
+inverse-vol weights correct
+
+weights sum to 1
+
+<6 eligible → fallback 100%
+
+no future data usage
+
+next-observation execution
+```
+
+使用 synthetic prices 验证：
+
+```text
+lower volatility
+→ higher weight
+```
+
+---
+
+# 43. Test Requirements — S8A
+
+至少测试：
+
+```text
+200 valid observation equity trend
+
+positive → equity 100%
+
+non-positive → bond 100%
+
+unavailable → bond
+
+month-end signal
+
+next observation execution
+
+unchanged regime
+→ no unnecessary trade
+```
+
+---
+
+# 44. Test Requirements — S27A
+
+至少测试：
+
+```text
+same 200-observation trend classification as intended
+
+P positive / N
+→ total risk allocation = P/N
+
+fallback = 1 - P/N
+
+active assets weighted inverse-vol
+
+sum weights = 1
+
+no ranking
+
+negative assets receive zero
+
+no lookahead
+```
+
+Synthetic example：
+
+```text
+N = 4
+P = 2
+
+risk budget = 0.5
+fallback = 0.5
+
+if vol A < vol B:
+weight A > weight B
+
+A + B = 0.5
+```
+
+---
+
+# 45. Test Requirements — S30
+
+至少测试：
+
+```text
+four exact symbols
+
+25% each
+
+weights sum = 1
+
+annual rebalance only
+
+no hidden return-dependent weights
+```
+
+---
+
+# 46. Decision-Function Tests
+
+每个 strategy decision function 必须用 synthetic metric rows 测试：
+
+```text
+clear PASS case
+
+clear FAIL case
+
+boundary case
+```
+
+例如：
+
+```text
+Sharpe == threshold
+```
+
+必须行为确定。
+
+不要让判断留在人脑中。
+
+---
+
+# 47. Reproducibility
+
+每个 experiment result 必须记录：
+
+```text
+protocol freeze SHA
+data hashes
+config hash
+strategy source hash
+universe hash
+framework versions
+evaluation period
+```
+
+这样下一次 audit 可以验证：
+
+```text
+result
+came from
+the frozen protocol
+```
+
+---
+
+# 48. No Parameter Optimization
+
+整个 Batch 禁止：
+
+```text
+grid search
+random search
+Bayesian optimization
+parameter sweep
+best-performing configuration
+```
+
+严格只有：
+
+```text
+one parameterization per hypothesis
+```
+
+---
+
+# 49. No Robustness Yet
+
+即使某策略 PASS：
+
+不要在本 Batch 做：
+
+```text
+parameter plateau
+rolling robustness
+walk-forward
+cost sensitivity matrix
+universe sensitivity
+RQAlpha
+```
+
+原因：
+
+本 Batch 只负责：
+
+```text
+economic hypothesis screening
+```
+
+下一轮由 Principal Reviewer 根据整批结果决定：
+
+```text
+which candidates deserve robustness
+```
+
+---
+
+# 50. No RQAlpha
+
+整个 Batch：
+
+```text
+NO new RQAlpha strategy validation
+```
+
+RQAlpha 只有在：
+
+```text
+economic screen PASS
++
+future robustness PASS
+```
+
+后才值得投入。
+
+---
+
+# 51. No Theme Rotation
+
+继续：
+
+```text
+Theme Rotation
+=
+NOT STARTED
+```
+
+不要加入主题 ETF。
+
+---
+
+# 52. No New Infrastructure
+
+禁止：
+
+```text
+strategy framework
+experiment platform
+data platform
+provider abstraction
+workflow DAG
+scheduler
+dashboard
+database
+registry service
+broker integration
+notification
+production runner
+```
+
+Batch 只是研究批次。
+
+---
+
+# 53. Batch 01 Expected Diff Shape
+
+合理新增大致：
+
+```text
+research/batches/batch_01/PROTOCOL.md
+
+config/<4-5 small independent configs>
+
+tacticore/strategies/<small strategy modules>
+
+research/experiments/<batch strategy runners>
+
+research/results/<individual reports>
+research/results/BATCH_01_TRANSPARENT_STRATEGY_SCREEN.md
+
+tests/<focused tests>
+
 docs/RESEARCH_LEDGER.md
 docs/STRATEGY_CATALOG.md
 docs/CURRENT_STATE.md
 docs/goal.md
 ```
 
----
-
-# 48. Replace docs/goal.md
-
-当前 S3B Goal 已完成。
-
-用本 Goal 替换：
+如果出现：
 
 ```text
+hundreds of generic framework classes
+```
+
+说明 architecture drift。
+
+---
+
+# 54. Protocol-to-Result Integrity Check
+
+最终运行：
+
+```bash
+git diff <PROTOCOL_FREEZE_SHA>..HEAD
+```
+
+结果阶段正常只应修改：
+
+```text
+research/results/*
+docs/RESEARCH_LEDGER.md
+docs/STRATEGY_CATALOG.md
+docs/CURRENT_STATE.md
 docs/goal.md
 ```
 
-不要继续堆积历史 Goal。
+以及确有必要的 generated artifacts。
 
-完成时可以写：
-
-```text
-Status: completed
-Decision: <actual decision>
-```
-
-永久事实必须已经进入：
+原则上不应该在结果阶段再次修改：
 
 ```text
-RESEARCH_LEDGER
-STRATEGY_CATALOG
-CURRENT_STATE
-research/results
+configs
+strategy source
+decision gates
+protocol semantics
 ```
 
 ---
 
-# 49. Validation
+# 55. Full Validation
 
-运行当前 repository 正式验证：
+Protocol Freeze 前：
 
 ```bash
 uv sync --extra dev
 
 uv run pytest
-
 uv run ruff check .
-
 uv run ruff format --check .
-
 uv run mypy
+
+uv run python research/experiments/run_s2_r1_shadow.py \
+  --verify-candidate
 ```
 
-运行 S3C：
+Results 后再次完整执行。
 
-```bash
-uv run python \
-  research/experiments/run_s3c_sector_sleeve_baseline.py
-```
+---
 
-然后再次：
+# 56. Final S2 Integrity Verification
+
+所有 Batch 结果完成后再次：
 
 ```bash
 uv run python research/experiments/run_s2_r1_shadow.py \
   --verify-candidate
 ```
 
-不要声称未执行命令为 PASS。
+必须 PASS。
+
+否则：
+
+```text
+BATCH INVALID
+```
+
+不要更新 S2 manifest。
 
 ---
 
-# 50. No CI Work
+# 57. Final Architecture-Drift Audit
 
-如果最新 HEAD 仍无 active commit-status / workflow gate：
-
-```text
-do not add CI
-```
-
-本 Goal 不做：
+逐项回答 YES / NO：
 
 ```text
-GitHub Actions
-branch protection
-release automation
-```
+Did we modify S2 frozen inputs?
 
-研究工作优先。
+Did we reopen S3A?
 
----
+Did we reopen S3B?
 
-# 51. Diff Audit
+Did we tune any rejected strategy?
 
-提交前执行：
+Did we run parameter sweeps?
 
-```bash
-git status
-git diff
-```
+Did one strategy's outcome influence another strategy's frozen design?
 
-重点确认：
+Did we modify protocol after performance observation?
 
-```text
-S2 frozen files unchanged
-S2 manifest unchanged
-
-S3A files unchanged
-S3B files unchanged
-
-S3 universe unchanged
-S3 canonical unchanged
-```
-
-不得出现：
-
-```text
-TUSHARE_TOKEN
-credentials
-temporary data
-cache
-environment artifacts
-```
-
----
-
-# 52. Architecture Drift Audit
-
-逐项回答：
-
-```text
-Did we reopen RL-018?
-Did we reopen RL-019?
-
-Did we tune S3A?
-Did we tune S3B?
-
-Did we test multiple S3C lookbacks?
-Did we use top-k?
-Did we use ranking?
-Did we use breadth threshold?
-
-Did we change the S3 universe?
 Did we redownload historical data?
 
-Did we add another backtester?
+Did we build a generic strategy framework?
+
+Did we add a new backtester?
+
 Did we duplicate VectorBT?
 
-Did we prematurely run RQAlpha?
+Did we run new RQAlpha validations?
+
 Did we start Theme Rotation?
 
-Did we modify S2 frozen inputs?
-Did we update the S2 manifest?
+Did we build production infrastructure?
 
-Did we add DailyETF-style factor complexity?
+Did we modify ARCHITECTURE unnecessarily?
 
-Did we modify AGENTS.md unnecessarily?
-Did we modify ARCHITECTURE.md unnecessarily?
-Did we put S3-specific settings into RESEARCH_RULES?
+Did we modify RESEARCH_RULES for strategy-specific parameters?
 
-Did we claim S3C is OOS?
-Did we claim S3C is production-ready?
+Did we call historical results OOS/prospective?
 ```
 
 正常全部：
@@ -1954,255 +2491,212 @@ NO
 
 ---
 
-# 53. Commit and Push
+# 58. Commit B
 
-所有验证完成后创建一个 coherent commit。
+完成所有结果、文档和验证后：
 
-建议 intent：
-
-```text
-evaluate S3C sector sleeve trend baseline
+```bash
+git status
+git diff
 ```
 
-随后：
+创建：
+
+```text
+Commit B
+```
+
+建议：
+
+```text
+evaluate batch 1 transparent strategy screens
+```
+
+然后：
 
 ```bash
 git push
 ```
 
-不要混入无关 refactor。
+---
+
+# 59. Final Batch Report to User
+
+最终回复必须首先给：
+
+```text
+Starting HEAD
+Protocol Freeze SHA
+Results SHA
+Ending HEAD
+```
+
+然后给统一表：
+
+| Strategy | Hypothesis                  | CAGR | MaxDD | Sharpe | Calmar | Turnover | Decision  |
+| -------- | --------------------------- | ---: | ----: | -----: | -----: | -------: | --------- |
+| S3C      | sector local trend          |      |       |        |        |          |           |
+| S4A      | inverse-vol risk allocation |      |       |        |        |          |           |
+| S8A      | equity/bond trend           |      |       |        |        |          |           |
+| S27A     | trend + inverse vol         |      |       |        |        |          |           |
+| S30      | static diversification      |      |       |        |        |          | REFERENCE |
 
 ---
 
-# 54. Final Completion Report
+# 60. Final Interpretation Questions
 
-最终回复必须报告：
+必须回答：
 
 ```text
-starting HEAD
-ending HEAD
-commit SHA
+1. Which strategies passed their own
+   predeclared economic gates?
 
-S2 integrity before
-S2 integrity after
+2. Which were rejected?
 
-S3A state
-S3B state
+3. Which mechanism appears strongest:
+   - return prediction
+   - risk allocation
+   - diversification
+   - timing?
 
-S3C hypothesis
-trend_window
-sector count
-fixed sleeve size
+4. How strong is S30 simple static allocation?
 
-data hashes
-universe hash
-config hash
+5. Did any dynamic strategy clearly justify
+   its extra complexity over S30?
 
-evaluation start
-evaluation end
+6. Did any strategy outperform S2 historically
+   on risk-adjusted metrics?
+
+7. Which results are genuinely orthogonal
+   to S2?
+
+8. Were any outcomes borderline?
+
+9. Are any PASSes likely driven by
+   only lower risk exposure?
+
+10. What remains unproven?
+```
+
+---
+
+# 61. Do NOT Start Batch 02
+
+这是非常重要的停止条件。
+
+即使某策略看起来非常优秀：
+
+```text
+DO NOT
+```
+
+在同一 Goal 内开始：
+
+```text
+robustness
+parameter plateau
+RQAlpha
+new strategy
+Batch 02
+```
+
+完成状态必须停在：
+
+```text
+BATCH_01_COMPLETE
+AWAIT_PRINCIPAL_REVIEW
+```
+
+然后由下一轮 repository-first 审计决定：
+
+```text
+哪些策略进入 robustness
+
+哪些直接永久拒绝
+
+是否需要 Batch 02
+
+Batch 02 应测试哪些真正独立的 hypotheses
+```
+
+---
+
+# 62. Candidate Pool for Future Batch 02
+
+只记录为：
+
+```text
+not implemented
+```
+
+候选包括：
+
+```text
+S5  Trend + true Risk Parity
+
+S9  Equity / Gold / Bond Allocation
+
+S23 Minimum Variance
+
+S24 Maximum Diversification
+
+S7  Defensive Asset Rotation
+
+S13 Asset-Class Breadth
+
+S14 Theme Rotation
+```
+
+Batch 01 不允许偷偷实现它们。
+
+---
+
+# 63. Final Research Principle
+
+```text
+Do not serially overfit one idea.
+
+Freeze a diverse hypothesis batch.
+Then let evidence eliminate most of it.
 
 S3C:
-CAGR
-Max Drawdown
-Sharpe
-Calmar
-worst year
-turnover
-trade count
-average holding days
-target-change months/year
+local trend filtering
 
-average risk allocation
-average fallback allocation
+S4A:
+risk allocation
 
-primary comparator:
-CAGR
-Max Drawdown
-Sharpe
-Calmar
+S8A:
+simple timing
 
-drawdown improvement
-CAGR sacrifice
-Sharpe delta
-Calmar delta
+S27A:
+trend + risk sizing
 
-final decision
+S30:
+complexity hurdle
+
+One frozen protocol.
+Five independent screens.
+No tuning.
+No mid-batch redesign.
+
+Most strategies SHOULD fail.
+
+A failure is useful
+if it closes an economic hypothesis.
+
+Only surviving strategies earn
+robustness work.
+
+Only robust strategies earn
+execution work.
+
+Only execution-validated strategies earn
+prospective candidacy.
+
+S2 R1 remains frozen.
+
+Strategy research
+>
+infrastructure engineering.
 ```
 
-同时明确回答：
-
-```text
-Was S3A reopened?
-NO
-
-Was S3B reopened?
-NO
-
-Was parameter optimization performed?
-NO
-
-Was cross-sectional ranking used?
-NO
-
-Was a breadth threshold used?
-NO
-
-Was S3 universe changed?
-NO
-
-Was historical S3 data changed?
-NO
-
-Was S2 R1 modified?
-NO
-
-Does S2 candidate verification pass?
-YES
-
-Was RQAlpha used for S3C?
-NO
-
-Was Theme Rotation started?
-NO
-
-Is S3C OOS validated?
-NO
-
-Is S3C production-ready?
-NO
-```
-
----
-
-# 55. If S3C Passes
-
-如果：
-
-```text
-ADVANCE_S3C_TO_ROBUSTNESS
-```
-
-下一 Goal 才进入：
-
-```text
-S3C Robustness Gate
-```
-
-优先检验：
-
-```text
-coarse trend-window plateau
-fixed-period stability
-rolling stability
-cost sensitivity
-universe robustness
-sector contribution concentration
-```
-
-仍然不要立即增加：
-
-```text
-macro
-fund flow
-valuation
-news
-AI
-```
-
-也不要立即 RQAlpha。
-
----
-
-# 56. If S3C Fails
-
-如果：
-
-```text
-REJECT_S3C_BASELINE
-```
-
-或 degeneration rejection：
-
-停止。
-
-不要尝试：
-
-```text
-100-day
-140-day
-200-day
-partial sleeve
-different threshold
-```
-
-来救结果。
-
-至此 S3 已经依次测试：
-
-```text
-S3A:
-pick winners
-
-S3B:
-global breadth switch
-
-S3C:
-local sleeve trend filtering
-```
-
-如果三者全部失败：
-
-下一轮应暂停继续围绕同一 sector-momentum family 改造，重新比较真正不同的 economic hypothesis，包括是否值得进入 Theme Rotation，而不是继续微调价格趋势。
-
----
-
-# 57. Final Principle
-
-```text
-S3A asked:
-Which sectors are the winners?
-
-Rejected.
-
-S3B asked:
-Is the whole sector complex healthy?
-
-Rejected.
-
-S3C asks:
-Which individual sector sleeves deserve risk exposure?
-
-One sector.
-One fixed sleeve.
-One trend decision.
-
-No ranking.
-No winner concentration.
-No all-in/all-out regime.
-
-Local risk control instead of global timing.
-
-One hypothesis.
-One baseline.
-One decision.
-
-Negative evidence stays closed.
-
-VectorBT before RQAlpha.
-Robustness before execution.
-Execution before production.
-
-S2 remains frozen while S3 research continues.
-
-Strategy evidence > infrastructure.
-```
-
----
-
-## 完成状态
-
-Status: completed
-
-Decision: `REJECT_S3C_BASELINE`
-
-权威结果：[S3C 行业固定 Sleeve 趋势过滤基线 V1](../research/results/S3C_SECTOR_SLEEVE_BASELINE_V1.md)。

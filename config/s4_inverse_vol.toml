@@ -1,0 +1,8 @@
+[inverse_vol_allocation]
+vol_window = 60
+min_eligible_assets = 6
+rebalance_frequency = "monthly"
+fallback_symbol = "511010.SS"
+fees = 0.001
+slippage = 0.0005
+initial_cash = 1000000.0

@@ -20,6 +20,12 @@ class ChinaSectorSleeveTrendConfig:
     slippage: float
     initial_cash: float
 
+    def __post_init__(self) -> None:
+        if self.trend_window < 1 or self.absolute_momentum_threshold != 0.0:
+            raise ValueError("S3C V1 requires 120-observation zero-threshold trend")
+        if self.rebalance_frequency != "monthly" or self.execution_policy != "SIGNAL_CHANGE_ONLY":
+            raise ValueError("S3C V1 requires monthly SIGNAL_CHANGE_ONLY")
+
 
 def load_sector_sleeve_trend_config(path: str | Path) -> ChinaSectorSleeveTrendConfig:
     with Path(path).open("rb") as config_file:

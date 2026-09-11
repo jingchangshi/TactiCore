@@ -52,7 +52,8 @@ def schedule_execution(prices: pd.DataFrame, schedule: pd.DataFrame) -> pd.DataF
 
 def vectorbt_reproduction(prices: pd.DataFrame, schedule: pd.DataFrame):
     config = load_trend_inverse_vol_config(ROOT / "config/s27_trend_inverse_vol.toml")
-    start = prices.index[prices.index.get_loc(schedule.index[0]) - 1]
+    # Batch 02 S27A 的权威基线从首个 execution date 计量，而非此前一日。
+    start = schedule.index[0]
     return run_target_weights(
         prices,
         schedule_execution(prices, schedule),

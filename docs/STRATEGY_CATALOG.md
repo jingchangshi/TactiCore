@@ -66,3 +66,19 @@
 - S8A equity/bond trend：`REJECT_S8A_BASELINE`；绝对指标与两个简单 comparator 均不成立，详见 [报告](../research/results/S8A_EQUITY_BOND_TREND_BASELINE_V1.md)。
 - S27A trend + inverse vol：`ADVANCE_S27A_TO_ROBUSTNESS`；仅 baseline 问题关闭，尚非执行或前瞻候选，详见 [报告](../research/results/S27A_TREND_INVERSE_VOL_BASELINE_V1.md)。
 - S30 static strategic allocation：`REFERENCE_BASELINE`；固定 25/25/25/25 的复杂度门槛，详见 [报告](../research/results/S30_STATIC_STRATEGIC_ALLOCATION_V1.md)。
+
+## 外部 canonical 映射与本地边界
+
+详细外部范围见 [策略研究地图](STRATEGY_RESEARCH_MAP.md)，此处只记录已实现策略的本地生命周期。
+
+| Local strategy | Canonical external mapping | Tier | Local question/status | Local result does NOT prove |
+| --- | --- | --- | --- | --- |
+| S1 | cross-sectional / dual momentum | E1/E3 | 受限ETF transfer，REJECTED | 全球 momentum 被否定 |
+| S2 | time-series momentum | E1 | 长多ETF transfer，PROSPECTIVE_SHADOW_ACTIVE | 已获得生产资格 |
+| S3A | industry momentum | E1 | 中国行业ETF transfer，REJECTED | industry momentum 不存在 |
+| S3B | aggregate breadth regime | E4 | 本地广度假设，REJECTED | 所有 breadth 规则无效 |
+| S3C | per-sector trend transfer | E3 | 本地固定sleeve filter，REJECTED | trend globally invalid |
+| S4A | inverse-volatility allocation | E2 | 复杂度是否有增量价值，REJECTED | inverse-vol 方法无用 |
+| S8A | moving-average tactical allocation | E3 | 两资产中国ETF规则，REJECTED | trend literature 被否定 |
+| S27A | trend + inverse-vol sizing | E3 | 历史基线 ADVANCE_TO_ROBUSTNESS | 新异常或已获执行资格 |
+| S30 | naive/static diversification | E1 | REFERENCE_BASELINE | alpha 策略 |

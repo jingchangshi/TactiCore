@@ -112,6 +112,12 @@ RQAlpha 用于：
 研究顺序：
 
 ```text
+External Evidence Gate
+   ↓
+Canonical Strategy Mapping
+   ↓
+Local Evidence Gap
+   ↓
 经济假设
    ↓
 策略实现
@@ -124,6 +130,23 @@ RQAlpha 用于：
 ```
 
 不得从基础设施建设开始。样本外证据的优先级高于样本内 CAGR。
+
+### 4.1 External Evidence / Literature Gate
+
+任何新 strategy family、signal、allocator 或 tactical overlay 在写代码前必须回答：canonical name、是否已被研究、最强支持与反证、原始市场/资产/实现域、是否有成熟上游实现、对 TactiCore 的精确未解问题、该问题是否已被 `RESEARCH_LEDGER` 关闭、最简单隔离比较器及为何需要新代码。不能回答即 **NO STRATEGY CODE**。
+
+先读 `research/strategy_evidence/STRATEGY_EVIDENCE_REGISTRY.yaml`；没有条目时先作有界文献审计再增加条目。行动词只用 `TRANSFER_VALIDATE`、`UPSTREAM_COMPARE`、`LOCAL_ADJUDICATION`、`NEW_HYPOTHESIS`、`REFERENCE_ONLY`、`DO_NOT_PURSUUE`，不是状态机。
+
+- `E1_MATURE`：跨样本/市场的现象证据成熟；只研究本地 transfer，不重问其存在性。
+- `E2_ESTABLISHED_METHOD`：构造方法成熟，未声称 alpha；优先上游比较。
+- `E3_MIXED_CONDITIONAL`：支持与反证必须同列，作本地裁决。
+- `E4_OPEN_LOCAL`：公开证据不足或高度依赖中国 ETF、PIT、流动性/执行；先证明合理检索未回答才可形成新假设。
+
+层级不等于本地决定：E1 不自动 PASS，local REJECT 不推翻全局文献，local PASS 不提高外部层级。论文的期货、多空、杠杆或因子域不得被写成“已证明适用于长多中国 ETF”。每条 evidence snapshot 均需 `evidence_as_of`；只在相关 Goal 遇到重要新复制、反证或上游变化时刷新。
+
+复杂策略必须回答“为什么不是更简单的适当 comparator？”比较器应隔离新增机制（如 1/N、S30、buy-and-hold、同 universe 等权或同风险暴露），而非强制一律战胜 S30。
+
+未来 strategy Goal 须先写：canonical strategy、external tier/consensus/sources/contradictions、原始域与 TactiCore mismatch、upstream implementation、已有本地证据、remaining gap、research action；之后才可定义实现或实验。批次优先经济上正交的本地缺口；成熟策略称 Replication / Transfer Batch，不称 Discovery Batch。
 
 ### 4.1 经济正确性
 
@@ -223,8 +246,10 @@ docs/ARCHITECTURE.md
 ```text
 ARCHITECTURE
 + RESEARCH_RULES
++ EXTERNAL STRATEGY EVIDENCE
 + RESEARCH_LEDGER
-+ research artifacts
++ LOCAL RESEARCH ARTIFACTS
++ STRATEGY_CATALOG
 + CURRENT_STATE
 → next Goal
 ```

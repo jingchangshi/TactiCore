@@ -265,7 +265,7 @@
 - 策略：S27A_TREND_INVERSE_VOL_V1；状态：CLOSED。
 - 问题/范围：保持 S2 同一趋势状态和 P/N 风险预算，仅用 60 日 inverse-vol 重分配 active sleeves 是否改善风险调整效率。
 - 假设来源：已观察 S2 evidence 后的 historical follow-up，不是 OOS。
-- 结论：相对只读 S2 reproduction，CAGR 7.79% vs 6.30%、最大回撤 -12.50% vs -26.18%、Sharpe 1.015 vs 0.654；`ADVANCE_S27A_TO_ROBUSTNESS`，基线问题关闭。
+- 结论：相对已修正为 `SIGNAL_CHANGE_ONLY` 的只读 S2 reproduction，CAGR 7.79% vs 6.16%、最大回撤 -12.50% vs -26.18%、Sharpe 1.015 vs 0.628；`ADVANCE_S27A_TO_ROBUSTNESS`，基线问题关闭。此前账本遗留 R1 comparator 数字，现仅作事实一致性更正，不重跑、不改变策略或决策。
 - 证据：[报告](../research/results/S27A_TREND_INVERSE_VOL_BASELINE_V1.md)；correctness revision Protocol V2 `ae218d7`；canonical 同 RL-001。
 - 重开条件：下一问题仅可为预注册 robustness；不得修改本基线以追逐结果。
 

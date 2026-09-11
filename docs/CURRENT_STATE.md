@@ -12,6 +12,8 @@ S2 R1 的 [manifest](../research/shadow/s2_r1/candidate_manifest.json) 仍通过
 
 S2 仍缺少足够前瞻 observation；S3A、S3B、S3C、S4A、S8A 均已关闭，不得以参数微调重开。
 
-## 下一项唯一研究方向
+## External Evidence Foundation
 
-`AWAIT_BATCH_01_ARCHITECT_REVIEW`：S2 R1 按协议积累 evidence；由 Principal Review 决定 S27A 是否获得 robustness 或是否开始 Batch 02。不得自动开展后续研究。
+`BATCH_00_EXTERNAL_EVIDENCE_FOUNDATION_COMPLETE`：外部证据 registry 与研究地图已建立。S2 R1 继续前瞻影子；S27A 仅具 robustness 资格，未自动启动；Batch 02 与 Theme Rotation 均未开始。
+
+当前前沿为 `EVIDENCE_INFORMED_STRATEGY_SELECTION`，下一状态为 `AWAIT_EXTERNAL_EVIDENCE_ARCHITECT_REVIEW`。未来策略选择必须先完成 External Evidence Gate，并从本地 remaining gap 而非历史收益或叙事开始。

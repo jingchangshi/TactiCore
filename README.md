@@ -33,6 +33,8 @@ RQAlpha 官方 bundle 保存在仓库外的 `~/.rqalpha/bundle`。重建 Tushare
 - [研究账本](docs/RESEARCH_LEDGER.md)
 - [当前状态](docs/CURRENT_STATE.md)
 - [策略目录](docs/STRATEGY_CATALOG.md)
+- [策略研究地图](docs/STRATEGY_RESEARCH_MAP.md)
+- [外部策略证据快照](research/strategy_evidence/STRATEGY_EVIDENCE_REGISTRY.yaml)
 - [S2 参数平台报告](research/results/S2_PARAMETER_PLATEAU_V1.md)
 - [S2 上游原生执行闭环报告](research/results/S2_RQALPHA_UPSTREAM_EXECUTION_CLOSURE_V1.md)
 - [S2 R1 前瞻影子协议](research/shadow/s2_r1/README.md)

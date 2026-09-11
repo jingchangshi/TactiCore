@@ -5,6 +5,10 @@
 TactiCore 是策略优先的低频多资产配置研究系统。稳定链路为：
 
 ```text
+外部策略证据
+ ↓
+本地证据缺口
+ ↓
 数据
  ↓
 策略语义
@@ -26,11 +30,17 @@ TactiCore 是策略优先的低频多资产配置研究系统。稳定链路为�
 | --- | --- | --- |
 | 经济假设与信号 | TactiCore | 信号语义、目标组合、策略专用执行政策 |
 | 数据契约 | TactiCore | canonical 格式、标的映射、来源与缺失语义 |
+| 外部策略证据 | 外部原始研究 / 社区 | canonical 定义、实证证据、反证与既有实现方法 |
+| 外部证据快照 | TactiCore | 有界整理、适用范围、层级、本地缺口与上游指针 |
 | 快速研究 | VectorBT | 组合模拟、研究记录、收益/成交/回撤、参数与敏感性研究 |
 | 权威执行 | RQAlpha | 订单 sizing、整手、撮合、现金、持仓、账户、成本、滑点、市场限制、公司行动与执行记录 |
 | 证据与决策 | TactiCore | 薄框架编排、有界派生比较、研究报告与阶段决策 |
 
 TactiCore 不拥有通用组合会计、撮合引擎、订单生命周期框架、通用执行模拟器、第三套回测引擎、通用数据平台或通用研究治理平台。
+
+外部世界拥有论文、复制研究与社区实现本身；TactiCore 只在
+[`STRATEGY_EVIDENCE_REGISTRY.yaml`](../research/strategy_evidence/STRATEGY_EVIDENCE_REGISTRY.yaml)
+中作版本化、可审计的范围化综合。它不是文献爬虫、书目数据库、知识图谱或搜索服务。外部主张的权威顺序为原始发表 > 高质量独立复制/综述 > 原始实践研究 > 二级解释；registry 不能覆盖原始来源。仓库本地事实仍以源代码和冻结产物优先于说明文档。
 
 ## 3. 架构层次
 
@@ -39,6 +49,11 @@ TactiCore 不拥有通用组合会计、撮合引擎、订单生命周期框架�
 Tushare Pro 是 canonical 研究数据源；RQAlpha 官方 bundle 只提供权威中国市场执行语义。`config/universe.csv` 显式保存 Tushare、策略和 RQAlpha 代码映射。`data/canonical/` 保存价格、交易日历和来源清单；未知值保持缺失，不前向填充、不置零、不猜测。
 
 数据能力必须由具体策略阻塞项驱动，不预建提供方抽象、缓存服务或历史主数据库。
+
+### 3.0 外部证据与本地缺口
+
+任何策略代码前先读取外部证据 registry 与
+[策略研究地图](STRATEGY_RESEARCH_MAP.md)：先确定 canonical strategy、外部证据层级、反证、原始研究域、成熟上游实现及尚未被本地账本关闭的缺口。只有本地缺口才进入数据、策略语义和研究筛选；外部成功不是本地验证，本地失败也不否定全局文献。
 
 ### 3.2 策略语义
 
@@ -63,8 +78,10 @@ RQAlpha 与 VectorBT 无需逐比特一致。差异按框架的真实执行与�
 ```text
 ARCHITECTURE
 + RESEARCH_RULES
++ EXTERNAL STRATEGY EVIDENCE
 + RESEARCH_LEDGER
-+ research artifacts
++ LOCAL RESEARCH ARTIFACTS
++ STRATEGY_CATALOG
 + CURRENT_STATE
 → 生成下一 Goal
 ```

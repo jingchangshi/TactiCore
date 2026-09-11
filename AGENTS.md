@@ -19,6 +19,8 @@ TactiCore 是低频、多资产战术配置研究系统，首要目标是发现�
 3. [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md)
 4. [`docs/RESEARCH_LEDGER.md`](docs/RESEARCH_LEDGER.md)
 5. [`docs/STRATEGY_CATALOG.md`](docs/STRATEGY_CATALOG.md)
+6. [`docs/STRATEGY_RESEARCH_MAP.md`](docs/STRATEGY_RESEARCH_MAP.md)
+7. [`research/strategy_evidence/STRATEGY_EVIDENCE_REGISTRY.yaml`](research/strategy_evidence/STRATEGY_EVIDENCE_REGISTRY.yaml)
 
 随后阅读所改策略在 `research/results/` 中的相关证据，最后读取 [`docs/goal.md`](docs/goal.md) 作为当前执行指令。
 
@@ -33,6 +35,8 @@ TactiCore 是低频、多资产战术配置研究系统，首要目标是发现�
 | 已关闭问题 | `docs/RESEARCH_LEDGER.md` |
 | 当前阻塞与下一实验 | `docs/CURRENT_STATE.md` |
 | 策略生命周期状态 | `docs/STRATEGY_CATALOG.md` |
+| 外部证据与本地缺口导航 | `docs/STRATEGY_RESEARCH_MAP.md` |
+| 外部证据快照 | `research/strategy_evidence/STRATEGY_EVIDENCE_REGISTRY.yaml` |
 | 详细历史证据 | `research/results/*` |
 | 当前任务 | `docs/goal.md` |
 
@@ -62,6 +66,12 @@ goal.md
 ## 已关闭问题不得无故重开
 
 广泛调查前先查 `docs/RESEARCH_LEDGER.md`。Goal 涉及同一策略，不等于可以重做 `CLOSED` 或 `REJECTED` 问题。
+
+## 策略提案的 External Evidence Gate
+
+任何 Goal 如提议、实现、比较、调参或扩展策略，触碰策略代码前必须先读 registry；无条目则先完成有界文献审计并新增/更新条目。Agent 必须先明确输出：Canonical mapping、External tier、External conclusion、Relevant contradictions、Upstream implementation、Existing TactiCore evidence、Remaining local gap、Research action。
+
+外部 registry 与 `RESEARCH_LEDGER` 必须同时检查：若外部文献已回答存在性且本地账本已回答 transfer，则为 `DO_NOT_PURSUUE`，不得改名重做。外部成熟证据不构成本地 PASS；本地 REJECT 不否定 canonical literature。未来 Goal 的开头必须含这些 External Evidence Gate 字段，之后才可定义实现/实验。
 
 仅在策略语义或 canonical 数据契约改变、框架变化使原假设失效，或出现新矛盾证据时重开。重开必须指出具体账本条目、矛盾证据和有界范围；不得无依据重做通用信号、数据质量或执行分类审计。
 

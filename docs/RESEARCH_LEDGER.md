@@ -232,3 +232,14 @@
 - 数据快照：复用 RL-018；价格 SHA-256 `337c28cc52c04f8b5257a8feffb7d1c508248cab10595466c8c69d758556a4a6`。
 - 框架/版本：VectorBT 0.28.5。
 - 重开条件：仅当 S3B 语义、universe 或 canonical 契约作为新版本变化；不得调 threshold/lookback 重开。
+
+## RL-020 S3C 行业固定 Sleeve 趋势过滤基线
+
+- 策略：S3C China Sector Sleeve Trend Filter V1
+- 状态：REJECTED
+- 问题：逐行业 120 有效观测绝对趋势能否改善同机制 fixed-sleeve basket？
+- 范围：复用 RL-018 universe/data；每行业固定 1/11，正趋势持有、负或不可用 sleeve 转 511010.SS，月频 `SIGNAL_CHANGE_ONLY`。
+- 假设来源：在观察 S3A/S3B 后提出，仅属 historical follow-up，不是 OOS。
+- 结论：回撤改善 10.30pp，但 CAGR sacrifice 2.51pp，Sharpe/Calmar 未提高，`REJECT_S3C_BASELINE`。
+- 证据：[S3C 报告](../research/results/S3C_SECTOR_SLEEVE_BASELINE_V1.md)、[比较](../research/results/s3c_sector_sleeve_comparison_v1.csv)。
+- 重开条件：仅新策略版本或数据/universe 契约变化；不得参数救援。

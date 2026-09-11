@@ -50,3 +50,12 @@
 - 历史筛选：最大回撤较同机制 ungated basket 改善 8.52pp，但 CAGR sacrifice 2.64pp，且 Sharpe/Calmar 未改善。
 - 尚未证明：任何其他 breadth 规则、OOS、执行或生产可交易性。
 - 下一步：停止 S3B，选择新的独立 economic hypothesis；Theme Rotation 未启动。
+
+## S3C Sector Sleeve Trend Filter V1
+
+状态：`REJECT_S3C_BASELINE`。逐行业正趋势保留 1/11 sleeve，负或不可用 sleeve 转防御资产。
+
+- 机制：无 ranking、top-k、breadth 或全局开关；月末信号、下一观测日执行、`SIGNAL_CHANGE_ONLY`。
+- 历史筛选：回撤相对 fixed-sleeve ungated basket 改善 10.30pp，但 CAGR sacrifice 2.51pp，Sharpe/Calmar 未改善。
+- 尚未证明：OOS、执行、生产可交易性或其他 trend window/sleeve 语义。
+- 下一步：停止 S3C；暂停继续改造 sector-momentum family，选择新的独立 hypothesis。Theme Rotation 未启动。

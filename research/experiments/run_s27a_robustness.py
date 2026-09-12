@@ -10,6 +10,7 @@ import pandas as pd
 from research.experiments.batch_01_common import metric_row
 from research.experiments.run_s1_evidence_closure import period_metrics, rolling_table
 from tacticore.data.prices import load_price_csv
+from tacticore.data.tradability import load_tradability_inputs
 from tacticore.engines.vectorbt_adapter import run_target_weights
 from tacticore.strategies.inverse_vol_allocation import valid_return_volatility
 from tacticore.strategies.multi_asset_trend import (
@@ -76,7 +77,7 @@ def build_targets(
     return targets, pd.DataFrame(diagnostics).set_index("signal_date")
 
 
-def run_case(prices: pd.DataFrame, spec: RobustnessSpec, symbols: tuple[str, ...]):
+def run_case(prices: pd.DataFrame, spec: RobustnessSpec, symbols: tuple[str, ...], tradability_mask, lifetimes):
     targets, diagnostics = build_targets(prices, spec, symbols)
     execution = build_execution_weights(prices, targets)
     start = execution.dropna(how="all").index[0]
@@ -87,6 +88,8 @@ def run_case(prices: pd.DataFrame, spec: RobustnessSpec, symbols: tuple[str, ...
         slippage=spec.slippage,
         initial_cash=spec.initial_cash,
         metric_start=start,
+        tradability_mask=tradability_mask,
+        lifetimes=lifetimes,
     )
     return result, diagnostics, start
 
@@ -133,6 +136,7 @@ def main() -> None:
     base = load_trend_inverse_vol_config(ROOT / "config/s27_trend_inverse_vol.toml")
     s2 = load_trend_config(ROOT / "config/strategy.toml")
     prices = load_price_csv(ROOT / "data/canonical/etf_adjusted_close.csv")
+    tradability_mask, lifetimes = load_tradability_inputs(prices, str(ROOT / "config/universe.csv"))
     frozen = RobustnessSpec(
         trend_window=base.trend_window,
         vol_window=base.vol_window,
@@ -156,7 +160,7 @@ def main() -> None:
                 slippage=frozen.slippage,
                 initial_cash=frozen.initial_cash,
             ),
-            s2.risk_symbols,
+            s2.risk_symbols, tradability_mask, lifetimes,
         )
         rows.append(
             {
@@ -192,7 +196,7 @@ def main() -> None:
         pd.DataFrame(period_rows),
         pd.DataFrame(rolling_rows),
     )
-    baseline_result, _, baseline_start = run_case(prices, frozen, s2.risk_symbols)
+    baseline_result, _, baseline_start = run_case(prices, frozen, s2.risk_symbols, tradability_mask, lifetimes)
     cost_rows = []
     baseline_targets, _ = build_targets(prices, frozen, s2.risk_symbols)
     baseline_execution = build_execution_weights(prices, baseline_targets)
@@ -204,6 +208,8 @@ def main() -> None:
             slippage=0.0,
             initial_cash=frozen.initial_cash,
             metric_start=baseline_start,
+            tradability_mask=tradability_mask,
+            lifetimes=lifetimes,
         )
         cost_rows.append({"cost_bps": cost_bps, **metric_row("S27A", result, baseline_start)})
     costs = pd.DataFrame(cost_rows)
@@ -216,6 +222,8 @@ def main() -> None:
         slippage=frozen.slippage,
         initial_cash=frozen.initial_cash,
         metric_start=baseline_start,
+        tradability_mask=tradability_mask,
+        lifetimes=lifetimes,
     )
     s30 = pd.read_csv(ROOT / "research/results/s30_static_allocation_comparison_v1.csv")
     comparators = pd.DataFrame(

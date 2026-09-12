@@ -6,6 +6,8 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
+from tacticore.data.universe import load_universe
+
 
 @dataclass(frozen=True)
 class AssetLifetime:
@@ -38,6 +40,14 @@ def lifetimes_from_universe(universe: pd.DataFrame) -> dict[str, AssetLifetime]:
         str(symbol): AssetLifetime(str(symbol), pd.Timestamp(row.start_date).normalize())
         for symbol, row in universe.iterrows()
     }
+
+
+def load_tradability_inputs(
+    prices: pd.DataFrame, universe_path: str
+) -> tuple[pd.DataFrame, dict[str, AssetLifetime]]:
+    """由显式 version-controlled universe 生成一次 runner 所需的 PIT 输入。"""
+    lifetimes = lifetimes_from_universe(load_universe(universe_path))
+    return build_tradability_mask(prices.index, list(prices.columns), lifetimes, prices), lifetimes
 
 
 def build_tradability_mask(

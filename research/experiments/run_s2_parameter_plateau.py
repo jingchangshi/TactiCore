@@ -17,6 +17,7 @@ from research.experiments.run_s1_evidence_closure import (
     rolling_table,
 )
 from tacticore.data.prices import load_price_csv
+from tacticore.data.tradability import load_tradability_inputs
 from tacticore.engines.vectorbt_adapter import ResearchResult, run_target_weights
 from tacticore.strategies.multi_asset_trend import (
     MultiAssetTrendConfig,
@@ -62,6 +63,7 @@ def run_parameter(
     """使用冻结的 SIGNAL_CHANGE_ONLY 与下一观测日执行语义。"""
     targets = build_month_end_targets(prices, config)
     execution = build_signal_change_execution_weights(prices, targets)
+    tradability_mask, lifetimes = load_tradability_inputs(prices, str(ROOT / "config/universe.csv"))
     result = run_target_weights(
         prices,
         execution,
@@ -69,6 +71,8 @@ def run_parameter(
         slippage=config.slippage,
         initial_cash=config.initial_cash,
         metric_start=EVALUATION_START,
+        tradability_mask=tradability_mask,
+        lifetimes=lifetimes,
     )
     return targets, result
 

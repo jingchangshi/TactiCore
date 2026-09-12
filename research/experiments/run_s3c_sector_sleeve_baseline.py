@@ -7,6 +7,7 @@ import pandas as pd
 
 from research.experiments.run_s3_sector_baseline import sector_symbols
 from tacticore.data.prices import load_price_csv
+from tacticore.data.tradability import load_tradability_inputs
 from tacticore.data.universe import load_universe
 from tacticore.engines.vectorbt_adapter import run_target_weights
 from tacticore.strategies.china_sector_rotation import (
@@ -40,6 +41,9 @@ def main():
     config = load_sector_sleeve_trend_config(ROOT / "config/s3_sector_sleeve_trend.toml")
     sectors = sector_symbols(universe)
     prices = load_price_csv(ROOT / "data/canonical/s3_sector_rotation_v1/etf_adjusted_close.csv")
+    tradability_mask, lifetimes = load_tradability_inputs(
+        prices, str(ROOT / "config/s3_sector_universe.csv")
+    )
     targets, states = build_month_end_targets(prices, config, sectors)
     momentums = valid_observation_momentum(prices.loc[:, list(sectors)], config.trend_window)
     eligible = momentums.notna().sum(axis=1)
@@ -58,6 +62,8 @@ def main():
         "slippage": config.slippage,
         "initial_cash": config.initial_cash,
         "metric_start": start,
+        "tradability_mask": tradability_mask,
+        "lifetimes": lifetimes,
     }
     s3c = run_target_weights(prices, execution, **common)
     ungated = run_target_weights(prices, build_execution_weights(prices, comparator), **common)
@@ -70,7 +76,18 @@ def main():
         float("nan"), index=market_prices.index, columns=market_prices.columns
     )
     market_execution.loc[start, "510300.SS"] = 1.0
-    market = run_target_weights(market_prices, market_execution, **common)
+    market_mask, market_lifetimes = load_tradability_inputs(
+        market_prices, str(ROOT / "config/universe.csv")
+    )
+    market = run_target_weights(
+        market_prices,
+        market_execution,
+        **{
+            **common,
+            "tradability_mask": market_mask,
+            "lifetimes": market_lifetimes,
+        },
+    )
     comparison = pd.DataFrame(
         [
             _metrics("S3C_V1", s3c, start),

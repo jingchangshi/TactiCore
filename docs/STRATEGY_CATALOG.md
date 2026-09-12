@@ -98,7 +98,7 @@
 | S3C | per-sector trend transfer | E3 | 本地固定sleeve filter，REJECTED | trend globally invalid |
 | S4A | inverse-volatility allocation | E2 | 复杂度是否有增量价值，REJECTED | inverse-vol 方法无用 |
 | S8A | moving-average tactical allocation | E3 | 两资产中国ETF规则，REJECTED | trend literature 被否定 |
-| S27A | trend + inverse-vol sizing | E3 | RQAlpha execution environment BLOCKED | 新异常或生产资格 |
-| S4B / S4C | equal risk contribution | E2 | S4B Riskfolio BLOCKED；S4C skfolio robustness eligible | ERC 方法或文献无效 |
-| S10A | unlevered volatility targeting | E3 | robustness REJECTED | volatility-managed 文献已被本地证明 |
+| S27A | trend + inverse-vol sizing | E3 | PIT correction 后 execution-review eligible | 新异常或生产资格 |
+| S4B / S4C | equal risk contribution | E2 | S4B Riskfolio BLOCKED；S4C PIT correction 后 robustness eligible | ERC 方法或文献无效 |
+| S10A | unlevered volatility targeting | E3 | PIT + signed-MaxDD correction 后 execution-review eligible | volatility-managed 文献已被本地证明 |
 | S30 | naive/static diversification | E1 | REFERENCE_BASELINE | alpha 策略 |

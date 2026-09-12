@@ -37,7 +37,7 @@ def executable(prices, targets, mask, lifetimes):
     return corrected, start
 
 
-def evaluate(prices, execution, start, *, fees, slippage, initial_cash):
+def evaluate(prices, execution, start, *, fees, slippage, initial_cash, tradability_mask, lifetimes):
     return run_target_weights(
         prices,
         execution,
@@ -45,6 +45,8 @@ def evaluate(prices, execution, start, *, fees, slippage, initial_cash):
         slippage=slippage,
         initial_cash=initial_cash,
         metric_start=start,
+        tradability_mask=tradability_mask,
+        lifetimes=lifetimes,
     )
 
 
@@ -65,6 +67,8 @@ def main() -> None:
         fees=s27.fees,
         slippage=s27.slippage,
         initial_cash=s27.initial_cash,
+        tradability_mask=mask,
+        lifetimes=lifetimes,
     )
     s10 = load_volatility_targeting_config(ROOT / "config/s10a_vol_targeting.toml")
     spec = RobustnessSpec(
@@ -86,6 +90,8 @@ def main() -> None:
         fees=s10.fees,
         slippage=s10.slippage,
         initial_cash=s10.initial_cash,
+        tradability_mask=mask,
+        lifetimes=lifetimes,
     )
     s4c_targets_frame, _, _, s4c_diagnostics = s4c_targets(
         prices,
@@ -100,6 +106,8 @@ def main() -> None:
         fees=trend.fees,
         slippage=trend.slippage,
         initial_cash=trend.initial_cash,
+        tradability_mask=mask,
+        lifetimes=lifetimes,
     )
     s27_summary = pd.DataFrame([metric_row("S27A_PIT_CORRECTED", s27_result, s27_start)]).assign(
         corrected_inception=s27_start.date().isoformat(),

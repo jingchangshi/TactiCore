@@ -10,6 +10,7 @@ from typing import Any
 import pandas as pd
 
 from tacticore.data.prices import load_price_csv
+from tacticore.data.tradability import load_tradability_inputs
 from tacticore.data.universe import load_universe
 from tacticore.engines.vectorbt_adapter import ResearchResult, run_target_weights
 from tacticore.strategies.china_sector_rotation import (
@@ -131,6 +132,9 @@ def main() -> None:
     config = load_sector_rotation_config(ROOT / "config/s3_sector_rotation.toml")
     sectors = sector_symbols(universe)
     prices = load_price_csv(DATA_DIR / "etf_adjusted_close.csv")
+    tradability_mask, lifetimes = load_tradability_inputs(
+        prices, str(ROOT / "config/s3_sector_universe.csv")
+    )
     coverage = eligible_sector_counts(prices, config, sectors)
     start = evaluation_start(prices, config, sectors)
     targets = build_month_end_targets(prices, config, sectors)
@@ -140,6 +144,8 @@ def main() -> None:
         "slippage": config.slippage,
         "initial_cash": config.initial_cash,
         "metric_start": start,
+        "tradability_mask": tradability_mask,
+        "lifetimes": lifetimes,
     }
     strategy = run_target_weights(prices, execution, **run_kwargs)
     equal_execution = build_equal_weight_execution(prices, config, sectors)
@@ -150,7 +156,18 @@ def main() -> None:
         float("nan"), index=market_prices.index, columns=market_prices.columns
     )
     market_execution.loc[start, "510300.SS"] = 1.0
-    market = run_target_weights(market_prices, market_execution, **run_kwargs)
+    market_mask, market_lifetimes = load_tradability_inputs(
+        market_prices, str(ROOT / "config/universe.csv")
+    )
+    market = run_target_weights(
+        market_prices,
+        market_execution,
+        **{
+            **run_kwargs,
+            "tradability_mask": market_mask,
+            "lifetimes": market_lifetimes,
+        },
+    )
     metrics = pd.DataFrame(
         [
             metric_row("S3A_V1", strategy, start),

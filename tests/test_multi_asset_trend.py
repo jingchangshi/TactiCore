@@ -7,6 +7,8 @@ import pandas as pd
 import pytest
 
 from tacticore.data.prices import load_price_csv
+from tacticore.data.tradability import AssetLifetime, build_tradability_mask
+from tacticore.data.universe import load_universe
 from tacticore.engines.vectorbt_adapter import run_target_weights, run_vectorbt
 from tacticore.strategies.global_dual_momentum import load_strategy_config
 from tacticore.strategies.multi_asset_trend import (
@@ -48,6 +50,11 @@ def _prices() -> pd.DataFrame:
     )
     frame.loc[frame.index < "2024-01-30", "C"] = np.nan
     return frame
+
+
+def _synthetic_pit(prices: pd.DataFrame):
+    lifetimes = {symbol: AssetLifetime(symbol, prices.index[0]) for symbol in prices}
+    return build_tradability_mask(prices.index, list(prices), lifetimes, prices), lifetimes
 
 
 def test_repository_s2_baseline_is_exactly_frozen() -> None:
@@ -209,6 +216,7 @@ def test_trend_change_creates_signal_change_order() -> None:
 
     targets = build_month_end_targets(prices, config)
     execution = build_signal_change_execution_weights(prices, targets)
+    mask, lifetimes = _synthetic_pit(prices)
 
     assert targets.loc["2024-01-31", "A"] == 1.0
     assert targets.loc["2024-02-29", "BOND"] == 1.0
@@ -243,6 +251,7 @@ def test_vectorbt_accounts_for_v2_orders_cash_and_fees() -> None:
         prices, MultiAssetTrendConfig(3, "BOND", ("A", "B", "C"), 0.001, 0.0005, 100_000)
     )
     execution = build_signal_change_execution_weights(prices, targets)
+    mask, lifetimes = _synthetic_pit(prices)
 
     result = run_target_weights(
         prices,
@@ -250,6 +259,8 @@ def test_vectorbt_accounts_for_v2_orders_cash_and_fees() -> None:
         fees=0.001,
         slippage=0.0005,
         initial_cash=100_000,
+        tradability_mask=mask,
+        lifetimes=lifetimes,
     )
 
     assert len(result.portfolio.orders.records_readable) > 0
@@ -277,7 +288,16 @@ def test_s1_frozen_output_survives_shared_adapter_extraction() -> None:
         (ROOT / "research/results/gdm_baseline_metrics.json").read_text(encoding="utf-8")
     )["metrics"]
 
-    actual = run_vectorbt(prices, config).metrics
+    lifetimes = {
+        symbol: AssetLifetime(symbol, row.start_date)
+        for symbol, row in load_universe(ROOT / "config/universe.csv").iterrows()
+    }
+    actual = run_vectorbt(
+        prices,
+        config,
+        tradability_mask=build_tradability_mask(prices.index, list(prices), lifetimes, prices),
+        lifetimes=lifetimes,
+    ).metrics
 
     for name, expected_value in expected.items():
         assert actual[name] == pytest.approx(expected_value, abs=1e-10)

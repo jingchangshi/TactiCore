@@ -12,6 +12,7 @@ from research.experiments.batch_01_common import metric_row, row
 from research.experiments.run_s1_evidence_closure import period_metrics, rolling_table
 from research.metrics import drawdown_better, drawdown_no_worse
 from tacticore.data.prices import load_price_csv
+from tacticore.data.tradability import load_tradability_inputs
 from tacticore.engines.vectorbt_adapter import ResearchResult, run_target_weights
 from tacticore.strategies.multi_asset_trend import build_execution_weights
 from tacticore.strategies.volatility_targeting import (
@@ -92,7 +93,7 @@ def static_targets(prices: pd.DataFrame, spec: RobustnessSpec) -> pd.DataFrame:
 
 
 def run_case(
-    prices: pd.DataFrame, spec: RobustnessSpec
+    prices: pd.DataFrame, spec: RobustnessSpec, tradability_mask: pd.DataFrame, lifetimes
 ) -> tuple[ResearchResult, ResearchResult, pd.DataFrame, pd.Timestamp]:
     targets, diagnostics = build_targets(prices, spec)
     execution = build_execution_weights(prices, targets)
@@ -103,9 +104,9 @@ def run_case(
         initial_cash=spec.initial_cash,
         metric_start=start,
     )
-    candidate = run_target_weights(prices, execution, **common)
+    candidate = run_target_weights(prices, execution, **common, tradability_mask=tradability_mask, lifetimes=lifetimes)
     comparator = run_target_weights(
-        prices, build_execution_weights(prices, static_targets(prices, spec)), **common
+        prices, build_execution_weights(prices, static_targets(prices, spec)), **common, tradability_mask=tradability_mask, lifetimes=lifetimes
     )
     return candidate, comparator, diagnostics.loc[diagnostics.index >= start], start
 
@@ -235,6 +236,7 @@ def _rolling_pair(
 def main() -> None:
     config = load_volatility_targeting_config(ROOT / "config/s10a_vol_targeting.toml")
     prices = load_price_csv(ROOT / "data/canonical/etf_adjusted_close.csv")
+    tradability_mask, lifetimes = load_tradability_inputs(prices, str(ROOT / "config/universe.csv"))
     frozen = RobustnessSpec(
         config.symbols,
         config.base_weights,
@@ -257,7 +259,7 @@ def main() -> None:
     baseline_start = None
     for dimension, window, target_vol in cases:
         spec = replace(frozen, vol_window=window, target_volatility=target_vol)
-        candidate, comparator, diagnostics, start = run_case(prices, spec)
+        candidate, comparator, diagnostics, start = run_case(prices, spec, tradability_mask, lifetimes)
         label = f"S10A_{window}_{int(target_vol * 100)}"
         candidate_row = metric_row(label, candidate, start)
         comparison_row = metric_row("MONTHLY_STATIC_25_25_25_25", comparator, start)
@@ -313,6 +315,8 @@ def main() -> None:
             slippage=0.0,
             initial_cash=frozen.initial_cash,
             metric_start=baseline_start,
+            tradability_mask=tradability_mask,
+            lifetimes=lifetimes,
         )
         costs.append({"cost_bps": cost_bps, **metric_row("S10A_20_10", result, baseline_start)})
     summary, periods, rolling, costs_frame = (

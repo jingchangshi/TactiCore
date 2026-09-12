@@ -8,6 +8,7 @@ import pandas as pd
 
 from research.experiments.batch_01_common import metric_row, row
 from tacticore.data.prices import load_price_csv
+from tacticore.data.tradability import load_tradability_inputs
 from tacticore.engines.vectorbt_adapter import run_target_weights
 from tacticore.strategies.inverse_vol_allocation import (
     build_month_end_targets,
@@ -38,6 +39,7 @@ def main() -> None:
     config = load_inverse_vol_config(ROOT / "config/s4_inverse_vol.toml")
     s2 = load_trend_config(ROOT / "config/strategy.toml")
     prices = load_price_csv(ROOT / "data/canonical/etf_adjusted_close.csv")
+    tradability_mask, lifetimes = load_tradability_inputs(prices, str(ROOT / "config/universe.csv"))
     targets, diagnostics = build_month_end_targets(prices, config, s2.risk_symbols)
     equal, _ = build_month_end_targets(prices, config, s2.risk_symbols, equal_weight=True)
     start = build_execution_weights(prices, targets).dropna(how="all").index[0]
@@ -47,8 +49,8 @@ def main() -> None:
         initial_cash=config.initial_cash,
         metric_start=start,
     )
-    candidate = run_target_weights(prices, build_execution_weights(prices, targets), **common)
-    comparator = run_target_weights(prices, build_execution_weights(prices, equal), **common)
+    candidate = run_target_weights(prices, build_execution_weights(prices, targets), **common, tradability_mask=tradability_mask, lifetimes=lifetimes)
+    comparator = run_target_weights(prices, build_execution_weights(prices, equal), **common, tradability_mask=tradability_mask, lifetimes=lifetimes)
     comparison = pd.DataFrame(
         [
             metric_row("S4A_INVERSE_VOL_V1", candidate, start),

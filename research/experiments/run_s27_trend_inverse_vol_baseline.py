@@ -8,6 +8,7 @@ import pandas as pd
 
 from research.experiments.batch_01_common import metric_row, row
 from tacticore.data.prices import load_price_csv
+from tacticore.data.tradability import load_tradability_inputs
 from tacticore.engines.vectorbt_adapter import run_target_weights
 from tacticore.strategies.multi_asset_trend import (
     build_execution_weights,
@@ -45,6 +46,7 @@ def main() -> None:
     config = load_trend_inverse_vol_config(ROOT / "config/s27_trend_inverse_vol.toml")
     s2 = load_trend_config(ROOT / "config/strategy.toml")
     prices = load_price_csv(ROOT / "data/canonical/etf_adjusted_close.csv")
+    tradability_mask, lifetimes = load_tradability_inputs(prices, str(ROOT / "config/universe.csv"))
     targets, diagnostics = build_month_end_targets(prices, config, s2.risk_symbols)
     execution = build_execution_weights(prices, targets)
     s2_execution = build_signal_change_execution_weights(prices, s2_targets(prices, s2))
@@ -54,6 +56,8 @@ def main() -> None:
         slippage=config.slippage,
         initial_cash=config.initial_cash,
         metric_start=start,
+        tradability_mask=tradability_mask,
+        lifetimes=lifetimes,
     )
     candidate = run_target_weights(prices, execution, **common)
     comparator = run_target_weights(prices, s2_execution, **common)

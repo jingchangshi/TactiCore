@@ -8,6 +8,7 @@ import pandas as pd
 
 from research.experiments.batch_01_common import metric_row, row
 from tacticore.data.prices import load_price_csv
+from tacticore.data.tradability import load_tradability_inputs
 from tacticore.engines.vectorbt_adapter import run_target_weights
 from tacticore.strategies.equity_bond_trend import (
     build_month_end_targets,
@@ -54,6 +55,7 @@ def decision(comparison: pd.DataFrame) -> str:
 def main() -> None:
     config = load_equity_bond_trend_config(ROOT / "config/s8_equity_bond_trend.toml")
     prices = load_price_csv(ROOT / "data/canonical/etf_adjusted_close.csv")
+    tradability_mask, lifetimes = load_tradability_inputs(prices, str(ROOT / "config/universe.csv"))
     targets, states = build_month_end_targets(prices, config)
     execution = build_signal_change_execution_weights(prices, targets)
     start = execution.dropna(how="all").index[0]
@@ -62,6 +64,8 @@ def main() -> None:
         slippage=config.slippage,
         initial_cash=config.initial_cash,
         metric_start=start,
+        tradability_mask=tradability_mask,
+        lifetimes=lifetimes,
     )
     candidate = run_target_weights(prices, execution, **common)
     buy_hold = pd.DataFrame(float("nan"), index=prices.index, columns=prices.columns)

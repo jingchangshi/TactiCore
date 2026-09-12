@@ -10,6 +10,7 @@ from typing import Any
 import pandas as pd
 
 from tacticore.data.prices import load_price_csv
+from tacticore.data.tradability import load_tradability_inputs
 from tacticore.data.universe import load_universe
 from tacticore.engines.rqalpha_adapter import build_rqalpha_config
 from tacticore.engines.vectorbt_adapter import run_target_weights
@@ -351,6 +352,7 @@ def main() -> None:
     parser.add_argument("--partial-fill-on-insufficient-cash", action="store_true")
     args = parser.parse_args()
     prices = load_price_csv(ROOT / "data/canonical/etf_adjusted_close.csv")
+    tradability_mask, lifetimes = load_tradability_inputs(prices, str(ROOT / "config/universe.csv"))
     config = load_trend_config(ROOT / "config/strategy.toml")
     schedule = build_frozen_target_schedule(prices, config)
     mapping = build_symbol_mapping(ROOT / "config/universe.csv", list(schedule.columns))
@@ -383,6 +385,8 @@ def main() -> None:
         slippage=config.slippage,
         initial_cash=config.initial_cash,
         metric_start=start,
+        tradability_mask=tradability_mask,
+        lifetimes=lifetimes,
     )
     native.insert(0, "engine", "RQAlpha")
     from rqalpha import __version__ as rqalpha_version

@@ -10,6 +10,7 @@ import pandas as pd
 
 from research.experiments.batch_01_common import metric_row, row
 from tacticore.data.prices import load_price_csv
+from tacticore.data.tradability import load_tradability_inputs
 from tacticore.engines.vectorbt_adapter import run_target_weights
 from tacticore.strategies.multi_asset_trend import build_execution_weights, load_trend_config
 
@@ -130,6 +131,7 @@ def main() -> None:
         strategy.fallback_symbol, strategy.fees, strategy.slippage, strategy.initial_cash
     )
     prices = load_price_csv(ROOT / "data/canonical/etf_adjusted_close.csv")
+    tradability_mask, lifetimes = load_tradability_inputs(prices, str(ROOT / "config/universe.csv"))
     try:
         erc, equal, inverse, diagnostics = build_targets(prices, strategy.risk_symbols, config)
     except SolverFailure as error:
@@ -143,7 +145,10 @@ def main() -> None:
         initial_cash=config.initial_cash,
         metric_start=start,
     )
-    results = [run_target_weights(prices, weights, **common) for weights in execution]
+    results = [
+        run_target_weights(prices, weights, **common, tradability_mask=tradability_mask, lifetimes=lifetimes)
+        for weights in execution
+    ]
     comparison = pd.DataFrame(
         [
             metric_row("S4C_CANONICAL_ERC_SKFOLIO_TRANSFER_V1", results[0], start),

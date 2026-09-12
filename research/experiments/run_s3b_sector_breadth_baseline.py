@@ -10,6 +10,7 @@ import pandas as pd
 
 from research.experiments.run_s3_sector_baseline import sector_symbols
 from tacticore.data.prices import load_price_csv
+from tacticore.data.tradability import load_tradability_inputs
 from tacticore.data.universe import load_universe
 from tacticore.engines.vectorbt_adapter import ResearchResult, run_target_weights
 from tacticore.strategies.china_sector_breadth import (
@@ -123,6 +124,9 @@ def main() -> None:
     config = load_sector_breadth_config(ROOT / "config/s3_sector_breadth.toml")
     sectors = sector_symbols(universe)
     prices = load_price_csv(DATA_DIR / "etf_adjusted_close.csv")
+    tradability_mask, lifetimes = load_tradability_inputs(
+        prices, str(ROOT / "config/s3_sector_universe.csv")
+    )
     targets, states = build_month_end_targets(prices, config, sectors)
     start = evaluation_start(states, prices)
     execution = build_execution_weights(prices, targets)
@@ -132,6 +136,8 @@ def main() -> None:
         "slippage": config.slippage,
         "initial_cash": config.initial_cash,
         "metric_start": start,
+        "tradability_mask": tradability_mask,
+        "lifetimes": lifetimes,
     }
     s3b = run_target_weights(prices, execution, **common)
     basket = run_target_weights(prices, build_execution_weights(prices, ungated), **common)
@@ -144,7 +150,18 @@ def main() -> None:
         float("nan"), index=market_prices.index, columns=market_prices.columns
     )
     market_execution.loc[start, "510300.SS"] = 1.0
-    market = run_target_weights(market_prices, market_execution, **common)
+    market_mask, market_lifetimes = load_tradability_inputs(
+        market_prices, str(ROOT / "config/universe.csv")
+    )
+    market = run_target_weights(
+        market_prices,
+        market_execution,
+        **{
+            **common,
+            "tradability_mask": market_mask,
+            "lifetimes": market_lifetimes,
+        },
+    )
     comparison = pd.DataFrame(
         [
             metrics("S3B_V1", s3b, start),

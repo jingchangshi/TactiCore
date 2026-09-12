@@ -18,6 +18,7 @@ from research.experiments.run_s2_rqalpha_validation import (
     user_effort_table,
 )
 from tacticore.data.prices import load_price_csv
+from tacticore.data.tradability import load_tradability_inputs
 from tacticore.engines.vectorbt_adapter import run_target_weights
 from tacticore.strategies.multi_asset_trend import build_execution_weights, load_trend_config
 from tacticore.strategies.trend_inverse_vol import (
@@ -54,6 +55,7 @@ def vectorbt_reproduction(prices: pd.DataFrame, schedule: pd.DataFrame):
     config = load_trend_inverse_vol_config(ROOT / "config/s27_trend_inverse_vol.toml")
     # Batch 02 S27A 的权威基线从首个 execution date 计量，而非此前一日。
     start = schedule.index[0]
+    tradability_mask, lifetimes = load_tradability_inputs(prices, str(ROOT / "config/universe.csv"))
     return run_target_weights(
         prices,
         schedule_execution(prices, schedule),
@@ -61,6 +63,8 @@ def vectorbt_reproduction(prices: pd.DataFrame, schedule: pd.DataFrame):
         slippage=config.slippage,
         initial_cash=config.initial_cash,
         metric_start=start,
+        tradability_mask=tradability_mask,
+        lifetimes=lifetimes,
     ), start
 
 

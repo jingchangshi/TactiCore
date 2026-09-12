@@ -341,3 +341,8 @@
 
 - 状态：CLOSED。S2 R1 PIT integrity pass；S27A Batch 03 environment block 与 S10A robustness reject 均被 correctness review supersede，分别恢复 execution-review eligibility；S4C 恢复 robustness eligibility。没有运行后续阶段。
 - 证据：[Batch 04](../research/results/BATCH_04_COMMUNITY_BACKED_PIT_CORRECTNESS_CLOSURE.md)。
+
+## RL-034 VectorBT PIT validation enforcement
+
+- 状态：CLOSED。`run_target_weights` 必须显式接收 lifecycle-derived tradability mask 与 lifetimes；遗漏 PIT context 立即失败，不提供通用绕过开关。
+- 结论：此为研究 contract plumbing，不改变 S2 冻结策略、数据、targets 或历史经济语义。

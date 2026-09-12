@@ -61,6 +61,8 @@ def run_vectorbt(
     config: GlobalDualMomentumConfig,
     *,
     metric_start: pd.Timestamp | None = None,
+    tradability_mask: pd.DataFrame,
+    lifetimes: dict[str, AssetLifetime],
 ) -> ResearchResult:
     """运行月频双动量 baseline；VectorBT 只负责研究探索与指标输出。"""
     targets = build_month_end_targets(prices, config)
@@ -72,6 +74,8 @@ def run_vectorbt(
         slippage=config.slippage,
         initial_cash=config.initial_cash,
         metric_start=metric_start,
+        tradability_mask=tradability_mask,
+        lifetimes=lifetimes,
     )
 
 
@@ -83,14 +87,11 @@ def run_target_weights(
     slippage: float,
     initial_cash: float,
     metric_start: pd.Timestamp | None = None,
-    tradability_mask: pd.DataFrame | None = None,
-    lifetimes: dict[str, AssetLifetime] | None = None,
+    tradability_mask: pd.DataFrame,
+    lifetimes: dict[str, AssetLifetime],
 ) -> ResearchResult:
     """将策略已生成的目标权重交给 VectorBT 执行和记账。"""
-    if (tradability_mask is None) != (lifetimes is None):
-        raise ValueError("tradability_mask 与 lifetimes 必须同时提供")
-    if tradability_mask is not None and lifetimes is not None:
-        validate_execution_targets(execution_weights, prices, tradability_mask, lifetimes)
+    validate_execution_targets(execution_weights, prices, tradability_mask, lifetimes)
     portfolio = vbt.Portfolio.from_orders(
         close=prices,
         size=execution_weights,

@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 import rqalpha.api
 
+from tacticore.data.tradability import AssetLifetime, build_tradability_mask
 from tacticore.engines.rqalpha_adapter import build_rqalpha_config, run_rqalpha
 from tacticore.engines.vectorbt_adapter import run_vectorbt
 from tacticore.strategies.global_dual_momentum import GlobalDualMomentumConfig
@@ -14,7 +15,15 @@ from tacticore.strategies.global_dual_momentum import GlobalDualMomentumConfig
 def test_vectorbt_adapter_returns_required_metrics(
     simple_prices: pd.DataFrame, strategy_config: GlobalDualMomentumConfig
 ) -> None:
-    result = run_vectorbt(simple_prices, strategy_config)
+    lifetimes = {symbol: AssetLifetime(symbol, simple_prices.index[0]) for symbol in simple_prices}
+    result = run_vectorbt(
+        simple_prices,
+        strategy_config,
+        tradability_mask=build_tradability_mask(
+            simple_prices.index, list(simple_prices), lifetimes, simple_prices
+        ),
+        lifetimes=lifetimes,
+    )
 
     assert set(result.metrics) == {
         "cagr",

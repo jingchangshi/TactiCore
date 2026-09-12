@@ -19,6 +19,7 @@ from research.experiments.run_s1_evidence_closure import (
     rolling_table,
 )
 from tacticore.data.prices import load_price_csv
+from tacticore.data.tradability import load_tradability_inputs
 from tacticore.engines.vectorbt_adapter import ResearchResult, run_target_weights, run_vectorbt
 from tacticore.strategies.global_dual_momentum import load_strategy_config
 from tacticore.strategies.multi_asset_trend import (
@@ -48,6 +49,7 @@ def run_s2(
 ) -> ResearchResult:
     targets = build_strict_month_end_targets(prices, config)
     execution = build_execution_weights(prices, targets)
+    tradability_mask, lifetimes = load_tradability_inputs(prices, str(ROOT / "config/universe.csv"))
     return run_target_weights(
         prices,
         execution,
@@ -55,6 +57,8 @@ def run_s2(
         slippage=config.slippage if total_cost_bps is None else 0.0,
         initial_cash=config.initial_cash,
         metric_start=metric_start,
+        tradability_mask=tradability_mask,
+        lifetimes=lifetimes,
     )
 
 

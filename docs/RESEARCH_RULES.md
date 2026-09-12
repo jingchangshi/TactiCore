@@ -114,6 +114,8 @@ RQAlpha 用于：
 ```text
 External Evidence Gate
    ↓
+PIT Tradability Gate
+   ↓
 Canonical Strategy Mapping
    ↓
 Local Evidence Gap
@@ -130,6 +132,13 @@ Local Evidence Gap
 ```
 
 不得从基础设施建设开始。样本外证据的优先级高于样本内 CAGR。
+
+### 4.2 PIT tradability 与指标符号
+
+- 正目标权重只在 execution timestamp 上标的 active 且 canonical 价格有限、正值时合法；NaN 不表示现金、持有、跳过或 fallback。
+- universe 必须 date-aware，今天的 ETF 不得回填至历史。策略 inception 是完整冻结 target 首次可以合法形成并执行的日期，而非 dataframe 首日或首个 signal。
+- fallback 是完整 target contract 的一部分；其尚未可交易时没有可执行 target，除非冻结策略已明确另一语义。
+- MaxDD 以负数保存；较少负值更好。`candidate >= comparator` 表示 no worse，决策代码必须使用集中 helper，而不是临时裸比较。
 
 ### 4.1 External Evidence / Literature Gate
 

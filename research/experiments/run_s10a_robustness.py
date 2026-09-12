@@ -10,6 +10,7 @@ import pandas as pd
 
 from research.experiments.batch_01_common import metric_row, row
 from research.experiments.run_s1_evidence_closure import period_metrics, rolling_table
+from research.metrics import drawdown_better, drawdown_no_worse
 from tacticore.data.prices import load_price_csv
 from tacticore.engines.vectorbt_adapter import ResearchResult, run_target_weights
 from tacticore.strategies.multi_asset_trend import build_execution_weights
@@ -40,6 +41,15 @@ class RobustnessSpec:
     fees: float
     slippage: float
     initial_cash: float
+
+
+def fixed_period_drawdown_gate(periods: pd.DataFrame) -> bool:
+    return (
+        periods.apply(
+            lambda row: drawdown_no_worse(row.max_drawdown, row.comparator_max_drawdown), axis=1
+        ).sum()
+        >= 3
+    )
 
 
 def build_targets(prices: pd.DataFrame, spec: RobustnessSpec) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -117,7 +127,9 @@ def decision(
     )
     relative = (
         (variants.cagr >= variants.comparator_cagr - 0.015)
-        & (variants.max_drawdown > variants.comparator_max_drawdown)
+        & variants.apply(
+            lambda row: drawdown_better(row.max_drawdown, row.comparator_max_drawdown), axis=1
+        )
         & (
             (variants.sharpe > variants.comparator_sharpe)
             | (variants.calmar > variants.comparator_calmar)
@@ -138,7 +150,7 @@ def decision(
     central_periods = periods.loc[periods.series.eq("S10A_20_10")]
     period_pass = (
         (central_periods.cagr > 0).all()
-        and (central_periods.max_drawdown <= central_periods.comparator_max_drawdown).sum() >= 3
+        and fixed_period_drawdown_gate(central_periods)
         and (
             (central_periods.sharpe > central_periods.comparator_sharpe)
             | (central_periods.calmar > central_periods.comparator_calmar)

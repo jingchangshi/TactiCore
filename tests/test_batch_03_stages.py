@@ -16,6 +16,7 @@ from research.experiments.run_s4c_erc_skfolio_transfer import (
 from research.experiments.run_s10a_robustness import (
     RobustnessSpec,
     build_targets,
+    fixed_period_drawdown_gate,
 )
 from research.experiments.run_s10a_robustness import (
     decision as s10_decision,
@@ -143,6 +144,16 @@ def test_s10_decision_blocks_before_interpreting_variants() -> None:
         s10_decision(pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), False)
         == "BLOCK_S10A_ROBUSTNESS_REPRODUCTION"
     )
+
+
+def test_s10_fixed_period_drawdown_uses_signed_no_worse_semantics() -> None:
+    periods = pd.DataFrame(
+        {
+            "max_drawdown": [-0.10, -0.10, -0.10, -0.20],
+            "comparator_max_drawdown": [-0.13, -0.13, -0.13, -0.10],
+        }
+    )
+    assert fixed_period_drawdown_gate(periods)
 
 
 def test_s4c_decision_blocks_insufficient_coverage() -> None:

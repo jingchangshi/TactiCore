@@ -55,6 +55,15 @@ Tushare Pro 是 canonical 研究数据源；RQAlpha 官方 bundle 只提供权�
 任何策略代码前先读取外部证据 registry 与
 [策略研究地图](STRATEGY_RESEARCH_MAP.md)：先确定 canonical strategy、外部证据层级、反证、原始研究域、成熟上游实现及尚未被本地账本关闭的缺口。只有本地缺口才进入数据、策略语义和研究筛选；外部成功不是本地验证，本地失败也不否定全局文献。
 
+### 3.0.1 Asset Lifecycle / PIT Tradability
+
+RQAlpha instrument lifecycle 是中国标的上市/退市语义的上游交叉验证权威；canonical 价格决定 execution timestamp 是否可观察。TactiCore 只保存 version-controlled universe 的轻量生命周期快照、date × asset mask 与正目标验证，不建设 security master、PIT database 或动态 universe 平台。VectorBT 只能接收已验证合法目标；RQAlpha 仍拥有原生执行。
+
+```text
+External evidence → canonical data + asset lifecycle → PIT eligible universe
+→ strategy semantics → target → tradability validation → VectorBT → RQAlpha
+```
+
 ### 3.2 策略语义
 
 `tacticore/strategies/` 拥有经济假设、信号时点和期望目标权重。信号只能使用当时已知的数据；收盘后形成的信号最早在下一观测日执行。策略状态与研究结论见 [策略目录](STRATEGY_CATALOG.md)，已关闭语义见 [研究账本](RESEARCH_LEDGER.md)。

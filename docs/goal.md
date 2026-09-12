@@ -1,4 +1,4 @@
-# Goal: TactiCore Batch 03 — Earned Stage Advancement
+# Goal: TactiCore Batch 04 — Community-Backed PIT Tradability & Research Semantics Closure
 
 Repository:
 
@@ -9,97 +9,210 @@ https://github.com/jingchangshi/TactiCore
 Role:
 
 ```text
-Principal Quant Research Engineer
+Principal Quant Research Architect
 +
-Execution Validation Reviewer
+Research Correctness Reviewer
 +
-External Evidence Reviewer
+Execution Semantics Reviewer
 +
-Repository Architecture Maintainer
+Community Capability Integrator
 ```
 
 ---
 
 # 0. Why This Work Exists
 
-TactiCore 当前不缺 strategy ideas。
+TactiCore 当前已经不缺 strategy ideas。
 
-它已经形成明确的生命周期：
-
-```text
-External Evidence Gate
-        ↓
-Historical Baseline
-        ↓
-Robustness
-        ↓
-Execution Validation
-        ↓
-Candidate Freeze
-        ↓
-Prospective Shadow
-```
-
-截至最新 repository state：
+最新 repository state：
 
 ```text
 S2 R1
 → FROZEN / PROSPECTIVE_SHADOW_ACTIVE
 
 S27A
-→ baseline PASS
+→ historical baseline PASS
 → robustness PASS
-→ ADVANCE_TO_EXECUTION_REVIEW
+→ execution review BLOCKED
 
 S10A
 → baseline PASS
-→ ADVANCE_TO_ROBUSTNESS
+→ robustness REJECTED
 
-S4B
-→ no economic result
-→ BLOCK_UPSTREAM_DEPENDENCY
+S4C
+→ canonical ERC transfer PASS
+→ robustness eligible
 
 S30
-→ REFERENCE_BASELINE
+→ reference baseline
 ```
 
-因此下一步必须推进：
-
-```text
-already-earned stages
-```
-
-而不是继续横向增加 strategy count。
-
-本批定义为：
-
-```text
-BATCH_03_EARNED_STAGE_ADVANCEMENT
-```
-
-包含三个彼此独立的 track：
-
-```text
-Track A
-S27A authoritative execution review
-
-Track B
-S10A robustness
-
-Track C
-Canonical ERC transfer through newly available
-mature upstream implementation
-```
-
-不增加第四个策略。
+但是 Batch 03 暴露了两个系统级 research-correctness 问题。
 
 ---
 
-# 1. Repository First
+# 1. Correctness Problem A — PIT Tradability
 
-开始前重新读取 remote `main`。
+S27A frozen schedule 第一笔执行日期早于 fallback ETF `511010` 的上市日期。
 
-执行：
+仓库自身：
+
+```text
+config/universe.csv
+511010.SS
+start_date = 2013-03-25
+```
+
+但 S27A frozen schedule 从更早日期就可能给：
+
+```text
+511010.SS > 0 target weight
+```
+
+RQAlpha 因此拒绝：
+
+```text
+511010.XSHG
+invalid order_book_id / instrument
+```
+
+这说明问题不能简单归类为：
+
+```text
+RQAlpha bundle incomplete
+```
+
+更可能是：
+
+```text
+strategy target
+→ positive weight assigned
+→ asset not yet tradable
+→ VectorBT silently tolerates / ignores
+→ authoritative execution exposes violation
+```
+
+这是一个系统性 PIT / tradability contract 缺口。
+
+---
+
+# 2. Correctness Problem B — Signed MaxDD Semantics
+
+TactiCore 的 MaxDD 定义为负值：
+
+```text
+-10% is better than -20%
+```
+
+因此：
+
+```text
+candidate MaxDD >= comparator MaxDD
+```
+
+表示：
+
+```text
+candidate drawdown is no worse
+```
+
+Batch 03 S10A fixed-period gate 中存在：
+
+```text
+candidate_max_drawdown <= comparator_max_drawdown
+```
+
+这与：
+
+```text
+negative MaxDD representation
+```
+
+的经济含义相反。
+
+同一 decision function 其他位置又正确使用：
+
+```text
+candidate_max_drawdown > comparator_max_drawdown
+```
+
+因此这是明确的 metric-semantic inconsistency。
+
+---
+
+# 3. Batch 04 Mission
+
+本 Goal 不开发新策略。
+
+本 Goal 只完成：
+
+```text
+1. 社区能力审计
+2. PIT tradability contract
+3. signed metric semantics closure
+4. existing evidence impact audit
+5. corrected bounded replay
+6. permanent architecture / rule update
+```
+
+定义：
+
+```text
+BATCH_04_COMMUNITY_BACKED_PIT_CORRECTNESS_CLOSURE
+```
+
+---
+
+# 4. Core Principle
+
+从本 Goal 开始：
+
+```text
+Community semantics first.
+
+Do not build a PIT platform
+if mature upstream systems already define
+asset lifetime and tradability semantics.
+```
+
+参考社区能力：
+
+```text
+RQAlpha
+→ Chinese instrument lifecycle authority
+
+Zipline
+→ AssetFinder.lifetimes() architectural pattern
+
+LEAN
+→ IsTradable / pre-trade validation semantics
+
+Qlib
+→ future financial-data PIT reference,
+   NOT current ETF lifetime solution
+```
+
+TactiCore 只实现：
+
+```text
+thin local contract
+```
+
+不要实现：
+
+```text
+PITEngine
+AssetLifecycleDatabase
+SecurityMasterService
+DynamicUniversePlatform
+ResearchKnowledgeGraph
+```
+
+---
+
+# 5. Repository First
+
+开始前：
 
 ```bash
 git fetch origin
@@ -107,12 +220,16 @@ git status
 git log --oneline -20
 ```
 
-不要相信本 Prompt 中预期 HEAD。
+重新读取最新 remote `main`。
 
-依次阅读：
+不要相信本 Prompt 中硬编码 SHA。
+
+必须阅读：
 
 ```text
 AGENTS.md
+
+README.md
 
 docs/ARCHITECTURE.md
 docs/RESEARCH_RULES.md
@@ -122,33 +239,27 @@ docs/STRATEGY_RESEARCH_MAP.md
 docs/CURRENT_STATE.md
 docs/goal.md
 
-research/strategy_evidence/STRATEGY_EVIDENCE_REGISTRY.yaml
-
-research/results/BATCH_02_EVIDENCE_INFORMED_VALIDATION.md
-research/results/S27A_ROBUSTNESS_V1.md
-research/results/S10A_VOL_TARGETING_V1.md
-research/results/S4B_ERC_TRANSFER_V1.md
-
-research/results/S2_RQALPHA_UPSTREAM_EXECUTION_CLOSURE_V1.md
-
-research/batches/batch_02/PROTOCOL.md
-research/batches/batch_02/PROTOCOL_V2.md
-
-config/s27_trend_inverse_vol.toml
-config/s10a_vol_targeting.toml
-config/strategy.toml
 config/universe.csv
+config/strategy.toml
+config/s10a_vol_targeting.toml
+config/s27_trend_inverse_vol.toml
 
-tacticore/strategies/trend_inverse_vol.py
-tacticore/strategies/volatility_targeting.py
-tacticore/strategies/multi_asset_trend.py
-
+tacticore/data/**
 tacticore/engines/vectorbt_adapter.py
 tacticore/engines/rqalpha_adapter.py
 
-research/experiments/run_s2_rqalpha_validation.py
-research/experiments/run_s27a_robustness.py
-research/experiments/run_s10a_vol_targeting.py
+tacticore/strategies/multi_asset_trend.py
+tacticore/strategies/trend_inverse_vol.py
+tacticore/strategies/volatility_targeting.py
+
+research/results/S27A_RQALPHA_EXECUTION_REVIEW_V1.md
+research/results/S10A_ROBUSTNESS_V1.md
+research/results/S4C_ERC_SKFOLIO_TRANSFER_V1.md
+research/results/BATCH_03_EARNED_STAGE_ADVANCEMENT.md
+
+research/experiments/run_s27a_rqalpha_execution_review.py
+research/experiments/run_s10a_robustness.py
+research/experiments/run_s4c_erc_skfolio_transfer.py
 
 research/shadow/s2_r1/candidate_manifest.json
 ```
@@ -159,29 +270,17 @@ research/shadow/s2_r1/candidate_manifest.json
 starting HEAD
 working tree
 recent commits
-
-S2 candidate integrity
-
-S27 baseline hashes
-S27 robustness hashes
-
-S10 baseline hashes
-S10 Protocol V2 hashes
-
+S2 candidate verification status
 canonical data hashes
-
-RQAlpha installed version
-
-external evidence snapshot date
+universe metadata hash
+framework versions
 ```
-
-Repository evidence wins.
 
 ---
 
-# 2. Protect S2 R1
+# 6. Protect S2 R1
 
-第一条命令之一必须是：
+第一阶段必须运行：
 
 ```bash
 uv run python research/experiments/run_s2_r1_shadow.py \
@@ -194,2014 +293,1880 @@ uv run python research/experiments/run_s2_r1_shadow.py \
 
 ```text
 config/strategy.toml
-config/universe.csv
-
-data/canonical/etf_adjusted_close.csv
-data/canonical/trading_calendar.csv
-data/canonical/provenance.json
-
+config/universe.csv   # unless only evidence-backed metadata correction is absolutely required
+data/canonical/**
 tacticore/strategies/multi_asset_trend.py
 tacticore/engines/rqalpha_adapter.py
-
 research/shadow/s2_r1/candidate_manifest.json
 ```
 
-S2 R1 继续独立积累真正前瞻 evidence。
+如果未来发现 S2 frozen schedule 存在 tradability violation：
 
-Batch 03 不得把 S27/S10 的结果回填到 S2。
+不要静默修改 S2。
+
+必须：
+
+```text
+mark candidate integrity issue
+stop
+escalate
+```
+
+本 Goal 不得直接重建 S2 candidate。
 
 ---
 
-# 3. External Evidence Gate First
+# 7. Community Capability Audit
 
-本 Goal 仍必须首先执行 External Evidence Gate。
+在写任何 PIT code 前，先核实当前官方社区能力。
 
-但不要重新做整个 Batch 00。
-
-只检查：
+至少检查：
 
 ```text
-VOL_SCALED_TREND
-VOL_TARGETING
-ERC_RISK_PARITY
+RQAlpha current Instrument API
+
+listed_date
+de_listed_date
+listed_at()
+de_listed_at()
+active_at()
 ```
 
-以及真正需要的 upstream implementation evidence。
+同时确认：
+
+```text
+RQAlpha current project version
+instrument metadata access path
+```
+
+参考：
+
+```text
+Zipline Asset.start_date
+Zipline Asset.end_date
+Zipline AssetFinder.lifetimes()
+```
+
+仅用于架构语义参考。
+
+参考：
+
+```text
+LEAN Security.IsTradable
+dynamic universe
+pre-trade validation
+```
+
+仅用于 execution-boundary semantics。
+
+Qlib PIT：
+
+```text
+document as future financial-data PIT reference
+```
+
+不要引入 Qlib dependency。
 
 ---
 
-# 4. Important New Upstream Evidence — skfolio
-
-当前 registry 主要记录：
-
-```text
-Riskfolio-Lib
-PyPortfolioOpt
-```
-
-但在开始本 Goal 时必须实际重新检查：
-
-```text
-skfolio official documentation
-skfolio PyPI
-skfolio current stable release
-skfolio RiskBudgeting API
-```
-
-重点确认：
-
-```text
-Python compatibility
-
-long-only support
-
-RiskBudgeting
-
-equal risk budget semantics
-
-variance risk measure
-
-current stable API
-```
-
-如果当前官方 stable skfolio 仍具备：
-
-```text
-Python >= 3.10
-RiskBudgeting
-long-only
-equal risk budgeting / risk parity
-```
-
-则这是新的：
-
-```text
-mature upstream implementation evidence
-```
-
-它改变的是：
-
-```text
-S4B implementation-path assumption
-```
-
-而不是：
-
-```text
-ERC economic evidence tier
-```
-
-ERC 仍然：
-
-```text
-E2_ESTABLISHED_METHOD
-```
-
----
-
-# 5. Do NOT Rewrite S4B History
-
-S4B：
-
-```text
-BLOCK_S4B_UPSTREAM_DEPENDENCY
-```
-
-必须永久保留。
-
-因为它准确记录：
-
-```text
-Riskfolio-Lib 7.3.0 route
-was blocked
-```
-
-不要改成：
-
-```text
-S4B passed
-```
-
-也不要删除其报告。
-
-新的 upstream route 定义为：
-
-```text
-S4C_CANONICAL_ERC_SKFOLIO_TRANSFER_V1
-```
-
-S4C 不是新金融策略。
-
-它是：
-
-```text
-same canonical ERC question
-+
-new mature upstream implementation path
-```
-
----
-
-# 6. Update External Evidence Before Coding
-
-如果 skfolio evidence 成立，在：
-
-```text
-research/strategy_evidence/
-STRATEGY_EVIDENCE_REGISTRY.yaml
-```
-
-更新：
-
-```text
-ERC_RISK_PARITY
-```
-
-增加：
-
-```text
-skfolio
-```
-
-implementation prior。
-
-记录：
-
-```text
-version
-evidence_as_of
-official docs
-RiskBudgeting API
-Python support
-```
-
-同时最小更新：
-
-```text
-docs/STRATEGY_RESEARCH_MAP.md
-```
-
-但：
-
-```text
-external tier stays E2
-```
-
-不要因为软件出现改变经济 evidence tier。
-
----
-
-# 7. Batch 03 Protocol
+# 8. Community Evidence Artifact
 
 新增：
 
 ```text
-research/batches/batch_03/
-  EVIDENCE_GATE.md
-  PROTOCOL.md
+research/batches/batch_04/COMMUNITY_PIT_AUDIT.md
 ```
-
-必须在任何真实 performance result 出现前冻结。
-
-PROTOCOL 至少包含：
-
-```text
-canonical data hashes
-
-S2 manifest hash
-
-S27 frozen strategy hashes
-
-S10 frozen strategy hashes
-
-RQAlpha version
-
-skfolio version if Track C is available
-
-all Track A decision gates
-
-all Track B parameter neighborhoods
-
-all Track B decision gates
-
-all Track C semantics
-
-all Track C comparators
-
-all Track C decision gates
-```
-
----
-
-# 8. Two-Commit Discipline
-
-继续沿用 Batch 01 / 02 已证明有效的模式：
-
-```text
-Commit A
-=
-protocol freeze
-+
-implementation
-+
-synthetic tests
-+
-NO new historical result
-
-then
-
-historical / execution runs
-
-then
-
-Commit B
-=
-results
-+
-ledger/catalog/state updates
-```
-
-如果出现 correctness bug：
-
-```text
-INVALID_RUN
-→ disclose
-→ protocol V2
-→ freeze
-→ rerun affected track
-```
-
-不得静默修改。
-
----
-
-# ============================================================
-
-# TRACK A — S27A AUTHORITATIVE EXECUTION REVIEW
-
-# ============================================================
-
-# 9. Research Question
-
-唯一问题：
-
-> S27A 已通过 historical baseline 与 robustness。将完全冻结的 S27A target schedule 交给 RQAlpha 原生市场执行与账户语义后，经济证据和目标实现质量是否仍然成立？
-
-不重新研究：
-
-```text
-trend existence
-trend windows
-volatility windows
-cost robustness
-parameter plateau
-```
-
-这些已关闭。
-
----
-
-# 10. Frozen S27A Identity
-
-保持：
-
-```text
-trend_window = 200
-vol_window = 60
-
-same S2 risk universe
-
-same fallback = 511010.SS
-
-same 10 bps fees
-same 5 bps slippage
-
-monthly signal
-next-observation execution
-```
-
-禁止修改：
-
-```text
-config/s27_trend_inverse_vol.toml
-
-tacticore/strategies/trend_inverse_vol.py
-```
-
----
-
-# 11. Freeze Exact S27 Target Schedule
-
-在 RQAlpha run 前生成：
-
-```text
-research/results/
-s27a_v1_frozen_targets.csv
-```
-
-来源必须是：
-
-```text
-existing canonical data
-+
-frozen S27 config
-+
-frozen S27 strategy implementation
-```
-
-流程：
-
-```text
-build_month_end_targets
-        ↓
-build_execution_weights
-        ↓
-drop rows without execution target
-        ↓
-freeze exact target schedule
-```
-
-非常重要：
-
-S27A 当前 baseline 使用：
-
-```text
-monthly targets
-```
-
-不是 S2 的：
-
-```text
-SIGNAL_CHANGE_ONLY
-```
-
-不得错误复用 S2 target-submission policy。
-
----
-
-# 12. Frozen Target Artifact
 
 记录：
 
 ```text
-number of target dates
+RQAlpha capability
+Zipline lifetime pattern
+LEAN tradability pattern
+Qlib PIT scope
 
-first execution date
-last execution date
+what TactiCore will reuse
 
-symbols
-
-SHA-256
-
-source config hash
-
-strategy source hash
-
-canonical data hash
+what TactiCore will NOT implement
 ```
 
-目标：
+最终结论应类似：
 
 ```text
-weights >= 0
+TactiCore does not need a PIT engine.
 
-sum(weights) == 1
-
-dates unique
-
-dates strictly increasing
+It needs:
+1. asset lifecycle metadata
+2. date × asset tradability predicate
+3. target validation boundary
 ```
 
 ---
 
-# 13. Frozen-Schedule Reproduction Gate
+# 9. Define the PIT Tradability Contract
 
-在任何 RQAlpha execution 前：
-
-把：
+新增极薄模块：
 
 ```text
-s27a_v1_frozen_targets.csv
+tacticore/data/tradability.py
 ```
 
-重新交给 VectorBT。
-
-它必须精确 reproduce frozen S27A 200/60 baseline：
+不要放到：
 
 ```text
-CAGR ~= 7.7867%
-MaxDD ~= -12.5034%
-Sharpe ~= 1.015
+tacticore/engines/
 ```
 
-数值以 repository authoritative artifacts 为准。
-
-使用严格 machine tolerance。
-
-如果失败：
-
-```text
-BLOCK_S27A_EXECUTION_REPRODUCTION
-```
-
-停止 Track A。
-
-不要运行 RQAlpha。
+因为它属于 data / semantic contract。
 
 ---
 
-# 14. RQAlpha Upstream Check
+# 10. Required Primitive 1 — Asset Lifetime Metadata
 
-执行前重新检查：
+设计轻量 representation，例如：
 
-```text
-current PyPI stable RQAlpha
-current changelog
-current project dependency
+```python
+@dataclass(frozen=True)
+class AssetLifetime:
+    symbol: str
+    listed_date: pd.Timestamp
+    delisted_date: pd.Timestamp | None
 ```
 
-如果现有：
+数据来源：
+
+优先：
 
 ```text
-rqalpha>=6.3,<6.4
+existing universe metadata
++
+RQAlpha cross-validation
 ```
 
-仍对应当前仓库已验证的 stable path：
-
-继续使用。
-
-如果出现新稳定版本：
-
-不要自动升级。
-
-只有当前 6.3 出现执行 blocker 时才做有界 compatibility investigation。
+不要建立数据库。
 
 ---
 
-# 15. Reuse Existing S2 Execution Infrastructure
+# 11. Required Primitive 2 — active_at()
 
-最大化复用：
+语义：
 
-```text
-research/experiments/run_s2_rqalpha_validation.py
-
-tacticore/engines/rqalpha_adapter.py
+```python
+active_at(asset, date)
 ```
 
-但不要复制一个完整 execution framework。
-
-建议新增：
+必须对应社区成熟定义：
 
 ```text
-research/experiments/
-run_s27a_rqalpha_execution_review.py
+listed_date <= date
+AND
+(date <= delisted_date OR no delisted_date)
 ```
 
-可以抽取极小、显然通用的：
-
-```text
-frozen-target replay helper
-native result parser
-target tracking helper
-```
-
-但只有在无需改变 S2 行为的情况下。
-
-不要大规模重构 S2 已关闭 evidence code。
+边界语义必须有测试。
 
 ---
 
-# 16. RQAlpha Must NOT Recompute Signals
+# 12. Required Primitive 3 — price_available_at()
 
-RQAlpha 内部只能读取：
-
-```text
-frozen target schedule
+```python
+price_available_at(prices, symbol, date)
 ```
 
-禁止重新计算：
+要求：
 
 ```text
-200-day trend
-60-day vol
-risk budget
-inverse-vol weights
-```
-
-执行验证必须严格回答：
-
-```text
-Can native execution implement
-the frozen economic decision?
-```
-
-而不是重新跑策略。
-
----
-
-# 17. RQAlpha Execution Semantics
-
-复用已经通过 S2 closure 的：
-
-```text
-order_target_portfolio
-
-partial_fill_on_insufficient_cash = true
-
-native matching
-
-native fees
-
-native slippage
-
-native account
-
-native position
-
-native analyser
+column exists
+AND
+row exists
+AND
+price finite
+AND
+price > 0
 ```
 
 不要：
 
 ```text
-local cash reserve
-manual order sizing
-retry engine
-custom lot handling
-custom matching
+forward-fill
+interpolate
+zero-fill
 ```
 
 ---
 
-# 18. S27 Execution Evidence
+# 13. Required Primitive 4 — tradable_at()
 
-至少输出：
+MVP 语义：
 
 ```text
-RQAlpha CAGR
-RQAlpha MaxDD
-RQAlpha native Sharpe
-turnover
-trade count
-transaction cost
-
-native order count
-
-failed order events
-cash rejection events
-cash residual cancellations
-volume limited events
-
-ending cash
-minimum cash
-average cash ratio
+tradable_at(symbol, date)
+=
+active_at(symbol, date)
+AND
+price_available_at(symbol, date)
 ```
 
-目标 tracking：
+不要在本 Goal 增加：
 
 ```text
-each execution date
-
-monthly reviews
-
-total absolute weight deviation
-
-maximum asset deviation
-
-cash residual
-
-materially off-target flag
+suspension database
+limit-up logic
+liquidity filters
+broker eligibility
 ```
 
-material threshold 延续：
+除非现有上游已经免费提供且是完成当前 correctness closure 的必要条件。
+
+当前目标只解决：
 
 ```text
-5 percentage points
-```
-
-避免重新定义。
-
----
-
-# 19. Explain Every Material Difference
-
-每个显著 execution deviation 必须关联：
-
-```text
-native order status
-
-fill evidence
-
-cash constraint
-
-volume constraint
-
-market availability
-
-other RQAlpha-native reason
-```
-
-不能留下：
-
-```text
-UNEXPLAINED_EXECUTION_DIFFERENCE
-```
-
-然后仍宣布 PASS。
-
----
-
-# 20. S27 Execution Advance Gate
-
-预注册：
-
-### Integrity
-
-```text
-all frozen execution dates replayed
-NO missing schedule dates
-NO extra signal dates
-```
-
-### Cash
-
-```text
-cash rejection events = 0
-```
-
-原生：
-
-```text
-partial-fill residual cancellation
-```
-
-允许存在，但必须解释。
-
-### Target tracking
-
-要求：
-
-```text
-average execution-date
-total absolute weight deviation
-<= 3%
-```
-
-且：
-
-```text
-materially off-target execution dates
-<= 10% of frozen execution dates
-```
-
-### Cash drag
-
-要求：
-
-```text
-average cash ratio <= 2%
-```
-
-### Economics
-
-相对 frozen VectorBT：
-
-```text
-RQAlpha CAGR > 0
-
-RQAlpha CAGR
->= VectorBT CAGR - 2 percentage points
-
-RQAlpha MaxDD
-must not worsen by more than
-5 percentage points
-```
-
-不要使用：
-
-```text
-RQAlpha native Sharpe == VectorBT Sharpe
-```
-
-作为硬门槛。
-
-两个框架 risk-free-rate / calendar 口径不同。
-
----
-
-# 21. S27 Decision
-
-只能输出：
-
-```text
-ADVANCE_S27A_TO_CANDIDATE_FREEZE_REVIEW
-
-DO_NOT_ADVANCE_S27A_EXECUTION
-
-BLOCK_S27A_EXECUTION_REPRODUCTION
-
-BLOCK_S27A_EXECUTION_ENVIRONMENT
-```
-
-即使：
-
-```text
-ADVANCE
-```
-
-本 Goal 也禁止：
-
-```text
-freeze S27 Research Candidate R1
-
-start S27 prospective shadow
-replace S2 R1
-```
-
-这些属于下一次 Principal Review。
-
----
-
-# ============================================================
-
-# TRACK B — S10A ROBUSTNESS
-
-# ============================================================
-
-# 22. Research Question
-
-唯一问题：
-
-> S10A 20-day / 10% unlevered volatility-targeting result，是一个宽容的稳定机制，还是恰好依赖于单个 lookback / target-vol specification？
-
-这是：
-
-```text
-E3 LOCAL_ADJUDICATION
-```
-
-不是：
-
-```text
-optimize S10A
+pre-listing
+post-delisting
+missing execution price
 ```
 
 ---
 
-# 23. Freeze Existing S10 Baseline
+# 14. Required Primitive 5 — Tradability Mask
 
-禁止修改：
-
-```text
-config/s10a_vol_targeting.toml
-
-tacticore/strategies/volatility_targeting.py
-
-research/results/S10A_VOL_TARGETING_V1.md
-```
-
-中心 baseline 永远：
-
-```text
-vol_window = 20
-
-target_volatility = 10%
-
-scale = [0,1]
-
-NO leverage
-```
-
-无论邻域哪一个表现最好，都不改变中心。
-
----
-
-# 24. Correctness Semantics Must Stay V2
-
-必须继续使用：
+借鉴 Zipline `lifetimes()`：
 
 ```python
-pct_change(fill_method=None)
+build_tradability_mask(
+    dates,
+    symbols,
+    lifetimes,
+    prices,
+) -> DataFrame[bool]
 ```
 
-aligned returns。
-
-禁止重新引入：
+结果：
 
 ```text
-implicit forward fill
+date × symbol
 ```
 
-UNAVAILABLE / missing 必须真实保持。
+例如：
+
+```text
+                2012-06-01   2013-03-25
+510300.SS          True          True
+511010.SS          False         True
+513500.SS          False         False
+```
+
+这是薄数据结构。
+
+不要实现长期缓存平台。
 
 ---
 
-# 25. Generalized Robustness Evaluator
+# 15. Required Primitive 6 — Target Tradability Validator
+
+核心 invariant：
+
+```text
+positive target weight
+requires tradable_at == True
+on execution date
+```
+
+实现类似：
+
+```python
+validate_execution_targets(
+    execution_weights,
+    prices,
+    tradability_mask,
+)
+```
+
+如果存在：
+
+```text
+weight > tolerance
+AND
+tradable == False
+```
+
+必须：
+
+```text
+raise explicit correctness error
+```
+
+例如：
+
+```text
+UntradableTargetError
+```
+
+错误中必须包含：
+
+```text
+execution_date
+symbol
+target_weight
+listed_date
+price_available
+```
+
+---
+
+# 16. No Silent Simulator Semantics
+
+永久禁止：
+
+```text
+VectorBT receives positive target
+for NaN-priced / inactive asset
+and decides what to do silently.
+```
+
+VectorBT 只允许收到：
+
+```text
+validated execution targets
+```
+
+---
+
+# 17. Simulator Boundary
+
+不要修改 VectorBT 内部。
+
+在：
+
+```text
+run_target_weights()
+```
+
+之前增加 fail-fast validation。
+
+设计优先：
+
+```text
+validation boundary
+```
+
+而不是：
+
+```text
+strategy-specific PIT logic
+```
+
+如果要修改：
+
+```text
+tacticore/engines/vectorbt_adapter.py
+```
+
+只增加：
+
+```text
+optional / mandatory validated-target check
+```
+
+不要让 adapter 生成 universe。
+
+---
+
+# 18. Instrument Metadata Authority Hierarchy
+
+在规则中明确：
+
+```text
+1. authoritative upstream instrument metadata
+2. canonical price availability
+3. repository-local universe metadata cross-check
+```
+
+对于当前中国 ETF：
+
+```text
+RQAlpha instrument metadata
+```
+
+是重要 authority。
+
+但是：
+
+```text
+RQAlpha bundle coverage
+```
+
+与：
+
+```text
+instrument historical existence
+```
+
+必须区分。
+
+bundle 缺数据不等于资产历史不存在。
+
+---
+
+# 19. universe.csv Is Not the Sole Authority
+
+`config/universe.csv:start_date` 保留：
+
+```text
+human-readable
+version-controlled
+research provenance
+```
+
+但必须验证：
+
+```text
+local start_date
+vs
+upstream listed_date
+```
+
+新增 bounded audit script，例如：
+
+```text
+research/experiments/
+verify_asset_lifetimes.py
+```
+
+输出：
+
+```text
+symbol
+local_start_date
+rqalpha_listed_date
+match
+```
+
+若不一致：
+
+```text
+do not silently overwrite
+```
+
+记录 discrepancy。
+
+---
+
+# 20. Do NOT Require RQAlpha at Every VectorBT Run
+
+不要让研究层变成：
+
+```text
+every backtest
+→ launch RQAlpha
+```
+
+更合理的是：
+
+```text
+RQAlpha lifecycle metadata
+→ audit / extract / verify
+→ lightweight local metadata
+→ VectorBT research
+```
+
+保持：
+
+```text
+VectorBT fast research
+RQAlpha authoritative execution
+```
+
+---
+
+# 21. Permanent Rule — Strategy Inception
+
+在：
+
+```text
+docs/RESEARCH_RULES.md
+```
+
+增加：
+
+> Strategy inception is the first execution date on which the strategy's complete target can be legally formed and executed under the frozen strategy semantics.
+
+禁止把：
+
+```text
+first dataframe date
+first signal row
+first non-NaN target row
+```
+
+自动当成 inception。
+
+---
+
+# 22. Complete Target Semantics
+
+若 strategy target 是：
+
+```text
+risk assets
++
+fallback asset
+```
+
+则：
+
+```text
+fallback asset
+```
+
+也是 complete target contract 的一部分。
+
+如果 fallback 尚未可交易：
+
+不得：
+
+```text
+assign positive fallback target
+```
+
+---
+
+# 23. Missing Fallback Semantics
+
+对于当前历史研究：
+
+如果策略需要 fallback：
+
+```text
+fallback not tradable
+```
+
+时，默认：
+
+```text
+NO EXECUTABLE TARGET
+```
+
+而不是：
+
+```text
+pretend cash
+renormalize risk assets
+use another bond
+skip silently
+```
+
+除非原始策略协议已经明确另一种行为。
+
+---
+
+# 24. Dynamic Universe Semantics
+
+永久规则：
+
+```text
+U(t) =
+assets active and eligible at time t
+```
+
+策略只能：
+
+```text
+select / rank / allocate
+inside U(t)
+```
+
+禁止：
+
+```text
+today's ETF universe
+backfilled into history
+```
+
+这条规则未来适用于：
+
+```text
+sector ETF
+theme ETF
+asset-class ETF
+```
+
+但本 Goal 不重新研究 Theme Rotation。
+
+---
+
+# 25. Signed Metric Semantics
+
+新增一个非常小的统一 helper。
+
+优先放：
+
+```text
+research/metrics.py
+```
+
+或现有 research common module。
+
+不要创建：
+
+```text
+MetricsFramework
+```
+
+---
+
+# 26. Required Drawdown Helpers
+
+至少：
+
+```python
+drawdown_better(candidate, comparator)
+```
+
+语义：
+
+```text
+candidate > comparator
+```
+
+例如：
+
+```text
+-0.10 > -0.20
+→ True
+```
+
+以及：
+
+```python
+drawdown_no_worse(candidate, comparator)
+```
+
+语义：
+
+```text
+candidate >= comparator
+```
+
+---
+
+# 27. Required Metric Tests
+
+必须有：
+
+```python
+assert drawdown_better(-0.10, -0.20)
+assert not drawdown_better(-0.20, -0.10)
+
+assert drawdown_no_worse(-0.10, -0.10)
+assert drawdown_no_worse(-0.10, -0.20)
+assert not drawdown_no_worse(-0.20, -0.10)
+```
+
+防止 signed semantics 再次漂移。
+
+---
+
+# 28. Permanent Rule — MaxDD Sign
+
+更新：
+
+```text
+docs/RESEARCH_RULES.md
+```
+
+明确：
+
+```text
+MaxDD is stored as a negative number.
+
+Less negative = better.
+
+candidate >= comparator
+means no worse drawdown.
+```
+
+以后所有 decision function 必须遵循。
+
+---
+
+# 29. Protocol Freeze Before Revalidation
 
 新增：
 
 ```text
-research/experiments/
-run_s10a_robustness.py
+research/batches/batch_04/PROTOCOL.md
 ```
 
-参数变化只存在于 experiment layer。
-
-不要修改 frozen strategy source。
-
-首先要求：
+在任何 corrected performance run 前冻结：
 
 ```text
-20-day / 10%
-```
-
-完全 reproduce：
-
-```text
-CAGR
-MaxDD
-Sharpe
-Calmar
-turnover
-```
-
-与合法 Protocol V2 baseline 一致。
-
-否则：
-
-```text
-BLOCK_S10A_ROBUSTNESS_REPRODUCTION
+PIT contract
+metric semantics
+affected strategy list
+allowed code changes
+revalidation scope
+decision policy
 ```
 
 ---
 
-# 26. One-Factor-at-a-Time Volatility Window
+# 30. Batch 04 Is a Correctness Closure, Not New Research
 
-固定：
+非常重要：
+
+不得借 PIT 修复：
 
 ```text
-target volatility = 10%
+change parameters
+change strategy family
+change threshold
+change comparator
+change cost
+change universe composition
 ```
 
-测试：
+只允许修正：
 
 ```text
-10 valid aligned returns
-20 valid aligned returns
-40 valid aligned returns
-```
-
-经济含义约为：
-
-```text
-~2 weeks
-~1 month
-~2 months
-```
-
-不测试：
-
-```text
-10 / 20 / 40
-×
-8 / 10 / 12
-```
-
-Cartesian grid。
-
----
-
-# 27. One-Factor-at-a-Time Target Volatility
-
-固定：
-
-```text
-vol_window = 20
-```
-
-测试：
-
-```text
-8%
-10%
-12%
-```
-
-全部：
-
-```text
-max_scale = 1
-NO leverage
+execution legality
+evaluation start
+signed metric comparison
 ```
 
 ---
 
-# 28. Never Select the Best Parameter
+# 31. Impact Audit Before Rerun
 
-本轮禁止：
+先扫描 repository 中所有：
 
 ```text
-best target volatility
-best lookback
+execution target > 0
 ```
 
-20/10 永远保留为 baseline。
-
-Robustness 只回答：
+但执行日：
 
 ```text
-Does the mechanism survive
-reasonable nearby assumptions?
+asset inactive
+OR price missing
 ```
 
----
+的情况。
 
-# 29. Timing-Matched Comparator
-
-所有 S10 robustness case 都与：
+至少审计：
 
 ```text
-MONTHLY_STATIC_25_25_25_25
+S2
+S27A
+S10A
+S4C
+S30
+S3 family
+S4A
+S8A
 ```
 
-比较。
-
-必须完全相同：
+输出：
 
 ```text
-signal dates
-execution dates
-fees
-slippage
-capital
-canonical data
+research/results/
+PIT_TRADABILITY_IMPACT_AUDIT_V1.md
 ```
 
-这样差异只来自：
+以及：
 
 ```text
-volatility scaling
+pit_tradability_violations_v1.csv
 ```
 
-S30 annual static：
+字段：
 
 ```text
-context only
-```
-
----
-
-# 30. Fixed Periods
-
-复用 Batch 02 / S27 已冻结的 period boundaries：
-
-```text
-2013-03-29 → 2016-12-31
-
-2017-01-01 → 2019-12-31
-
-2020-01-01 → 2022-12-31
-
-2023-01-01 → 2026-08-31
-```
-
-如果 S10 的实际 common-data start 晚于第一区间起点：
-
-只按实际可用开始，
-
-但不能重新选日期。
-
----
-
-# 31. Rolling Evidence
-
-复用已有：
-
-```text
-rolling 3Y
-rolling 5Y
-```
-
-month-end methodology。
-
-至少记录：
-
-```text
-positive CAGR share
-
-Sharpe
-
-MaxDD
-
-relative Sharpe vs monthly static
-
-relative MaxDD vs monthly static
-```
-
-不要发明新的 rolling windows。
-
----
-
-# 32. S10 Cost Sensitivity
-
-完全复用 S27/S2 定义：
-
-```text
-VectorBT per-side fees
-
-slippage = 0
-
-15 bps
-30 bps
-50 bps
-```
-
-只对中心：
-
-```text
-20 / 10%
-```
-
-运行。
-
-不做 parameter × cost grid。
-
----
-
-# 33. S10 Robustness Gate — Absolute
-
-所有：
-
-```text
-10/10
-20/10
-40/10
-
-20/8
-20/12
-```
-
-必须：
-
-```text
-CAGR > 0
-
-Sharpe > 0
-
-MaxDD > -20%
+strategy
+execution_date
+symbol
+target_weight
+listed_date
+price_available
+violation_type
 ```
 
 ---
 
-# 34. S10 Robustness Gate — Parameter Neighborhood
+# 32. Impact Classification
 
-对于：
+每个策略分类：
 
 ```text
-window dimension
-10 / 20 / 40
+UNAFFECTED
+
+AFFECTED_PRE_EVALUATION_ONLY
+
+AFFECTED_METRICS
+
+AFFECTED_DECISION
 ```
 
-至少：
+不要自动重跑所有历史实验。
+
+只重跑：
 
 ```text
-2 / 3
+AFFECTED_METRICS
+or
+AFFECTED_DECISION
 ```
 
-必须满足相对 monthly-static：
+---
+
+# 33. S2 Control Audit
+
+首先验证 S2 R1 frozen schedule：
 
 ```text
-CAGR >= comparator CAGR - 1.5pp
+all positive target weights
+must be tradable
+```
 
-MaxDD strictly better
+如果：
 
+```text
+0 violations
+```
+
+记录：
+
+```text
+S2_R1_PIT_INTEGRITY_PASS
+```
+
+然后再次：
+
+```bash
+uv run python research/experiments/run_s2_r1_shadow.py \
+  --verify-candidate
+```
+
+必须 PASS。
+
+如果 S2 有 violation：
+
+```text
+STOP
+```
+
+不要继续其他 corrected research。
+
+状态：
+
+```text
+BATCH_04_BLOCKED_BY_S2_CANDIDATE_INTEGRITY
+```
+
+等待 Principal Review。
+
+---
+
+# 34. S30 Control Audit
+
+S30 是重要复杂度 reference。
+
+确认：
+
+```text
+first allocation date
+```
+
+是否发生在：
+
+```text
+510300
+513500
+518880
+511010
+```
+
+全部 active + valid price 之后。
+
+如果本来正确：
+
+只记录 PASS。
+
+不要重新研究。
+
+---
+
+# 35. S27A Correctness Revalidation
+
+当前 frozen schedule 不能直接保留为权威 schedule，因为已包含 pre-listing fallback target。
+
+不要简单：
+
+```text
+delete first rows
+```
+
+而是使用：
+
+```text
+same frozen strategy semantics
++
+PIT tradability contract
+```
+
+重新形成：
+
+```text
+corrected executable schedule
+```
+
+---
+
+# 36. S27A Rule Before Fallback Listing
+
+如果：
+
+```text
+strategy wants positive fallback weight
 AND
-
-Sharpe > comparator Sharpe
-OR
-Calmar > comparator Calmar
+fallback not tradable
 ```
 
-对于：
+则该月：
 
 ```text
-target dimension
-8 / 10 / 12
-```
-
-同样至少：
-
-```text
-2 / 3
-```
-
-满足上述 gate。
-
----
-
-# 35. S10 Robustness Gate — Non-Degeneration
-
-中心 20/10 必须继续：
-
-```text
-0.40 < average scale < 0.95
-```
-
-对于 target-vol dimension：
-
-至少：
-
-```text
-2 / 3
-```
-
-variants 不能退化为：
-
-```text
-average scale >= 0.95
-```
-
-或：
-
-```text
-average scale <= 0.40
-```
-
-边缘 case 退化：
-
-可以记录，
-
-但不得偷偷改 target。
-
----
-
-# 36. S10 Fixed-Period Gate
-
-中心：
-
-```text
-20 / 10%
-```
-
-必须：
-
-```text
-positive CAGR
-in all four fixed periods
-```
-
-并且至少：
-
-```text
-3 / 4 periods
-```
-
-满足：
-
-```text
-MaxDD <= monthly-static MaxDD
-```
-
-以及至少：
-
-```text
-3 / 4 periods
-```
-
-满足：
-
-```text
-Sharpe > comparator
-OR
-Calmar > comparator
-```
-
----
-
-# 37. S10 Rolling Gate
-
-中心：
-
-```text
-rolling 3Y positive CAGR share >= 90%
-
-rolling 5Y positive CAGR share >= 95%
-```
-
-并报告：
-
-```text
-share of rolling 3Y windows
-where Sharpe > monthly-static
-
-share of rolling 3Y windows
-where MaxDD improves
-
-same for rolling 5Y
-```
-
-要求至少：
-
-```text
-60%
-```
-
-rolling 3Y windows 满足：
-
-```text
-Sharpe improvement
-OR
-MaxDD improvement
-```
-
-不要通过挑选 crisis windows 证明价值。
-
----
-
-# 38. S10 Cost Gate
-
-50 bps per-side fee-only case：
-
-```text
-CAGR > 0
-
-Sharpe >= 0.70
-```
-
----
-
-# 39. S10 Decision
-
-只能：
-
-```text
-ADVANCE_S10A_TO_EXECUTION_REVIEW
-
-REJECT_S10A_ROBUSTNESS
-
-BLOCK_S10A_ROBUSTNESS_REPRODUCTION
-```
-
-即使 ADVANCE：
-
-本 Goal 也：
-
-```text
-DO NOT run S10 RQAlpha
-```
-
----
-
-# ============================================================
-
-# TRACK C — S4C CANONICAL ERC THROUGH SKFOLIO
-
-# ============================================================
-
-# 40. Why Track C Exists
-
-S4B 的结论是：
-
-```text
-Riskfolio-Lib route blocked
-```
-
-不是：
-
-```text
-ERC rejected
-```
-
-如果当前 official skfolio：
-
-```text
-supports project Python versions
-+
-contains canonical RiskBudgeting
-```
-
-则这属于新的：
-
-```text
-upstream implementation evidence
-```
-
-允许建立新的 bounded local question。
-
----
-
-# 41. S4C Identity
-
-定义：
-
-```text
-S4C_CANONICAL_ERC_SKFOLIO_TRANSFER_V1
-```
-
-Canonical external mapping：
-
-```text
-Equal Risk Contribution
-/
-Risk Parity
-```
-
-Tier：
-
-```text
-E2_ESTABLISHED_METHOD
-```
-
-Action：
-
-```text
-UPSTREAM_COMPARE
-```
-
----
-
-# 42. Dependency Compatibility Gate
-
-在任何 performance code 前：
-
-使用隔离 resolver 检查：
-
-```text
-Python 3.10
-Python 3.11
-Python 3.12
-```
-
-与当前：
-
-```text
-TactiCore dependency set
-+
-current stable skfolio
-```
-
-是否可以可靠解析。
-
-不要因为本机当前是单一 Python 版本就认为项目范围兼容。
-
-如果失败：
-
-```text
-BLOCK_S4C_SKFOLIO_DEPENDENCY
+NO EXECUTABLE TARGET
 ```
 
 不得：
 
 ```text
-lower Python support
-use old package
-fork package
-write local solver
+replace with cash
+replace with 511880
+replace with another bond
+renormalize uptrend assets
 ```
+
+因为这些都改变策略。
 
 ---
 
-# 43. Research-Only Dependency
+# 37. S27A Corrected Inception
 
-如果 compatibility PASS：
-
-增加：
+由 contract 自动得到：
 
 ```text
-research optional dependency
+first executable complete target
 ```
 
-而不是 core runtime dependency。
-
-版本范围必须基于实际 verified current release。
-
-记录：
+不要 hard-code：
 
 ```text
-resolved skfolio version
-Python versions tested
-solver dependencies
-lock state
+2013-03-25
 ```
+
+或任何人工日期。
 
 ---
 
-# 44. skfolio Responsibility Boundary
+# 38. S27A Corrected Baseline
 
-skfolio 只负责：
+在 corrected inception 后，
 
-```text
-ERC target-weight optimization
-```
-
-VectorBT 继续负责：
+使用完全相同：
 
 ```text
-portfolio simulation
-accounting
-trades
-returns
-drawdown
+trend_window = 200
+vol_window = 60
+fees = 10bps
+slippage = 5bps
+monthly target submission
 ```
 
-禁止使用 skfolio portfolio simulation 替代 VectorBT。
-
-这不是第三套 backtester。
-
----
-
-# 45. Canonical S4C Universe
-
-复用当前 multi-asset risk universe。
-
-只读：
-
-```text
-config/strategy.toml
-```
-
-不要修改 S2 config。
-
-fallback：
-
-```text
-511010.SS
-```
-
-不参与 risk-asset ERC optimization。
-
----
-
-# 46. S4C Data Semantics
-
-每个 month-end：
-
-要求最近：
-
-```text
-61 common valid prices
-```
+重新计算 baseline。
 
 产生：
 
 ```text
-60 aligned daily returns
-```
-
-只有在所有该 eligible set 的共同日期上计算。
-
-严禁：
-
-```text
-forward fill
-zero fill
-pairwise silent covariance
-```
-
-至少：
-
-```text
-6 eligible assets
-```
-
-否则：
-
-```text
-fallback = 100%
+S27A_PIT_CORRECTED_BASELINE_V1.md
 ```
 
 ---
 
-# 47. Canonical ERC Call
+# 39. S27A Corrected Robustness
 
-优先直接使用 official：
+只有 corrected baseline 仍达到原 baseline gate 才继续。
+
+参数保持：
 
 ```text
-skfolio.optimization.RiskBudgeting
+trend:
+160
+180
+200
+220
+240
+
+vol:
+40
+60
+80
 ```
 
-明确配置：
+仍然：
 
 ```text
-risk measure = variance
-
-equal risk budget
-
-long only
-
-fully invested
-
-no leverage
-
-no expected-return objective
-
-no minimum-return constraint
-
-no custom risk budgets
-
-no alternative risk measure
+one-factor-at-a-time
 ```
 
-不要测试：
+不改任何 threshold。
+
+使用原先：
 
 ```text
-CVaR risk parity
-semi-variance risk parity
-HERC
-HRP
-maximum diversification
-```
-
----
-
-# 48. Solver Failure Semantics
-
-如果：
-
-```text
-eligible assets >= 6
-```
-
-但 upstream solver 无法产生：
-
-```text
-finite
-nonnegative
-sum-to-one
-```
-
-weights：
-
-不得偷偷 fallback。
-
-该 track 直接记录：
-
-```text
-BLOCK_S4C_UPSTREAM_EXECUTION
-```
-
-并保留错误证据。
-
-这样不会让 solver failure 伪装成 defensive alpha。
-
----
-
-# 49. S4C Primary Comparators
-
-必须基于完全相同：
-
-```text
-aligned window
-eligible set
-signal date
-execution date
+fixed periods
+rolling
 costs
 ```
 
-创建：
+但 period metrics 应从：
 
 ```text
-SAME_ELIGIBLE_EQUAL_WEIGHT
-
-SAME_ELIGIBLE_INVERSE_VOL
+max(period start, corrected inception)
 ```
 
-注意：
-
-现有 S4A inverse-vol 使用：
-
-```text
-asset-own valid returns
-```
-
-而 S4C 公平 comparator 必须使用：
-
-```text
-same aligned returns
-```
-
-所以不要直接拿 S4A 历史结果当 primary comparator。
-
-S4A 和 S30 仅 contextual。
+开始。
 
 ---
 
-# 50. S4C Timing
-
-```text
-month-end aligned return estimation
-        ↓
-skfolio ERC target
-        ↓
-next canonical observation
-        ↓
-VectorBT
-```
-
-使用：
-
-```text
-10bps fee
-5bps slippage
-1,000,000 initial cash
-```
-
----
-
-# 51. S4C Coverage Gate
-
-要求：
-
-```text
->= 6 eligible assets
-```
-
-在至少：
-
-```text
-80%
-```
-
-evaluated month-end observations 成立。
-
-否则：
-
-```text
-BLOCK_S4C_DATA_COVERAGE
-```
-
----
-
-# 52. S4C Absolute Gate
-
-要求：
-
-```text
-CAGR > 0
-
-Sharpe >= 0.50
-
-MaxDD > -35%
-```
-
----
-
-# 53. S4C Relative Gate
-
-相对：
-
-```text
-SAME_ELIGIBLE_INVERSE_VOL
-```
-
-要求：
-
-```text
-CAGR >= comparator CAGR - 1.5pp
-
-MaxDD cannot be worse by > 2pp
-```
-
-以及至少满足：
-
-```text
-Sharpe >= comparator Sharpe + 0.03
-```
-
-或：
-
-```text
-Calmar >= comparator Calmar + 0.05
-```
-
-并要求：
-
-```text
-turnover <= 1.5 × inverse-vol turnover
-```
-
----
-
-# 54. S4C Concentration Diagnostics
-
-至少记录：
-
-```text
-maximum weight
-
-median maximum weight
-
-95th-percentile maximum weight
-
-effective number of assets
-
-months with any asset > 50%
-```
-
-不要事后添加：
-
-```text
-weight cap
-```
-
-救结果。
-
----
-
-# 55. S4C Decision
+# 40. S27A Decision
 
 只能：
 
 ```text
-ADVANCE_S4C_ERC_TRANSFER_TO_ROBUSTNESS
+RESTORE_S27A_EXECUTION_REVIEW_ELIGIBILITY
 
-DO_NOT_ADVANCE_S4C_ERC_TRANSFER
+REJECT_S27A_AFTER_PIT_CORRECTION
 
-BLOCK_S4C_SKFOLIO_DEPENDENCY
-
-BLOCK_S4C_DATA_COVERAGE
-
-BLOCK_S4C_UPSTREAM_EXECUTION
+BLOCK_S27A_PIT_REPRODUCTION
 ```
 
-不得把 local failure 写成：
+本 Goal：
 
 ```text
-risk parity does not work
+DO NOT run RQAlpha execution
+```
+
+即使 restore eligibility。
+
+---
+
+# 41. S10A Correctness Revalidation
+
+S10A 有两个 independent corrections：
+
+```text
+A. tradability / inception
+B. signed MaxDD semantics
+```
+
+不能只修一个。
+
+---
+
+# 42. S10A Base Asset PIT Rule
+
+S10A base：
+
+```text
+510300
+513500
+518880
+511010
+```
+
+固定：
+
+```text
+25 / 25 / 25 / 25
+```
+
+因此：
+
+```text
+MONTHLY_STATIC_25_25_25_25
+```
+
+只有在四个资产均 active + price available 后才存在。
+
+---
+
+# 43. S10A Inception
+
+策略 inception：
+
+```text
+first executable monthly target
+after all four base assets are tradable
+```
+
+之后如果：
+
+```text
+20-day vol history unavailable
+```
+
+则原策略定义仍允许：
+
+```text
+scale = 0
+→ fallback bond allocation
+```
+
+前提：
+
+```text
+bond itself tradable
 ```
 
 ---
 
-# ============================================================
+# 44. S10A MaxDD Gate Correction
 
-# COMMON FREEZE / EXECUTION
-
-# ============================================================
-
-# 56. No Other Strategies
-
-本 Goal 禁止实现：
+原 fixed-period gate 的经济意图：
 
 ```text
-MinVar
-Shrinkage MinVar
-HRP
-HERC
-Maximum Diversification
-Black-Litterman
-
-Theme Rotation
-Asset-Class Breadth
-Defensive Rotation
-PIT Sector Rotation
-
-new momentum variants
+candidate MaxDD no worse than comparator
 ```
 
-尤其不能因为 skfolio 已安装就：
+必须使用：
 
 ```text
-顺便测试库中其它 optimizer
+drawdown_no_worse(candidate, comparator)
+```
+
+即：
+
+```text
+candidate >= comparator
+```
+
+不要直接写裸比较符。
+
+---
+
+# 45. S10A Historical Run Treatment
+
+当前 Batch 03 S10A robustness：
+
+```text
+REJECT_S10A_ROBUSTNESS
+```
+
+必须标：
+
+```text
+SUPERSEDED_BY_CORRECTNESS_REVIEW
+```
+
+不是删除。
+
+保留：
+
+```text
+INVALID_RUN history
+Protocol V2/V3/V4
 ```
 
 ---
 
-# 57. Expected Files
+# 46. S10A Corrected Replay
 
-合理新增：
+完全保留：
 
 ```text
-research/batches/batch_03/
-  EVIDENCE_GATE.md
-  PROTOCOL.md
+20 / 10 center
 
-research/experiments/
-  run_s27a_rqalpha_execution_review.py
-  run_s10a_robustness.py
-  run_s4c_erc_skfolio_transfer.py
+window:
+10
+20
+40
 
+target:
+8%
+10%
+12%
+
+monthly static comparator
+
+same costs
+
+same rolling definitions
+```
+
+不改其他 gate。
+
+---
+
+# 47. S10A Corrected Decision
+
+只能：
+
+```text
+RESTORE_S10A_EXECUTION_REVIEW_ELIGIBILITY
+
+REJECT_S10A_AFTER_CORRECTNESS_CLOSURE
+
+BLOCK_S10A_CORRECTNESS_REPRODUCTION
+```
+
+本 Goal：
+
+```text
+DO NOT run RQAlpha
+```
+
+---
+
+# 48. S4C Correctness Revalidation
+
+S4C 当前：
+
+```text
+<6 eligible
+→ fallback 100%
+```
+
+语义可以保留。
+
+但前提：
+
+```text
+fallback tradable_at execution date
+```
+
+---
+
+# 49. S4C Before Fallback Availability
+
+如果：
+
+```text
+<6 eligible
+AND
+fallback inactive
+```
+
+则：
+
+```text
+NO EXECUTABLE TARGET
+```
+
+不是：
+
+```text
+100% pre-listing fallback
+```
+
+---
+
+# 50. S4C Corrected Inception
+
+由：
+
+```text
+first executable complete target
+```
+
+自动决定。
+
+不要硬编码。
+
+---
+
+# 51. S4C Corrected Baseline Replay
+
+完全保持：
+
+```text
+61 aligned prices
+60 fill_method=None returns
+min eligible = 6
+
+skfolio RiskBudgeting
+variance
+equal risk budget
+long-only
+fully invested
+
+same-eligible inverse-vol comparator
+same-eligible equal-weight comparator
+
+10bps fee
+5bps slippage
+```
+
+不修改任何 gate。
+
+---
+
+# 52. S4C Corrected Decision
+
+只能：
+
+```text
+RESTORE_S4C_ROBUSTNESS_ELIGIBILITY
+
+DO_NOT_ADVANCE_S4C_AFTER_PIT_CORRECTION
+
+BLOCK_S4C_PIT_REPRODUCTION
+```
+
+本 Goal：
+
+```text
+DO NOT run S4C robustness
+```
+
+---
+
+# 53. Historical Artifacts Must Not Be Deleted
+
+保留：
+
+```text
+S27A_RQALPHA_EXECUTION_REVIEW_V1.md
+S10A_ROBUSTNESS_V1.md
+S4C_ERC_SKFOLIO_TRANSFER_V1.md
+BATCH_03_EARNED_STAGE_ADVANCEMENT.md
+```
+
+因为它们是真实历史证据。
+
+新报告必须说明：
+
+```text
+why prior result was affected
+what exact correctness issue was found
+which parts remain valid
+which decision is superseded
+```
+
+---
+
+# 54. New Correctness Reports
+
+至少生成：
+
+```text
 research/results/
-  s27a_v1_frozen_targets.csv
+PIT_TRADABILITY_IMPACT_AUDIT_V1.md
 
-  S27A_RQALPHA_EXECUTION_REVIEW_V1.md
-  S10A_ROBUSTNESS_V1.md
-  S4C_ERC_SKFOLIO_TRANSFER_V1.md
+S27A_PIT_CORRECTNESS_REVALIDATION_V1.md
 
-  BATCH_03_EARNED_STAGE_ADVANCEMENT.md
+S10A_CORRECTNESS_REVALIDATION_V1.md
 
-  focused small CSV artifacts
-```
+S4C_PIT_CORRECTNESS_REVALIDATION_V1.md
 
-可能修改：
-
-```text
-pyproject.toml
-uv.lock
-```
-
-仅当：
-
-```text
-skfolio compatibility gate passes
+BATCH_04_COMMUNITY_BACKED_PIT_CORRECTNESS_CLOSURE.md
 ```
 
 ---
 
-# 58. Files Normally Unchanged
+# 55. Machine-Readable Artifacts
 
-正常保持：
+至少：
 
 ```text
-AGENTS.md
-docs/ARCHITECTURE.md
-docs/RESEARCH_RULES.md
+pit_tradability_violations_v1.csv
 
-data/**
+asset_lifetime_audit_v1.csv
 
-config/strategy.toml
-config/universe.csv
+s27a_pit_corrected_summary_v1.csv
 
-config/s27_trend_inverse_vol.toml
-config/s10a_vol_targeting.toml
+s10a_corrected_robustness_summary_v1.csv
 
-tacticore/strategies/multi_asset_trend.py
-tacticore/strategies/trend_inverse_vol.py
-tacticore/strategies/volatility_targeting.py
-
-tacticore/engines/rqalpha_adapter.py
-
-research/shadow/s2_r1/**
+s4c_pit_corrected_comparison_v1.csv
 ```
 
-已有永久规则已经足够。
+只生成真正需要的 artifacts。
+
+不要复制全部历史 CSV。
 
 ---
 
-# 59. Synthetic / Unit Tests Before Freeze
+# 56. Update ARCHITECTURE.md
 
-至少测试：
+这次允许且要求修改。
 
-## S27
+新增：
 
 ```text
-frozen schedule == existing S27 execution semantics
-
-schedule sums to 1
-
-next-observation timing
-
-monthly target submission preserved
-
-no signal calculation inside RQAlpha callback
-
-replayed-date exactness
-
-decision boundary tests
+Asset Lifecycle / PIT Tradability
 ```
 
-## S10
+在策略执行之前。
+
+架构应类似：
 
 ```text
-20/10 generalized evaluator
-exactly reproduces frozen strategy targets
-
-fill_method=None preserved
-
-10/20/40 are one-factor only
-
-8/10/12 are one-factor only
-
-no Cartesian generation
-
-decision boundary tests
-```
-
-## S4C
-
-```text
-equal risk budget call
-
-long-only weights
-
-sum(weights) == 1
-
-aligned-return semantics
-
-missing rows not filled
-
-<6 eligible → fallback
-
-eligible solver failure → BLOCK
-
-same-eligible comparators
-
-next-observation timing
-
-decision boundary tests
+External Evidence
+        ↓
+Canonical Data
++
+Asset Lifecycle
+        ↓
+PIT Eligible Universe
+        ↓
+Strategy Semantics
+        ↓
+Target Portfolio
+        ↓
+Tradability Validation
+        ↓
+VectorBT Historical Research
+        ↓
+RQAlpha Authoritative Execution
 ```
 
 ---
 
-# 60. Commit A — Protocol Freeze
+# 57. Architecture Ownership
+
+明确：
+
+## Upstream
+
+```text
+instrument lifecycle semantics
+```
+
+优先借鉴/验证：
+
+```text
+RQAlpha
+```
+
+## TactiCore
+
+只拥有：
+
+```text
+thin lifecycle metadata snapshot
+tradability mask
+target validation
+local research contracts
+```
+
+## VectorBT
+
+只负责：
+
+```text
+historical portfolio simulation
+after target legality validation
+```
+
+## RQAlpha
+
+负责：
+
+```text
+authoritative native execution
+```
+
+---
+
+# 58. Update RESEARCH_RULES.md
+
+增加永久规则：
+
+## PIT Tradability Invariant
+
+```text
+A positive target weight is only valid
+if the asset is active and price-observable
+at the execution timestamp.
+```
+
+---
+
+# 59. No Silent Missing-Price Rule
+
+```text
+NaN price
+does not mean:
+cash
+zero
+skip
+hold
+fallback
+```
+
+它表示：
+
+```text
+target cannot be executed
+unless the frozen strategy explicitly defines
+an alternative.
+```
+
+---
+
+# 60. Dynamic Universe Rule
+
+```text
+The eligible universe must be date-aware.
+
+Today's universe may not be backfilled
+into historical periods.
+```
+
+---
+
+# 61. Strategy Inception Rule
+
+```text
+Evaluation begins only when
+the strategy can legally form and execute
+its complete frozen target semantics.
+```
+
+---
+
+# 62. Signed Metric Rule
+
+```text
+MaxDD is negative.
+
+Less negative is better.
+
+Use centralized helpers,
+not ad-hoc comparison operators.
+```
+
+---
+
+# 63. Update AGENTS.md
+
+未来 Agent 提出任何 strategy experiment 前必须检查：
+
+```text
+PIT universe?
+asset lifetime?
+execution-date price?
+fallback availability?
+```
+
+External Evidence Gate 后增加：
+
+```text
+PIT Tradability Gate
+```
+
+流程：
+
+```text
+External Evidence Gate
+        ↓
+PIT Tradability Gate
+        ↓
+Local Evidence Gap
+        ↓
+Experiment
+```
+
+---
+
+# 64. AGENTS PIT Gate
+
+未来每个 strategy Goal 至少回答：
+
+```text
+What is the date-aware universe?
+
+What metadata defines asset lifetime?
+
+What happens before fallback exists?
+
+What happens if execution price is missing?
+
+What defines strategy inception?
+
+Can every positive target be executed?
+```
+
+回答不了：
+
+```text
+NO BACKTEST
+```
+
+---
+
+# 65. Update STRATEGY_RESEARCH_MAP
+
+增加：
+
+```text
+PIT ETF universe
+launch/survivorship
+```
+
+从：
+
+```text
+open future concern
+```
+
+升级为：
+
+```text
+ACTIVE RESEARCH CORRECTNESS FOUNDATION
+```
+
+并映射当前 Batch 04。
+
+---
+
+# 66. Update RESEARCH_LEDGER
+
+追加独立 local decisions，例如按实际编号：
+
+```text
+PIT tradability contract
+
+signed MaxDD semantics
+
+S27 PIT revalidation
+
+S10 correctness revalidation
+
+S4C PIT revalidation
+```
+
+不要改写原历史条目。
+
+如旧 decision 被 supersede：
+
+明确：
+
+```text
+SUPERSEDED
+```
+
+并链接新 entry。
+
+---
+
+# 67. Update STRATEGY_CATALOG
+
+S27/S10/S4C 的 local lifecycle 必须反映：
+
+```text
+pre-correction decision
+→ correctness revalidation
+→ authoritative current decision
+```
+
+不要删除历史阶段。
+
+---
+
+# 68. Update CURRENT_STATE
+
+最终只写：
+
+```text
+S2 R1 current state
+
+Batch 04 correctness result
+
+S27 current eligibility
+
+S10 current eligibility
+
+S4C current eligibility
+
+remaining blockers
+```
+
+状态：
+
+```text
+BATCH_04_COMPLETE
+AWAIT_BATCH_04_ARCHITECT_REVIEW
+```
+
+---
+
+# 69. Do NOT Automatically Advance
+
+即使：
+
+```text
+S27 restore execution eligibility
+S10 restore execution eligibility
+S4C restore robustness eligibility
+```
+
+本 Goal 也不得：
+
+```text
+run S27 RQAlpha
+run S10 RQAlpha
+run S4C robustness
+```
+
+先停下来审计。
+
+---
+
+# 70. Tests — Tradability
+
+至少：
+
+```text
+asset before listing → inactive
+
+asset on listing date → active
+
+asset after delisting → inactive
+
+NaN execution price → not tradable
+
+finite positive execution price → price available
+```
+
+---
+
+# 71. Tests — Positive Target Invariant
+
+```text
+positive target + inactive asset → fail
+
+positive target + missing price → fail
+
+zero target + inactive asset → allowed
+
+positive target + active valid price → pass
+```
+
+---
+
+# 72. Tests — Fallback
+
+构造：
+
+```text
+risk asset signal negative
+fallback not yet listed
+```
+
+必须：
+
+```text
+NO executable target
+```
+
+不能：
+
+```text
+100% fallback
+```
+
+---
+
+# 73. Tests — Strategy Inception
+
+构造：
+
+```text
+targets before full tradability
+targets after full tradability
+```
+
+确认 inception：
+
+```text
+first fully executable target
+```
+
+---
+
+# 74. Tests — Drawdown
+
+必须：
+
+```text
+-10% better than -20%
+-10% no worse than -10%
+-20% worse than -10%
+```
+
+---
+
+# 75. Tests — S10 Regression
+
+必须针对 Batch 03 bug 写 regression test：
+
+```text
+candidate = -0.10
+comparator = -0.13
+
+period MaxDD gate
+→ PASS
+```
+
+防止原：
+
+```text
+<=
+```
+
+再次出现。
+
+---
+
+# 76. Protocol Freeze Commit
+
+在任何 corrected performance replay 前：
 
 完成：
 
 ```text
-evidence refresh
-
-new upstream check
-
-all code
-
-all synthetic tests
-
-all decision gates
-
+community audit
+tradability module
+metric helpers
+tests
+impact scanner
 PROTOCOL.md
 ```
 
-但：
-
-```text
-NO S27 RQAlpha result
-
-NO S10 robustness result
-
-NO S4C historical result
-```
-
-时运行：
+运行：
 
 ```bash
 uv sync --extra dev
-```
-
-若 S4C dependency pass：
-
-```bash
-uv sync --extra dev --extra research
-```
-
-再：
-
-```bash
 uv run pytest
 uv run ruff check .
 uv run ruff format --check .
 uv run mypy
-
-uv run python research/experiments/run_s2_r1_shadow.py \
-  --verify-candidate
+uv run python research/experiments/run_s2_r1_shadow.py --verify-candidate
 ```
 
 全部 PASS。
 
-创建 Commit A。
+创建：
+
+```text
+Commit A
+```
 
 建议：
 
 ```text
-freeze batch 3 earned stage advancement protocol
+freeze community backed PIT correctness protocol
 ```
 
 push。
@@ -2209,423 +2174,267 @@ push。
 记录：
 
 ```text
-BATCH_03_PROTOCOL_FREEZE_SHA
+BATCH_04_PROTOCOL_FREEZE_SHA
 ```
 
 ---
 
-# 61. After Freeze — Run Track A
+# 77. Run Impact Audit First
 
-运行：
+Protocol freeze 后第一步不是跑策略。
 
-```bash
-uv run python \
-  research/experiments/run_s27a_rqalpha_execution_review.py
-```
-
-禁止结果出来后修改 gate。
-
----
-
-# 62. After Freeze — Run Track B
-
-运行：
-
-```bash
-uv run python \
-  research/experiments/run_s10a_robustness.py
-```
-
----
-
-# 63. After Freeze — Run Track C
-
-仅在 dependency gate PASS 时：
-
-```bash
-uv run python \
-  research/experiments/run_s4c_erc_skfolio_transfer.py
-```
-
-若 blocked：
-
-生成 block report 即可。
-
-不要强行运行。
-
----
-
-# 64. Invalid-Run Discipline
-
-如果发现：
+先运行：
 
 ```text
-wrong comparator
+verify_asset_lifetimes.py
 
-wrong timing
-
-forward-fill
-
-incorrect RQAlpha replay
-
-wrong risk-budget call
-
-lookahead
-
-incorrect eligible set
+audit_pit_tradability.py
 ```
+
+得到：
+
+```text
+all affected strategies
+all invalid target dates
+```
+
+如果出现此前未预期的大面积问题：
+
+仍然按 protocol 分类。
+
+不要临时扩大策略改造范围。
+
+---
+
+# 78. Correctness Revision Discipline
+
+如果 audit 又发现新的 correctness defect：
 
 必须：
 
 ```text
-INVALID_RUN_BATCH_03_<N>.md
-```
-
-记录：
-
-```text
-what was wrong
-what results became invalid
-whether performance had been seen
-what is allowed to change
+INVALID_RUN_BATCH_04_R<N>.md
 ```
 
 然后：
 
 ```text
 Protocol V2
-freeze commit
-rerun affected track
+freeze
+rerun affected scope
+```
+
+继续保持 Batch 01/02/03 已经建立的证据纪律。
+
+---
+
+# 79. Run Corrected Revalidations
+
+顺序：
+
+```text
+1. S2 integrity check
+
+2. S30 correctness check
+
+3. S27 corrected baseline + robustness
+
+4. S10 corrected robustness
+
+5. S4C corrected baseline
+```
+
+每项独立。
+
+某项 reject 不阻止其他项。
+
+只有：
+
+```text
+shared PIT contract bug
+S2 candidate integrity failure
+canonical data corruption
+```
+
+才暂停整批。
+
+---
+
+# 80. No New Data Download
+
+禁止：
+
+```text
+redownload historical prices
+change canonical snapshot
+```
+
+本 Goal 只使用：
+
+```text
+existing canonical data
+existing metadata
+upstream lifecycle cross-check
+```
+
+若现有 metadata 无法验证：
+
+记录 BLOCK。
+
+不要偷偷修历史数据。
+
+---
+
+# 81. No New Strategy Semantics
+
+禁止：
+
+```text
+cash fallback
+alternate bond
+fallback substitution
+renormalization
+no-trade bands
+new weight caps
+new cost assumptions
+```
+
+PIT correction 不能变成策略 redesign。
+
+---
+
+# 82. No New Generic Framework
+
+禁止：
+
+```text
+SecurityMaster service
+Tradability database
+PIT platform
+dynamic-universe framework
+execution policy engine
+generic strategy registry
+```
+
+目标：
+
+```text
+a few pure functions
++
+tests
++
+contracts
 ```
 
 ---
 
-# 65. Batch Summary
+# 83. CI Is Still Secondary
+
+如果当前 GitHub 仍无 CI status checks：
+
+可以在 final report 记录。
+
+但本 Goal：
+
+```text
+DO NOT add CI
+```
+
+除非现有 repo rule 已明确要求。
+
+PIT correctness 优先于 CI engineering。
+
+---
+
+# 84. Batch Summary
 
 生成：
 
 ```text
 research/results/
-BATCH_03_EARNED_STAGE_ADVANCEMENT.md
+BATCH_04_COMMUNITY_BACKED_PIT_CORRECTNESS_CLOSURE.md
 ```
 
-第一张表：
+至少表格：
 
-| Track | Stage Before      | Question     | Decision |
-| ----- | ----------------- | ------------ | -------- |
-| S27A  | robustness PASS   | execution    |          |
-| S10A  | baseline PASS     | robustness   |          |
-| S4C   | upstream reopened | ERC transfer |          |
+| Strategy | Prior State         | PIT Issue | Metric Issue | Corrected Decision |
+| -------- | ------------------- | --------- | ------------ | ------------------ |
+| S2       | shadow candidate    |           |              |                    |
+| S27A     | execution blocked   |           |              |                    |
+| S10A     | robustness rejected |           |              |                    |
+| S4C      | robustness eligible |           |              |                    |
+| S30      | reference           |           |              |                    |
 
-第二张 performance 表按实际可比较数据填写。
+---
 
-不要创建：
+# 85. Must Answer These Questions
+
+Batch report 必须回答：
 
 ```text
-winner score
+1. Did VectorBT previously receive
+   positive targets for inactive assets?
+
+2. Which strategies were affected?
+
+3. Did the issue affect only pre-evaluation rows
+   or published metrics?
+
+4. Is S2 R1 still intact?
+
+5. Was S27 actually an RQAlpha environment issue,
+   or a PIT contract issue?
+
+6. Does S10 remain rejected
+   after correcting MaxDD semantics?
+
+7. Does S4C still qualify for robustness
+   after PIT correction?
+
+8. Which historical decisions are superseded?
+
+9. Which remain valid?
+
+10. What future strategy classes now benefit
+    from the new PIT contract?
 ```
 
 ---
 
-# 66. Cross-Track Interpretation
+# 86. Architecture Drift Audit
 
-必须回答：
-
-```text
-1. Can S27A actually be implemented
-   under authoritative RQAlpha semantics?
-
-2. Are S27A execution deviations
-   economic or merely framework accounting differences?
-
-3. Does S10A survive nearby
-   lookback and target-vol assumptions?
-
-4. Is S10A's benefit spread across periods
-   or concentrated in a few crises?
-
-5. Does canonical ERC add anything
-   beyond aligned inverse-vol?
-
-6. Did skfolio solve an implementation blocker
-   without forcing local optimizer code?
-
-7. Which complexity is justified?
-
-8. Which tracks deserve another stage?
-
-9. Which tracks should stop?
-```
-
----
-
-# 67. Research Ledger
-
-追加新的 local questions。
-
-按最新编号顺延，例如：
+最终回答：
 
 ```text
-S27A execution review
+Did we build our own PIT platform?
 
-S10A robustness
+Did we replace RQAlpha lifecycle semantics?
 
-S4C skfolio ERC transfer
-```
+Did we add Qlib unnecessarily?
 
-不要修改：
+Did we use Zipline as a new backtester?
 
-```text
-RL-025
-RL-026
-RL-027
-```
+Did we use LEAN as a new execution engine?
 
-的历史事实。
+Did we modify S2 frozen candidate?
 
-S4C 必须明确引用：
+Did we tune S27?
 
-```text
-S4B remains blocked under Riskfolio route
+Did we tune S10?
 
-S4C exists because a new mature upstream
-implementation became available
-```
+Did we tune S4C?
 
----
+Did we substitute fallback assets?
 
-# 68. External Registry
+Did we change historical parameters?
 
-结果后更新对应：
+Did we delete prior negative evidence?
 
-```text
-VOL_SCALED_TREND
-
-VOL_TARGETING
-
-ERC_RISK_PARITY
-```
-
-仅更新：
-
-```text
-implementation prior
-
-local mapping
-
-local status
-
-local evidence refs
-
-remaining gap
-```
-
-本地结果不得修改外部 tier。
-
----
-
-# 69. STRATEGY_RESEARCH_MAP
-
-更新：
-
-```text
-S27A lifecycle
-
-S10A lifecycle
-
-S4C mapping
-```
-
-例如：
-
-```text
-S27A:
-EXECUTION_REVIEW_PASS / STOP
-
-S10A:
-ROBUSTNESS_PASS / REJECT
-
-S4C:
-TRANSFER_PASS / NO_ADVANCE / BLOCK
-```
-
-使用实际结果。
-
----
-
-# 70. STRATEGY_CATALOG
-
-仅记录：
-
-```text
-local strategy lifecycle
-```
-
-详细数字仍放：
-
-```text
-research/results/
-```
-
----
-
-# 71. CURRENT_STATE
-
-完成后只记录真正当前前沿。
-
-无论结果如何，状态先停：
-
-```text
-BATCH_03_COMPLETE
-
-AWAIT_BATCH_03_ARCHITECT_REVIEW
-```
-
-如果 S27A execution PASS：
-
-只写：
-
-```text
-candidate-freeze eligible
-```
-
-不要创建 candidate。
-
-如果 S10 robustness PASS：
-
-只写：
-
-```text
-execution-review eligible
-```
-
-不要运行 execution。
-
-如果 S4C baseline PASS：
-
-只写：
-
-```text
-robustness eligible
-```
-
-不要运行 robustness。
-
----
-
-# 72. docs/goal.md
-
-替换已完成 Batch 02 Goal。
-
-完成后记录：
-
-```text
-Status: completed
-
-Batch:
-BATCH_03_EARNED_STAGE_ADVANCEMENT
-
-Starting HEAD:
-...
-
-Protocol Freeze SHA:
-...
-
-Protocol revisions:
-...
-
-Results SHA:
-...
-
-S27A:
-...
-
-S10A:
-...
-
-S4C:
-...
-
-Next:
-AWAIT_BATCH_03_ARCHITECT_REVIEW
-```
-
----
-
-# 73. Final S2 Integrity Gate
-
-结束前：
-
-```bash
-uv run python research/experiments/run_s2_r1_shadow.py \
-  --verify-candidate
-```
-
-必须 PASS。
-
-如果失败：
-
-```text
-BATCH_03_INVALID
-```
-
-不要更新 S2 manifest。
-
----
-
-# 74. Full Validation
-
-运行：
-
-```bash
-uv run pytest
-
-uv run ruff check .
-
-uv run ruff format --check .
-
-uv run mypy
-```
-
-如果启用 research extra：
-
-从 clean dependency sync 再验证。
-
----
-
-# 75. Architecture Drift Audit
-
-最终逐项回答：
-
-```text
-Did we modify S2 R1?
-
-Did we modify frozen S27 semantics?
-
-Did we modify frozen S10 semantics?
-
-Did we pick best S10 parameters?
-
-Did we run a Cartesian S10 grid?
-
-Did RQAlpha recompute S27 signals?
-
-Did we implement a local execution engine?
-
-Did we implement an ERC solver?
-
-Did we silently replace Riskfolio history?
-
-Did we test MinVar/HRP/HERC because skfolio exposes them?
-
-Did we change external evidence tier
-because of local returns?
+Did we start a new strategy family?
 
 Did we start Theme Rotation?
 
-Did we create another generic framework?
-
-Did we create a new candidate automatically?
+Did we start S4C robustness?
 ```
 
 正常全部：
@@ -2636,9 +2445,30 @@ NO
 
 ---
 
-# 76. Commit B
+# 87. Final Validation
 
-完成全部结果后：
+运行：
+
+```bash
+uv run pytest
+
+uv run ruff check .
+
+uv run ruff format --check .
+
+uv run mypy
+
+uv run python research/experiments/run_s2_r1_shadow.py \
+  --verify-candidate
+```
+
+必须 PASS。
+
+---
+
+# 88. Commit B
+
+完成 corrected evidence 后：
 
 ```bash
 git status
@@ -2648,232 +2478,166 @@ git diff
 创建：
 
 ```text
-evaluate batch 3 earned strategy stages
+close PIT tradability and signed metric correctness
 ```
 
 push。
 
-如果需要最后修正：
+若只需补：
 
 ```text
-docs/goal.md
+docs/goal.md completion metadata
 ```
 
-中的 Results SHA，
-
-允许再做一个 metadata-only commit。
+允许再有一个 metadata-only commit。
 
 ---
 
-# 77. Final Completion Report
+# 89. Final Report
 
-最终回复至少给：
+最终回复必须包括：
 
 ```text
-starting HEAD
-
-protocol freeze SHA
-
-protocol revision SHA if any
-
-results SHA
-
-ending HEAD
+Starting HEAD
+Protocol Freeze SHA
+Protocol Revision SHAs
+Results SHA
+Ending HEAD
 ```
 
-## S27A
+## Community capability
 
 ```text
-frozen target count
+RQAlpha lifecycle API verified?
+YES/NO
 
-frozen target SHA
+Zipline lifetime pattern reviewed?
+YES/NO
 
-VectorBT reproduction
+LEAN tradability pattern reviewed?
+YES/NO
 
-RQAlpha version
-
-RQAlpha CAGR
-MaxDD
-Sharpe
-
-transaction cost
-turnover
-
-cash rejection events
-volume-limit events
-
-average cash ratio
-
-average execution-date deviation
-
-materially off-target execution dates
-
-decision
+Qlib scope reviewed?
+YES/NO
 ```
 
-## S10A
+## PIT audit
 
 ```text
-central reproduction
+assets audited
+strategy targets audited
+violations found
 
-10/20/40 window results
-
-8/10/12 target results
-
-fixed-period evidence
-
-rolling 3Y/5Y
-
-50-bps cost result
-
-average scale
-
-decision
+S2 violations
+S27 violations
+S10 violations
+S4C violations
+S30 violations
 ```
 
-## S4C
+## Corrected decisions
 
 ```text
-skfolio version
+S2:
+...
 
-Python 3.10 resolution
-Python 3.11 resolution
-Python 3.12 resolution
+S27A:
+...
 
-RiskBudgeting API used
+S10A:
+...
 
-coverage
+S4C:
+...
 
-ERC metrics
-
-aligned inverse-vol metrics
-
-aligned equal-weight metrics
-
-turnover
-
-concentration
-
-decision
+S30:
+...
 ```
 
-最后明确：
+## Permanent changes
 
 ```text
-S2 R1 modified?
-NO
-
-S27 candidate created?
-NO
-
-S10 RQAlpha run?
-NO
-
-S4B historical result rewritten?
-NO
-
-Local ERC solver created?
-NO
-
-New unrelated strategies added?
-NO
+ARCHITECTURE updated?
+RESEARCH_RULES updated?
+AGENTS updated?
+tradability contract added?
+metric semantics helper added?
 ```
 
 ---
 
-# 78. Stop Condition
+# 90. Mandatory Stop
 
-Batch 03 完成后必须停止。
-
-不要自动继续：
+完成后：
 
 ```text
-S27 candidate freeze
+BATCH_04_COMMUNITY_BACKED_PIT_CORRECTNESS_CLOSURE_COMPLETE
 
-S10 execution review
+AWAIT_BATCH_04_ARCHITECT_REVIEW
+```
+
+不得自动执行：
+
+```text
+S27 RQAlpha retry
+
+S10 execution
 
 S4C robustness
 
-Batch 04
-```
+Theme Rotation
 
-等待下一次 repository-first Principal Review。
-
----
-
-# 79. Final Principle
-
-```text
-Do not reward an idea
-for merely surviving one backtest.
-
-A strategy earns the next stage.
-
-S27A earned execution review.
-Test execution.
-
-S10A earned robustness.
-Test robustness.
-
-ERC was blocked by one upstream path.
-A new mature upstream path now exists.
-Use it instead of writing a solver.
-
-Do not skip stages.
-
-Do not optimize after seeing results.
-
-Do not confuse software availability
-with economic evidence.
-
-Do not confuse local failure
-with global literature.
-
-Freeze first.
-Run second.
-Record evidence.
-Then stop.
-
-Literature first.
-Upstream first.
-Local evidence next.
-Execution before prospective candidacy.
-Infrastructure last.
+Batch 05
 ```
 
 ---
 
-## Completion Metadata
+# 91. Final Principle
 
 ```text
-Status: completed
+Do not let a simulator
+decide silently whether
+an impossible target is acceptable.
 
-Batch:
-BATCH_03_EARNED_STAGE_ADVANCEMENT
+Asset existence is point-in-time.
 
-Starting HEAD:
-cb4d05d
+Tradability is point-in-time.
 
-Protocol Freeze SHA:
-fb25f4c0d15b2e4a4034ff0d770cb8f174068213
+Universe membership is point-in-time.
 
-Protocol revisions:
-48b04e587e58d7912e6967287d48aa271ce8b818 (S27A reproduction metric start)
-08de5f88b36be4b19af3fdf01312d7d71e2c8761 (S10A rolling union)
-cea33d6 (S10A complete 8/10/12 target dimension)
+Fallback availability is point-in-time.
 
-Results SHA:
-debe373907ef5319995a829a2ce7e541d7486bb2
+A positive target
+requires a real tradable instrument.
 
-S27A:
-BLOCK_S27A_EXECUTION_ENVIRONMENT
+NaN is not cash.
 
-S10A:
-REJECT_S10A_ROBUSTNESS
+Pre-listing is not missing data.
 
-S4C:
-ADVANCE_S4C_ERC_TRANSFER_TO_ROBUSTNESS
+Today's universe
+must not leak backward into history.
 
-Next:
-AWAIT_BATCH_03_ARCHITECT_REVIEW
+Use community lifecycle semantics.
+
+Use a thin local contract.
+
+Fail fast before simulation.
+
+Keep VectorBT for research.
+
+Keep RQAlpha for authoritative execution.
+
+MaxDD is signed:
+less negative is better.
+
+Correctness before robustness.
+
+Correctness before execution.
+
+Correctness before new strategies.
+
+Community first.
+Evidence first.
+PIT first.
+Then research.
 ```

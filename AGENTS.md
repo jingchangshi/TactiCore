@@ -73,6 +73,10 @@ goal.md
 
 外部 registry 与 `RESEARCH_LEDGER` 必须同时检查：若外部文献已回答存在性且本地账本已回答 transfer，则为 `DO_NOT_PURSUUE`，不得改名重做。外部成熟证据不构成本地 PASS；本地 REJECT 不否定 canonical literature。未来 Goal 的开头必须含这些 External Evidence Gate 字段，之后才可定义实现/实验。
 
+## PIT Tradability Gate
+
+在 External Evidence Gate 后、任何回测前，必须回答：date-aware universe、asset lifetime metadata、fallback 上市前处理、execution price 缺失处理、strategy inception，以及每个正目标是否可执行。不能回答则 `NO BACKTEST`；不得让 VectorBT 静默解释 inactive 或 NaN-priced 正目标。
+
 仅在策略语义或 canonical 数据契约改变、框架变化使原假设失效，或出现新矛盾证据时重开。重开必须指出具体账本条目、矛盾证据和有界范围；不得无依据重做通用信号、数据质量或执行分类审计。
 
 ## 框架、社区与上游优先

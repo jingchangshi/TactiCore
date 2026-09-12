@@ -15,9 +15,9 @@
 | Per-sector trend | tactical | E3 | trend transfer而非新异常 | S3C | REJECTED | PIT/工具域 | LOCAL_ADJUDICATION |
 | Inverse volatility | allocation | E2 | 成熟风险配置，不是alpha | S4A | REJECTED | 简单比较器下复杂度 | UPSTREAM_COMPARE |
 | Equity/bond tactical trend | tactical | E3 | GTAA相关但单规则域敏感 | S8A | REJECTED | 非S8A救援的新问题 | LOCAL_ADJUDICATION |
-| Trend + inverse vol | composite | E3 | 成熟组件的组合 | S27A | BLOCK_S27A_EXECUTION_ENVIRONMENT | 兼容 RQAlpha bundle 或新数据契约；非前瞻/生产资格 | LOCAL_ADJUDICATION |
+| Trend + inverse vol | composite | E3 | 成熟组件的组合 | S27A | execution-review eligible after PIT correction | 尚未执行验证；非前瞻/生产资格 | LOCAL_ADJUDICATION |
 | Equal risk contribution | allocation | E2 | 成熟构造方法，非收益异常 | S4B blocked / S4C | ADVANCE_S4C_ERC_TRANSFER_TO_ROBUSTNESS | S4C 预注册 robustness；S4B block 保留 | UPSTREAM_COMPARE |
-| Volatility targeting | overlay | E3 | 支持与反证并存 | S10A | REJECT_S10A_ROBUSTNESS | 仅新语义/canonical/矛盾证据可建新版本 | LOCAL_ADJUDICATION |
+| Volatility targeting | overlay | E3 | 支持与反证并存 | S10A | execution-review eligible after correctness closure | 尚未执行验证；非前瞻/生产资格 | LOCAL_ADJUDICATION |
 | Static diversification | allocation | E1 | 复杂度门槛 | S30 | REFERENCE_BASELINE | 机制匹配比较器 | REFERENCE_ONLY |
 
 ## 成熟/已知：不应从零验证存在性
@@ -35,6 +35,8 @@ GTAA/moving-average tactical allocation、volatility targeting/managed portfolio
 ## 开放的本地问题
 
 China ETF transfer、theme rotation、defensive ETF、PIT ETF universe、launch/survivorship、流动性、交易成本、sector/theme overlap 与可用资产类别 breadth 是 TactiCore 可能贡献本地证据的范围；它们均未在本 Goal 自动实现。
+
+PIT ETF universe、上市/退市与 execution-date price 已在 Batch 04 升级为 **ACTIVE RESEARCH CORRECTNESS FOUNDATION**：任何后续 transfer 先通过 lifecycle mask 与正目标验证，再进入本地 evidence gap。
 
 ## 已关闭本地问题与当前缺口
 

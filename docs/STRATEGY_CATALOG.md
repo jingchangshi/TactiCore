@@ -79,6 +79,12 @@
 - S10A unlevered volatility targeting：`REJECT_S10A_ROBUSTNESS`；V4 有效重跑的邻域、rolling 和成本均通过，但冻结的固定分期 MaxDD 数值条件只为 1/4，详见 [稳健性报告](../research/results/S10A_ROBUSTNESS_V1.md)。不得通过改参数重开。
 - S4C canonical ERC / skfolio：`ADVANCE_S4C_ERC_TRANSFER_TO_ROBUSTNESS`；新官方 skfolio 路径在同 eligible-set 控制下通过 transfer gates，S4B Riskfolio-Lib block 保持，详见 [报告](../research/results/S4C_ERC_SKFOLIO_TRANSFER_V1.md)。这不是候选、前瞻或生产批准。
 
+## Batch 04 correctness closure
+
+- S27A：Batch 03 的环境 block 被 pre-listing fallback PIT defect supersede；`RESTORE_S27A_EXECUTION_REVIEW_ELIGIBILITY`，但本批不执行 RQAlpha。
+- S10A：Batch 03 robustness reject 被 signed MaxDD correction supersede；`RESTORE_S10A_EXECUTION_REVIEW_ELIGIBILITY`，但本批不执行 RQAlpha。
+- S4C：pre-listing fallback 修正后 `RESTORE_S4C_ROBUSTNESS_ELIGIBILITY`；本批不启动 robustness。
+
 ## 外部 canonical 映射与本地边界
 
 详细外部范围见 [策略研究地图](STRATEGY_RESEARCH_MAP.md)，此处只记录已实现策略的本地生命周期。

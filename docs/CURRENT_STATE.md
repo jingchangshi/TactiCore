@@ -2,7 +2,7 @@
 
 ## 当前策略与最新决策
 
-S2 Research Candidate R1 保持 **`FROZEN / PROSPECTIVE_SHADOW_ACTIVE`**，等待真实未来 evidence；它仍不是生产候选。`BATCH_03_COMPLETE`：S27A 因 RQAlpha bundle 环境阻塞，S10A 被稳健性 gate 拒绝，S4C 获 ERC robustness-review 资格；三者均不构成生产或新的前瞻候选。
+S2 Research Candidate R1 保持 **`FROZEN / PROSPECTIVE_SHADOW_ACTIVE`**，且 PIT integrity pass。`BATCH_04_COMPLETE`：S27A 恢复 execution-review 资格，S10A 因 signed MaxDD correctness closure 恢复 execution-review 资格，S4C 恢复 robustness-review 资格；均非候选、前瞻或生产批准。
 
 ## 最新决定性证据
 
@@ -16,4 +16,4 @@ S2 仍缺少足够前瞻 observation；S27A 需要覆盖冻结 schedule 的 RQAl
 
 `BATCH_00_EXTERNAL_EVIDENCE_FOUNDATION_COMPLETE` 保持有效；Batch 02 的三条有界 gap 已按外部证据、冻结协议和本地证据完成。外部 tier 未因本地结果改变，Theme Rotation 未开始。
 
-当前前沿为 `AWAIT_BATCH_03_ARCHITECT_REVIEW`。未来策略选择必须先完成 External Evidence Gate，并从本地 remaining gap 而非历史收益或叙事开始。
+当前前沿为 `AWAIT_BATCH_04_ARCHITECT_REVIEW`。未来策略选择必须先完成 External Evidence Gate 与 PIT Tradability Gate，并从本地 remaining gap 而非历史收益或叙事开始。

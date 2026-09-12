@@ -1,0 +1,2 @@
+series,cagr,max_drawdown,sharpe,calmar,turnover,trade_count,average_holding_days,worst_year,target_change_count,annualized_target_change_count,corrected_inception,decision
+S10A_20_10_PIT_CORRECTED,0.08854029992328205,-0.10562806219429322,1.1576522450838684,0.8382270590216852,8.779016629365112,285.0,2376.501754385965,-0.051064669993827194,161.0,12.001071428571429,2013-04-01,RESTORE_S10A_EXECUTION_REVIEW_ELIGIBILITY

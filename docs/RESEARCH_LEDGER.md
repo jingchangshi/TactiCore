@@ -327,3 +327,17 @@
 - 结论：3.10/3.11/3.12 resolver 均通过；风险覆盖 87.13%，ERC CAGR 10.91%、MaxDD -18.35%、Sharpe 1.058，满足绝对和 inverse-vol 相对门槛，决策 `ADVANCE_S4C_ERC_TRANSFER_TO_ROBUSTNESS`。S4B Riskfolio-Lib block 保持不变；没有本地 solver。
 - 证据：[报告](../research/results/S4C_ERC_SKFOLIO_TRANSFER_V1.md)、[比较](../research/results/s4c_erc_skfolio_comparison_v1.csv)、[Protocol](../research/batches/batch_03/PROTOCOL.md)。
 - 重开条件：下一问题仅可为预注册 S4C robustness；不得通过 ERC 参数调优、替换 S4B 历史或跳过 upstream 路径重开。
+
+## RL-031 PIT tradability contract
+
+- 状态：CLOSED。RQAlpha lifecycle 与 local universe 12/12 一致；正执行目标必须同时 active 和有有限正 canonical price，完整 target 的首个合法 execution date 定义 strategy inception。
+- 证据：[影响审计](../research/results/PIT_TRADABILITY_IMPACT_AUDIT_V1.md)、[lifetime audit](../research/results/asset_lifetime_audit_v1.csv)。
+
+## RL-032 signed MaxDD semantics
+
+- 状态：CLOSED。MaxDD 为负值，较少负值更好；no-worse 统一为 `candidate >= comparator`，不得用裸反向比较。
+
+## RL-033 Batch 04 corrected local decisions
+
+- 状态：CLOSED。S2 R1 PIT integrity pass；S27A Batch 03 environment block 与 S10A robustness reject 均被 correctness review supersede，分别恢复 execution-review eligibility；S4C 恢复 robustness eligibility。没有运行后续阶段。
+- 证据：[Batch 04](../research/results/BATCH_04_COMMUNITY_BACKED_PIT_CORRECTNESS_CLOSURE.md)。

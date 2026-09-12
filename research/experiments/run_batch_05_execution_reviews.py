@@ -209,10 +209,28 @@ def main() -> None:
             s10_schedule[s10.symbols[-1]].mean()
         )
     output = ROOT / "research/results"
+    output_names = {
+        "s27a": {
+            "frozen_targets": "s27a_pit_corrected_frozen_targets_v1.csv",
+            "vectorbt_reproduction": "s27a_rqalpha_execution_vectorbt_reproduction_v2.csv",
+            "summary": "s27a_rqalpha_execution_summary_v2.csv",
+            "target_tracking": "s27a_rqalpha_execution_target_tracking_v2.csv",
+            "material_differences": "s27a_rqalpha_execution_material_differences_v2.csv",
+            "user_effort": "s27a_rqalpha_execution_user_effort_v2.csv",
+        },
+        "s10a": {
+            "frozen_targets": "s10a_pit_corrected_frozen_targets_v1.csv",
+            "vectorbt_reproduction": "s10a_rqalpha_execution_vectorbt_reproduction_v1.csv",
+            "summary": "s10a_rqalpha_execution_summary_v1.csv",
+            "target_tracking": "s10a_rqalpha_execution_target_tracking_v1.csv",
+            "material_differences": "s10a_rqalpha_execution_material_differences_v1.csv",
+            "user_effort": "s10a_rqalpha_execution_user_effort_v1.csv",
+        },
+    }
     for prefix, outputs in (("s27a", s27_outputs), ("s10a", s10_outputs)):
         for name, frame in outputs.items():
             if name != "serialized":
-                frame.to_csv(output / f"{prefix}_pit_corrected_{name}_v1.csv", index=False)
+                frame.to_csv(output / output_names[prefix][name], index=False)
     print(f"rqalpha={rqalpha.__version__} s27={s27_outcome} s10={s10_outcome}")
 
 

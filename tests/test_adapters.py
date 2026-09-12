@@ -8,7 +8,7 @@ import rqalpha.api
 
 from tacticore.data.tradability import AssetLifetime, build_tradability_mask
 from tacticore.engines.rqalpha_adapter import build_rqalpha_config, run_rqalpha
-from tacticore.engines.vectorbt_adapter import run_vectorbt
+from tacticore.engines.vectorbt_adapter import run_target_weights, run_vectorbt
 from tacticore.strategies.global_dual_momentum import GlobalDualMomentumConfig
 
 
@@ -36,6 +36,20 @@ def test_vectorbt_adapter_returns_required_metrics(
     }
     assert result.metrics["trade_count"] > 0
     assert result.metrics["turnover"] == 1.0
+
+
+def test_target_weight_replay_requires_explicit_pit_context(simple_prices: pd.DataFrame) -> None:
+    execution = pd.DataFrame(float("nan"), index=simple_prices.index, columns=simple_prices.columns)
+    execution.iloc[0] = 1 / len(simple_prices.columns)
+
+    with pytest.raises(TypeError, match="tradability_mask"):
+        run_target_weights(
+            simple_prices,
+            execution,
+            fees=0.001,
+            slippage=0.0005,
+            initial_cash=100_000,
+        )
 
 
 def test_rqalpha_config_is_daily_stock_account(

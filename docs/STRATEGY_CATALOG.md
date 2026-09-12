@@ -85,6 +85,12 @@
 - S10A：Batch 03 robustness reject 被 signed MaxDD correction supersede；`RESTORE_S10A_EXECUTION_REVIEW_ELIGIBILITY`，但本批不执行 RQAlpha。
 - S4C：pre-listing fallback 修正后 `RESTORE_S4C_ROBUSTNESS_ELIGIBILITY`；本批不启动 robustness。
 
+## Batch 05 earned stage validation
+
+- S27A：PIT-corrected frozen targets 的 RQAlpha 6.3.0 target-only replay 通过全部 execution gates，`ADVANCE_S27A_TO_CANDIDATE_FREEZE_REVIEW`；这不是 candidate 或 shadow。
+- S10A：同一 native replay 发生一个 cash rejection，`DO_NOT_ADVANCE_S10A_EXECUTION`；不得用本地 cash buffer、手工 sizing 或 retry 修补。
+- S4C：40/60/80 returns、固定 periods、rolling 和 50bps robustness gates 通过，`ADVANCE_S4C_TO_EXECUTION_REVIEW`；P95 max weight 51.84% 是后续执行审查的风险证据。
+
 ## 外部 canonical 映射与本地边界
 
 详细外部范围见 [策略研究地图](STRATEGY_RESEARCH_MAP.md)，此处只记录已实现策略的本地生命周期。
@@ -98,7 +104,7 @@
 | S3C | per-sector trend transfer | E3 | 本地固定sleeve filter，REJECTED | trend globally invalid |
 | S4A | inverse-volatility allocation | E2 | 复杂度是否有增量价值，REJECTED | inverse-vol 方法无用 |
 | S8A | moving-average tactical allocation | E3 | 两资产中国ETF规则，REJECTED | trend literature 被否定 |
-| S27A | trend + inverse-vol sizing | E3 | PIT correction 后 execution-review eligible | 新异常或生产资格 |
-| S4B / S4C | equal risk contribution | E2 | S4B Riskfolio BLOCKED；S4C PIT correction 后 robustness eligible | ERC 方法或文献无效 |
-| S10A | unlevered volatility targeting | E3 | PIT + signed-MaxDD correction 后 execution-review eligible | volatility-managed 文献已被本地证明 |
+| S27A | trend + inverse-vol sizing | E3 | candidate-freeze review eligible | 新异常或生产资格 |
+| S4B / S4C | equal risk contribution | E2 | S4B Riskfolio BLOCKED；S4C execution-review eligible | ERC 方法或文献无效 |
+| S10A | unlevered volatility targeting | E3 | native cash rejection 后 execution review 未推进 | volatility-managed 文献已被本地证明 |
 | S30 | naive/static diversification | E1 | REFERENCE_BASELINE | alpha 策略 |

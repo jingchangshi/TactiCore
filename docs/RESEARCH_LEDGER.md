@@ -346,3 +346,26 @@
 
 - 状态：CLOSED。`run_target_weights` 必须显式接收 lifecycle-derived tradability mask 与 lifetimes；遗漏 PIT context 立即失败，不提供通用绕过开关。
 - 结论：此为研究 contract plumbing，不改变 S2 冻结策略、数据、targets 或历史经济语义。
+
+## RL-035 S27A PIT-corrected native execution review
+
+- 状态：CLOSED。161 个 PIT-legal frozen targets 严格重现 Batch 04 VectorBT baseline；RQAlpha 6.3.0 target-only replay 全日期处理、无额外日期、零 cash rejection，所有预注册 fidelity 和经济 gates 通过。
+- 结论：`ADVANCE_S27A_TO_CANDIDATE_FREEZE_REVIEW`，不创建 candidate 或 shadow。
+- 证据：[报告](../research/results/S27A_RQALPHA_EXECUTION_REVIEW_V2.md)。
+
+## RL-036 S10A PIT-corrected native execution review
+
+- 状态：CLOSED。161 个 PIT-legal frozen targets 严格重现 Batch 04 VectorBT baseline，tracking 与经济门槛通过；但 RQAlpha 原生记录一个 cash rejection，违反零容忍 gate。
+- 结论：`DO_NOT_ADVANCE_S10A_EXECUTION`；不得以本地现金缓冲、手工 sizing 或 retry 修补。
+- 证据：[报告](../research/results/S10A_RQALPHA_EXECUTION_REVIEW_V1.md)。
+
+## RL-037 S4C bounded ERC robustness
+
+- 状态：CLOSED。固定中心 60-return 严格重现 Batch 04，40/60/80 return windows、固定 periods、3Y/5Y rolling 与 50bps cost gates 均通过；P95 maximum weight 51.84% 作为 concentration 风险保留。
+- 结论：`ADVANCE_S4C_TO_EXECUTION_REVIEW`，本批不运行其 RQAlpha。
+- 证据：[报告](../research/results/S4C_ROBUSTNESS_V1.md)。
+
+## RL-038 Batch 05 earned stage decisions
+
+- 状态：CLOSED。Protocol V1/V2 的实现缺陷均作为 INVALID_RUN 由 V3 完整 rerun 取代；外部 evidence tier 未变，S2 R1 未改动。
+- 证据：[Batch 05](../research/results/BATCH_05_EARNED_STAGE_VALIDATION.md)、[Protocol V3](../research/batches/batch_05/PROTOCOL_V3.md)。

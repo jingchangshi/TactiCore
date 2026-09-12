@@ -2691,7 +2691,7 @@ Protocol Freeze SHA: `04507995ed67effdff1ec459b946586a521b75fb`
 
 Protocol Revisions: `1028dea903f0a46204e45ef904c7f54222586ffc` (V2), `6ce67f6b47d3deefe852d1356c7a20ade082c281` (V3).
 
-Results SHA: pending Commit B.
+Results SHA: `6acaab77676498a638a4fbad025b7d2f1abecaa5`.
 
 S2: unchanged; frozen prospective shadow remains active.
 

@@ -198,7 +198,8 @@ def main() -> None:
         BUNDLE,
     )
     if "summary" in s10_outputs:
-        frozen_diagnostics = s10_diagnostics.loc[s10_schedule.index]
+        signal_dates = prices.index[prices.index.get_indexer(s10_schedule.index) - 1]
+        frozen_diagnostics = s10_diagnostics.loc[signal_dates]
         s10_outputs["summary"]["months_scale_lt_1"] = int(frozen_diagnostics.scale.lt(1).sum())
         s10_outputs["summary"]["average_frozen_scale"] = float(frozen_diagnostics.scale.mean())
         s10_outputs["summary"]["average_implemented_risky_exposure"] = float(

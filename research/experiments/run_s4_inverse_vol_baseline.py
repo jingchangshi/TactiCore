@@ -49,8 +49,20 @@ def main() -> None:
         initial_cash=config.initial_cash,
         metric_start=start,
     )
-    candidate = run_target_weights(prices, build_execution_weights(prices, targets), **common, tradability_mask=tradability_mask, lifetimes=lifetimes)
-    comparator = run_target_weights(prices, build_execution_weights(prices, equal), **common, tradability_mask=tradability_mask, lifetimes=lifetimes)
+    candidate = run_target_weights(
+        prices,
+        build_execution_weights(prices, targets),
+        **common,
+        tradability_mask=tradability_mask,
+        lifetimes=lifetimes,
+    )
+    comparator = run_target_weights(
+        prices,
+        build_execution_weights(prices, equal),
+        **common,
+        tradability_mask=tradability_mask,
+        lifetimes=lifetimes,
+    )
     comparison = pd.DataFrame(
         [
             metric_row("S4A_INVERSE_VOL_V1", candidate, start),

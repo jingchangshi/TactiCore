@@ -37,7 +37,9 @@ def executable(prices, targets, mask, lifetimes):
     return corrected, start
 
 
-def evaluate(prices, execution, start, *, fees, slippage, initial_cash, tradability_mask, lifetimes):
+def evaluate(
+    prices, execution, start, *, fees, slippage, initial_cash, tradability_mask, lifetimes
+):
     return run_target_weights(
         prices,
         execution,

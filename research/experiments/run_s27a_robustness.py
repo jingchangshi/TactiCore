@@ -77,7 +77,13 @@ def build_targets(
     return targets, pd.DataFrame(diagnostics).set_index("signal_date")
 
 
-def run_case(prices: pd.DataFrame, spec: RobustnessSpec, symbols: tuple[str, ...], tradability_mask, lifetimes):
+def run_case(
+    prices: pd.DataFrame,
+    spec: RobustnessSpec,
+    symbols: tuple[str, ...],
+    tradability_mask,
+    lifetimes,
+):
     targets, diagnostics = build_targets(prices, spec, symbols)
     execution = build_execution_weights(prices, targets)
     start = execution.dropna(how="all").index[0]
@@ -160,7 +166,9 @@ def main() -> None:
                 slippage=frozen.slippage,
                 initial_cash=frozen.initial_cash,
             ),
-            s2.risk_symbols, tradability_mask, lifetimes,
+            s2.risk_symbols,
+            tradability_mask,
+            lifetimes,
         )
         rows.append(
             {
@@ -196,7 +204,9 @@ def main() -> None:
         pd.DataFrame(period_rows),
         pd.DataFrame(rolling_rows),
     )
-    baseline_result, _, baseline_start = run_case(prices, frozen, s2.risk_symbols, tradability_mask, lifetimes)
+    baseline_result, _, baseline_start = run_case(
+        prices, frozen, s2.risk_symbols, tradability_mask, lifetimes
+    )
     cost_rows = []
     baseline_targets, _ = build_targets(prices, frozen, s2.risk_symbols)
     baseline_execution = build_execution_weights(prices, baseline_targets)

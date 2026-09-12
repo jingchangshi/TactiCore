@@ -31,15 +31,17 @@ class S4CConfig:
     initial_cash: float = 1_000_000.0
 
 
-def aligned_window(prices: pd.DataFrame, date: pd.Timestamp) -> pd.DataFrame:
+def aligned_window(
+    prices: pd.DataFrame, date: pd.Timestamp, price_window: int = WINDOW
+) -> pd.DataFrame:
     """返回截至信号日、所有候选资产共同可见的最后 61 个价格。"""
     candidates = prices.loc[:date].columns[prices.loc[date].notna()]
     available = [
-        symbol for symbol in candidates if prices.loc[:date, symbol].notna().sum() >= WINDOW
+        symbol for symbol in candidates if prices.loc[:date, symbol].notna().sum() >= price_window
     ]
     if len(available) < MIN_ELIGIBLE:
         return pd.DataFrame()
-    return prices.loc[:date, available].dropna(how="any").tail(WINDOW)
+    return prices.loc[:date, available].dropna(how="any").tail(price_window)
 
 
 def erc_weights(returns: pd.DataFrame) -> pd.Series:
@@ -63,7 +65,10 @@ def erc_weights(returns: pd.DataFrame) -> pd.Series:
 
 
 def build_targets(
-    prices: pd.DataFrame, risk_symbols: tuple[str, ...], config: S4CConfig
+    prices: pd.DataFrame,
+    risk_symbols: tuple[str, ...],
+    config: S4CConfig,
+    price_window: int = WINDOW,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     risk = prices.loc[:, list(risk_symbols)]
     ends = prices.groupby(pd.DatetimeIndex(prices.index).to_period("M")).tail(1).index
@@ -72,8 +77,8 @@ def build_targets(
     inverse = erc.copy()
     diagnostics: list[dict[str, object]] = []
     for date in ends:
-        window = aligned_window(risk, date)
-        if len(window) != WINDOW:
+        window = aligned_window(risk, date, price_window)
+        if len(window) != price_window:
             for frame in (erc, equal, inverse):
                 frame.loc[date, config.fallback_symbol] = 1.0
             diagnostics.append(
@@ -81,8 +86,8 @@ def build_targets(
             )
             continue
         returns = window.pct_change(fill_method=None).dropna(how="any")
-        if len(returns) != WINDOW - 1 or len(returns.columns) < MIN_ELIGIBLE:
-            raise SolverFailure("aligned 61 prices did not yield 60 valid returns")
+        if len(returns) != price_window - 1 or len(returns.columns) < MIN_ELIGIBLE:
+            raise SolverFailure("aligned prices did not yield the requested valid return window")
         weights = erc_weights(returns)
         volatility = returns.std(ddof=1)
         if (volatility <= 0).any() or not np.isfinite(volatility).all():
@@ -146,7 +151,9 @@ def main() -> None:
         metric_start=start,
     )
     results = [
-        run_target_weights(prices, weights, **common, tradability_mask=tradability_mask, lifetimes=lifetimes)
+        run_target_weights(
+            prices, weights, **common, tradability_mask=tradability_mask, lifetimes=lifetimes
+        )
         for weights in execution
     ]
     comparison = pd.DataFrame(

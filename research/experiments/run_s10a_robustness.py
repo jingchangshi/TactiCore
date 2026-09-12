@@ -104,9 +104,15 @@ def run_case(
         initial_cash=spec.initial_cash,
         metric_start=start,
     )
-    candidate = run_target_weights(prices, execution, **common, tradability_mask=tradability_mask, lifetimes=lifetimes)
+    candidate = run_target_weights(
+        prices, execution, **common, tradability_mask=tradability_mask, lifetimes=lifetimes
+    )
     comparator = run_target_weights(
-        prices, build_execution_weights(prices, static_targets(prices, spec)), **common, tradability_mask=tradability_mask, lifetimes=lifetimes
+        prices,
+        build_execution_weights(prices, static_targets(prices, spec)),
+        **common,
+        tradability_mask=tradability_mask,
+        lifetimes=lifetimes,
     )
     return candidate, comparator, diagnostics.loc[diagnostics.index >= start], start
 
@@ -259,7 +265,9 @@ def main() -> None:
     baseline_start = None
     for dimension, window, target_vol in cases:
         spec = replace(frozen, vol_window=window, target_volatility=target_vol)
-        candidate, comparator, diagnostics, start = run_case(prices, spec, tradability_mask, lifetimes)
+        candidate, comparator, diagnostics, start = run_case(
+            prices, spec, tradability_mask, lifetimes
+        )
         label = f"S10A_{window}_{int(target_vol * 100)}"
         candidate_row = metric_row(label, candidate, start)
         comparison_row = metric_row("MONTHLY_STATIC_25_25_25_25", comparator, start)

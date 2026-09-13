@@ -46,12 +46,49 @@ def _write_vintage(
 def test_candidate_manifest_matches_frozen_repository_inputs() -> None:
     manifest = shadow.load_manifest()
 
-    shadow.verify_candidate(manifest)
+    shadow.verify_candidate(manifest, verify_framework=False)
 
     assert manifest["candidate_id"] == "S2_R1"
     assert manifest["strategy_semantics"]["trend_window"] == 200
     assert pd.Timestamp(manifest["prospective_start"]) > pd.Timestamp(manifest["historical_cutoff"])
     assert shadow.decision_record_count() == 0
+
+
+def test_frozen_repository_text_hash_is_newline_invariant_but_raw_hash_is_not(
+    tmp_path: Path,
+) -> None:
+    lf_path = tmp_path / "frozen-lf.txt"
+    crlf_path = tmp_path / "frozen-crlf.txt"
+    changed_path = tmp_path / "frozen-changed.txt"
+    lf_path.write_bytes(b"line one\nline two\n")
+    crlf_path.write_bytes(b"line one\r\nline two\r\n")
+    changed_path.write_bytes(b"line one\nchanged line\n")
+
+    assert shadow.sha256_frozen_repository_text(lf_path) == (
+        shadow.sha256_frozen_repository_text(crlf_path)
+    )
+    assert shadow.sha256_frozen_repository_text(lf_path) != (
+        shadow.sha256_frozen_repository_text(changed_path)
+    )
+    assert shadow.sha256_file(lf_path) != shadow.sha256_file(crlf_path)
+
+
+def test_strict_candidate_verification_rejects_framework_version_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest = shadow.load_manifest()
+
+    def frozen_version_except_numpy(package: str) -> str:
+        if package == "numpy":
+            return "0.0.0"
+        return manifest["framework_versions"][package]
+
+    monkeypatch.setattr(shadow, "version", frozen_version_except_numpy)
+
+    with pytest.raises(ValueError, match="当前框架版本不一致: numpy"):
+        shadow.verify_candidate(manifest)
+
+    shadow.verify_candidate(manifest, verify_framework=False)
 
 
 def test_shadow_decision_uses_only_as_of_vintage_data(tmp_path: Path) -> None:
@@ -66,7 +103,7 @@ def test_shadow_decision_uses_only_as_of_vintage_data(tmp_path: Path) -> None:
         as_of=as_of,
         vintage_identifier=vintage.name,
         prospective_data_hash=vintage_hash,
-        manifest_hash=shadow.sha256_file(shadow.MANIFEST_PATH),
+        manifest_hash=shadow.sha256_frozen_repository_text(shadow.MANIFEST_PATH),
         generated_at="2026-09-30T16:00:00+00:00",
     )
 

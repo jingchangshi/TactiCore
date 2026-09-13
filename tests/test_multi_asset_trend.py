@@ -69,7 +69,7 @@ def test_repository_s2_baseline_is_exactly_frozen() -> None:
 def test_s2_v1_report_is_unchanged() -> None:
     report = ROOT / "research/results/S2_BASELINE_ECONOMIC_SCREEN_V1.md"
 
-    assert hashlib.sha256(report.read_bytes()).hexdigest() == (
+    assert hashlib.sha256(report.read_bytes().replace(b"\r\n", b"\n")).hexdigest() == (
         "f27ca774015eaeda77521b8d590d15ef76a27531aaa5d6b6eb419b785abc6b04"
     )
 

@@ -69,6 +69,6 @@ def test_risk_on_holds_all_eligible_equally_and_execution_is_next_day_only() -> 
 def test_s3a_historical_report_remains_frozen() -> None:
     report = Path(__file__).resolve().parents[1] / "research/results/S3_SECTOR_BASELINE_V1.md"
 
-    assert hashlib.sha256(report.read_bytes()).hexdigest() == (
+    assert hashlib.sha256(report.read_bytes().replace(b"\r\n", b"\n")).hexdigest() == (
         "981eb6396876f73f6996372627074dbfaf754c585c3f44bb86fb41668bdce8a7"
     )

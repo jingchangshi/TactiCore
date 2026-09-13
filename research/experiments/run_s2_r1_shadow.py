@@ -59,11 +59,27 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def sha256_frozen_repository_text(path: Path) -> str:
+    """Hash frozen repository text consistently across LF and CRLF checkouts."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
 def load_manifest(path: Path = MANIFEST_PATH) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def verify_candidate(manifest: dict[str, Any], root: Path = ROOT) -> None:
+def verify_framework_versions(manifest: dict[str, Any]) -> None:
+    for package, expected_version in manifest["framework_versions"].items():
+        if version(package) != expected_version:
+            raise ValueError(f"candidate manifest 与当前框架版本不一致: {package}")
+
+
+def verify_candidate(
+    manifest: dict[str, Any],
+    root: Path = ROOT,
+    *,
+    verify_framework: bool = True,
+) -> None:
     if manifest["candidate_id"] != "S2_R1" or manifest["candidate_version"] != "R1":
         raise ValueError("candidate manifest 不是冻结的 S2_R1")
     cutoff = pd.Timestamp(manifest["historical_cutoff"])
@@ -88,11 +104,10 @@ def verify_candidate(manifest: dict[str, Any], root: Path = ROOT) -> None:
         raise ValueError("candidate manifest 的执行政策不是 SIGNAL_CHANGE_ONLY")
     if not manifest["execution_semantics"]["partial_fill_on_insufficient_cash"]:
         raise ValueError("candidate manifest 未冻结 RQAlpha 原生资金不足部分成交")
-    for package, expected_version in manifest["framework_versions"].items():
-        if version(package) != expected_version:
-            raise ValueError(f"candidate manifest 与当前框架版本不一致: {package}")
+    if verify_framework:
+        verify_framework_versions(manifest)
     for relative_path, expected_hash in manifest["file_hashes"].items():
-        actual_hash = sha256_file(root / relative_path)
+        actual_hash = sha256_frozen_repository_text(root / relative_path)
         if actual_hash != expected_hash:
             raise ValueError(f"冻结输入 hash 不一致: {relative_path}")
     provenance = json.loads((root / "data/canonical/provenance.json").read_text(encoding="utf-8"))
@@ -293,7 +308,7 @@ def main() -> None:
             as_of=as_of,
             vintage_identifier=args.vintage_dir.name,
             prospective_data_hash=vintage_hash,
-            manifest_hash=sha256_file(MANIFEST_PATH),
+            manifest_hash=sha256_frozen_repository_text(MANIFEST_PATH),
         )
         if record is None:
             print("as-of 不是合格月末 signal；没有生成或伪造前瞻记录。")

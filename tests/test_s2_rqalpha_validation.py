@@ -70,7 +70,7 @@ def test_target_is_never_replayed_before_or_between_execution_dates() -> None:
 def test_s2_v2_historical_evidence_is_unchanged() -> None:
     report = ROOT / "research/results/S2_DECISION_AUDIT_V2.md"
 
-    assert hashlib.sha256(report.read_bytes()).hexdigest() == (
+    assert hashlib.sha256(report.read_bytes().replace(b"\r\n", b"\n")).hexdigest() == (
         "6118d8ff605dd8204a1b0b2c350825c4fc6b9252f005395da747d83fdf9c100a"
     )
 

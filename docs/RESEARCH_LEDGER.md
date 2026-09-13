@@ -401,3 +401,31 @@
 - 结论：`FREEZE_S4C_RESEARCH_CANDIDATE_R1`。存在唯一无歧义的权威证据链；经济身份全部维度可从源代码与冻结产物核对；canonical provenance 完整（截至 `2026-08-31`）；PIT inception 为 `2013-04-01`；upstream/execution 语义可固定（skfolio 1.0.6 / RQAlpha 6.3.0）；historical/prospective 边界可干净划定。集中度裁决为 `ACCEPT_AS_KNOWN_CANDIDATE_RISK`（P95 最大权重 51.84%、历史最大 66.35%、effective assets median 6.23 / P05 3.24），不得以 cap 消除或据此改参。同时明确 `material_asset_difference`（单资产 >5pp）与 `material_portfolio_tracking_date`（组合层总绝对偏差 >5pp）是两个不同的量，历史条件下后者多于前者，不得声称每个组合层跟踪日期都有已记录的原生单资产原因；历史结论与 V2 gate 不改写。
 - 结论边界：S4C R1 为**已冻结研究候选**，`prospective_activation = NOT_ACTIVE`；前瞻影子激活是独立的下一项决策，本条目不授权。候选身份与预注册前瞻协议见 [S4C R1](../research/shadow/s4c_r1/README.md) 与 [manifest](../research/shadow/s4c_r1/candidate_manifest.json)，审查记录见 [S4C candidate-freeze review](../research/results/S4C_CANDIDATE_FREEZE_REVIEW_V1.md)。RL-001 到 RL-041 的内容未改写。
 - 重开条件：仅在 canonical 数据契约、S4C 经济语义或 RQAlpha 订单/撮合/账户语义变化，或出现具体矛盾证据时；不得以集中度、历史收益、短期前瞻回撤或参数偏好为由改参数、加 cap 或重跑窗口。前瞻期出现连续亏损或跑输基准只能是 `STRATEGY_PERFORMANCE_WEAK`。
+
+## RL-043 10% portfolio objective 可行性历史诊断
+
+- 状态：CLOSED。
+- 问题/范围：只使用**已经冻结**的 `S2_R1` 与 `S4C_R1` 目标，按其提交日并集上的粗粒度固定权重
+  （100/0、75/25、50/50、25/75、0/100）构造**派生组合目标**，是否已经构成可信的无杠杆 ~10%
+  历史路径。不重跑组件、不搜索权重、不加杠杆、不加集中度 cap、不创建候选。
+- 外部映射：组合构造本身不是新策略族，不创建新 canonical mapping；S2 `E1_MATURE`、
+  S4C `E2_ESTABLISHED_METHOD`、S30 `E1_MATURE` 均不变。
+- 结论：`OBJECTIVE_FEASIBILITY_DECISION = FEASIBLE_WITH_EXISTING_COMPONENTS`。主窗口
+  （2013-04-01 至 2026-08-31）内部固定 blend 最高 after-cost CAGR 为 10.4849%（25/75）；50/50 为
+  9.2696%，且 signed MaxDD -15.9165% 优于任一单独 anchor。共同窗口（2014-01-15 起，含 S30）
+  50/50 为 10.8404%、25/75 为 11.8127%，S30 为 9.9249%，预注册规则给出
+  `COMPLEXITY_CLEARS_S30_HURDLE`。两个冻结机制的日收益相关性 0.7835、下行相关性 0.6541；
+  所有 blend 的分期与 3Y/5Y 滚动 CAGR positive share 均为正（滚动占比 100%）。派生 blend 使用
+  `DERIVED_UNION_TARGET_SUBMISSION`，**不**保持 S2 单独执行政策，也**不**等于 standalone `S2_R1`；
+  两个 anchor 单独回放并作为各自候选的 correctness 参照。
+- 结论边界：历史可行性不等于未来收益；不激活 `S4C_R1` 前瞻影子、不创建任何组合候选、不构成生产
+  批准。当前最大缺口是**前瞻证据**，不是缺少 alpha 策略：S30 单独即达 9.92%，25% 权重的 S2 相对
+  加权 anchor 只抬高约 0.11–0.18pp，其价值主要体现在回撤与机制分散。
+- 证据：[可行性报告](../research/results/PORTFOLIO_OBJECTIVE_10P_FEASIBILITY_V1.md)、
+  [协议 V3](../research/batches/portfolio_objective_10p/PROTOCOL_V3.md)、
+  `research/results/portfolio_objective_10p_*.csv`。
+- 数据快照：canonical 同 RL-001；组件冻结目标 SHA-256 `9cc5a8e7…0b61`（S2）与
+  `f7bf398d…7e47`（S4C）保持不变。
+- 框架/版本：VectorBT 0.28.5 组合记录；skfolio 1.0.6 / RQAlpha 6.3.0 仅作为组件既有证据的版本。
+- 重开条件：仅在 canonical 数据契约、组件经济语义或框架语义变化，或出现具体矛盾证据时；不得以
+  历史收益、集中度或短期前瞻表现为由改参数、加 cap、搜索权重或重跑组件。

@@ -92,20 +92,21 @@ Commit C : 独立 RESEARCH_PRIORITY_DECISION + 选定唯一下一 Goal 的授权
 本 Goal 只回答可行性并选择下一项研究；它**不**产生生产配置、**不**激活 S4C R1 前瞻影子、
 **不**创建候选、**不**自动启动所选下一 Goal。生产/真实持仓需要前瞻证据与独立生产审查。
 
-## Status: IN_PROGRESS
+## Status: COMMIT_B_COMPLETE / AWAIT_PRIORITY_DECISION
 
 | 项 | 值 |
 | --- | --- |
 | Starting HEAD | `ea5dc86` |
 | Commit A（初始） | `f04ae0c`（目标文档、协议、实现、测试；无结果产物） |
-| Corrective pre-result commits | `86e711d`（裁决基础/窗口/顺序）、`516d6f7`（identity-based correctness gate、年度报告起点、S30 inception 契约） |
+| Corrective pre-result commits | `86e711d`（裁决基础/窗口/顺序）、`516d6f7`（identity-based correctness gate、年度报告起点、S30 inception 契约）、`463f3d6`（Goal 提交溯源）、`44b8018`（fail-closed correctness gate） |
 | 生效预注册协议 | [PROTOCOL_V3](../research/batches/portfolio_objective_10p/PROTOCOL_V3.md)（V1/V2 保留为历史记录） |
 | 无效运行 | V1 阶段被提前执行产生的一次输出已判定为 `INVALID_FOR_RESEARCH_INTERPRETATION`，未提交并已移除 |
 | 冻结候选状态 | S2 R1 `FROZEN / PROSPECTIVE_SHADOW_ACTIVE`；S4C R1 `FROZEN / NOT_ACTIVE`（均未改动） |
-| 可行性裁决 | 尚未产生（Commit B） |
+| 可行性裁决 | `FEASIBLE_WITH_EXISTING_COMPONENTS`（详见 [报告](../research/results/PORTFOLIO_OBJECTIVE_10P_FEASIBILITY_V1.md)） |
+| 组合候选 / 生产配置 | 无（本 Goal 不创建候选、不激活前瞻影子、不产生生产配置） |
 | 下一 Goal | 尚未选择（Commit C） |
 
 前一个已完成 Goal（S4C candidate freeze review）的历史事实保留在
 [`RESEARCH_LEDGER.md`](RESEARCH_LEDGER.md) RL-042、[`STRATEGY_CATALOG.md`](STRATEGY_CATALOG.md)
 与 [`S4C candidate-freeze review`](../research/results/S4C_CANDIDATE_FREEZE_REVIEW_V1.md)；
-本文件按 Goal 契约更新为当前执行指令。本 Goal 目前**没有**任何有效的组合层研究结果。
+本文件按 Goal 契约更新为当前执行指令。本 Goal 的可行性结果只是历史诊断，不是前瞻证据。

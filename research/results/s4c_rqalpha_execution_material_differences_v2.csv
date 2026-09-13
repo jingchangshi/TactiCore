@@ -1,0 +1,3 @@
+date,symbol,intended_weight,realized_weight,native_status,native_evidence
+2014-05-05,513500.SS,0.2160543560952278,0.1648265893419706,CANCELLED,"Order Cancelled: market order 513500.XSHG volume 205000 is larger than 25.0 percent of current bar volume, fill 156200 actually"
+2026-02-02,518880.SS,0.0943517926889719,0.14674340945173459,REJECTED,订单被拒单：[518880.XSHG] 已触及涨跌停价：limit_down。

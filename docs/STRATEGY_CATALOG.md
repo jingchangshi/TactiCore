@@ -97,6 +97,14 @@
 
 记录见 [Batch 05 principal architect review](../research/results/BATCH_05_PRINCIPAL_ARCHITECT_REVIEW_V1.md)。
 
+## S4C authoritative execution review
+
+S4C canonical ERC / skfolio：`ADVANCE_S4C_TO_CANDIDATE_FREEZE_REVIEW`。Protocol V2 下 committed 161 个冻结目标的 RQAlpha 6.3.0 原生回放通过全部预注册 gate：CAGR 12.0929%、signed MaxDD -18.3512%、Sharpe 0.7758、cash rejection 0、平均 execution-date deviation 0.3246%、material dates 3/161（两个 >5pp 单资产差异都有具体 native 原因；第三个是最大单资产偏差 3.84pp、现金残差 3.80% 的组合层偏离）、平均现金 0.1399%。
+
+V1 的 `1e-12` reproduction 判据不可跨平台达成，作为 `INVALID_RUN` 保留；Protocol V2 只替代该 portability 判据并附带数值容差，不放松任何 native execution gate，也不改变经济语义或冻结目标。这是 execution review 资格，不是 candidate、前瞻或生产批准；集中度（P95 max weight 51.84%、maximum 66.35%）仍是未消除的风险特征。
+
+记录见 [S4C execution review V2](../research/results/S4C_RQALPHA_EXECUTION_REVIEW_V2.md)。
+
 ## 外部 canonical 映射与本地边界
 
 详细外部范围见 [策略研究地图](STRATEGY_RESEARCH_MAP.md)，此处只记录已实现策略的本地生命周期。
@@ -111,6 +119,6 @@
 | S4A | inverse-volatility allocation | E2 | 复杂度是否有增量价值，REJECTED | inverse-vol 方法无用 |
 | S8A | moving-average tactical allocation | E3 | 两资产中国ETF规则，REJECTED | trend literature 被否定 |
 | S27A | trend + inverse-vol sizing | E3 | candidate-freeze review eligible | 新异常或生产资格 |
-| S4B / S4C | equal risk contribution | E2 | S4B Riskfolio BLOCKED；S4C execution-review eligible | ERC 方法或文献无效 |
+| S4B / S4C | equal risk contribution | E2 | S4B Riskfolio BLOCKED；S4C candidate-freeze review eligible | ERC 方法、文献或执行能力无效 |
 | S10A | unlevered volatility targeting | E3 | native cash rejection 后 execution review 未推进 | volatility-managed 文献已被本地证明 |
 | S30 | naive/static diversification | E1 | REFERENCE_BASELINE | alpha 策略 |

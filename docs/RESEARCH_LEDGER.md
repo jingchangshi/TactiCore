@@ -377,3 +377,11 @@
 - 结论：S2 保持 `FROZEN / PROSPECTIVE_SHADOW_ACTIVE` 且仍是唯一前瞻候选；S27A 保留 candidate-freeze review 资格但推迟（与 S2 趋势信号机制重叠度高）；S10A 维持 `DO_NOT_ADVANCE_S10A_EXECUTION`，不得以本地现金/retry/sizing 修补；S4C 获得 execution review 并被选为下一 Goal，集中度作为执行审查诊断证据保留。Windows 开发引导为 resolver/toolchain skew 而非项目 typing 缺陷，处置为固定 Python 3.11 开发解释器并记录于 README。
 - 证据：[Batch 05 principal architect review](../research/results/BATCH_05_PRINCIPAL_ARCHITECT_REVIEW_V1.md)、[Batch 05](../research/results/BATCH_05_EARNED_STAGE_VALIDATION.md)。
 - 重开条件：仅当 Batch 05 冻结证据出现矛盾、S2 候选完整性失败、canonical 数据契约或框架语义变化时才可重开；不得以历史收益、参数偏好或“换名重做”重开。
+
+## RL-040 S4C authoritative RQAlpha execution review
+
+- 状态：CLOSED。Protocol V2 下对 committed 161 个 S4C 冻结目标执行一次 RQAlpha 6.3.0 原生 target-only 回放，全部预注册 gate 通过。
+- 范围：冻结 60-return center、既有 S4C 经济语义与 PIT 契约。不重跑 40/80、不添加集中度 cap、不在 RQAlpha 内重算信号/波动/ERC 权重。
+- 结论：`ADVANCE_S4C_TO_CANDIDATE_FREEZE_REVIEW`。RQAlpha CAGR 12.0929%、signed MaxDD -18.3512%、Sharpe 0.7758、cash rejection 0、平均 execution-date total absolute weight deviation 0.3246%、material dates 3/161（1.86%：两个 >5pp 单资产差异都有具体 native 原因，第三个是最大单资产偏差 3.84pp、现金残差 3.80% 的组合层偏离，不产生 5pp 条目）、平均现金 0.1399%。V1 的 `1e-12` reproduction 判据不可跨平台达成，作为 INVALID_RUN R1 保留并由 Protocol V2 的数值 portability 容差替代；该项替代不放松任何 native gate。集中度（P95 max weight 51.84%、maximum 66.35%）仍是未消除的风险特征。本条目只授予 candidate-freeze review 资格，不授权启动该阶段。
+- 证据：[S4C execution review V2](../research/results/S4C_RQALPHA_EXECUTION_REVIEW_V2.md)、[Protocol V2](../research/batches/s4c_execution_review/PROTOCOL_V2.md)、[INVALID_RUN R1](../research/results/INVALID_RUN_S4C_EXECUTION_R1.md)。
+- 重开条件：仅在 canonical 数据契约、S4C 经济语义或 RQAlpha 订单/撮合/账户语义变化，或出现具体矛盾证据时；不得以集中度、历史收益或参数偏好为由改参数、加 cap 或重跑窗口。

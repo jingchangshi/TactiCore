@@ -87,7 +87,8 @@ def _fake_repo(tmp_path: Path) -> Path:
     for name in ("etf_adjusted_close.csv", "trading_calendar.csv", "provenance.json"):
         shutil.copyfile(ROOT / "data/canonical" / name, root / "data/canonical" / name)
     (root / shadow.ACTIVATION_DECISION_RECORD_RELATIVE_PATH).write_text(
-        f"# S4C R1 activation decision (fixture)\n\n{shadow.ACTIVATION_DECISION_TOKEN}\n",
+        "# S4C R1 activation decision (fixture)\n\n"
+        f"{shadow.ACTIVATION_DECISION_LINE_PREFIX} {shadow.ACTIVATION_DECISION_TOKEN}\n",
         encoding="utf-8",
     )
     _write_header(root / "research/shadow/s4c_r1/observations.csv")
@@ -273,10 +274,16 @@ def test_activation_evidence_must_exist_in_the_repository(tmp_path: Path) -> Non
         shadow.verify_activation(activation, shadow.load_manifest(), root=root)
 
 
-def test_activation_decision_record_must_carry_the_frozen_token(tmp_path: Path) -> None:
+def test_activation_decision_record_selecting_defer_is_rejected(tmp_path: Path) -> None:
+    """正文提到 ACTIVATE token 不构成授权：只有被选中的裁决行有效。"""
     root = _fake_repo(tmp_path)
     record = root / shadow.ACTIVATION_DECISION_RECORD_RELATIVE_PATH
-    record.write_text("# DEFER\n", encoding="utf-8")
+    record.write_text(
+        "# S4C R1 activation decision\n\n"
+        f"{shadow.ACTIVATION_DECISION_LINE_PREFIX} DEFER_S4C_R1_PROSPECTIVE_ACTIVATION\n\n"
+        f"Allowed verdicts include {shadow.ACTIVATION_DECISION_TOKEN}.\n",
+        encoding="utf-8",
+    )
     activation = shadow.load_activation(
         _write_activation(
             root,
@@ -284,7 +291,50 @@ def test_activation_decision_record_must_carry_the_frozen_token(tmp_path: Path) 
         )
     )
 
-    with pytest.raises(ValueError, match="冻结裁决 token"):
+    with pytest.raises(ValueError, match="选择的裁决不是 ACTIVATE"):
+        shadow.verify_activation(activation, shadow.load_manifest(), root=root)
+
+
+def test_activation_decision_record_without_a_verdict_line_is_rejected(tmp_path: Path) -> None:
+    root = _fake_repo(tmp_path)
+    record = root / shadow.ACTIVATION_DECISION_RECORD_RELATIVE_PATH
+    record.write_text(
+        f"# S4C R1 activation decision\n\nProse mention only: {shadow.ACTIVATION_DECISION_TOKEN}\n",
+        encoding="utf-8",
+    )
+    activation = shadow.load_activation(
+        _write_activation(
+            root,
+            activation_decision_record_sha256=shadow.sha256_frozen_repository_text(record),
+        )
+    )
+
+    with pytest.raises(ValueError, match="恰好包含一条 ACTIVATION_DECISION 行"):
+        shadow.verify_activation(activation, shadow.load_manifest(), root=root)
+
+
+@pytest.mark.parametrize(
+    "verdict",
+    [
+        "REJECT_S4C_R1_PROSPECTIVE_ACTIVATION",
+        "BLOCK_S4C_R1_ACTIVATION_CORRECTNESS",
+        "TOTALLY_NOT_A_VERDICT",
+    ],
+)
+def test_non_activate_verdict_lines_are_parsed_and_rejected(tmp_path: Path, verdict: str) -> None:
+    root = _fake_repo(tmp_path)
+    record = root / shadow.ACTIVATION_DECISION_RECORD_RELATIVE_PATH
+    record.write_text(
+        f"# decision\n\n{shadow.ACTIVATION_DECISION_LINE_PREFIX} {verdict}\n", encoding="utf-8"
+    )
+    activation = shadow.load_activation(
+        _write_activation(
+            root,
+            activation_decision_record_sha256=shadow.sha256_frozen_repository_text(record),
+        )
+    )
+
+    with pytest.raises(ValueError, match="选择的裁决不是 ACTIVATE|不是允许值"):
         shadow.verify_activation(activation, shadow.load_manifest(), root=root)
 
 
@@ -651,3 +701,34 @@ def test_production_write_path_rejects_external_vintage_directory(
         shadow.run_decision(AS_OF, external, root=root)
 
     assert observations.read_bytes() == before
+
+
+def test_external_vintage_is_rejected_before_any_file_read(
+    tmp_path: Path, candidate_verification_stubbed: None, frozen_record_time: None
+) -> None:
+    """不存在的目录也只能得到位置错误，证明不存在对 vintage 文件的读取尝试。"""
+    root = _fake_repo(tmp_path)
+    _write_activation(root)
+    missing_external = tmp_path / "elsewhere" / "2026-09-30"
+
+    with pytest.raises(ValueError, match="vintages"):
+        shadow.run_decision(AS_OF, missing_external, root=root)
+
+
+def test_external_vintage_rejection_never_touches_vintage_readers(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    candidate_verification_stubbed: None,
+    frozen_record_time: None,
+) -> None:
+    root = _fake_repo(tmp_path)
+    _write_activation(root)
+    external = _write_vintage(tmp_path / "elsewhere", "2026-09-30")
+
+    def tripwire(*args: object, **kwargs: object) -> pd.DataFrame:
+        raise AssertionError("位置校验之前不得读取任何 vintage 文件")
+
+    monkeypatch.setattr(shadow, "load_calendar", tripwire)
+
+    with pytest.raises(ValueError, match="vintages"):
+        shadow.run_decision(AS_OF, external, root=root)

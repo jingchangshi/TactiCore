@@ -82,6 +82,19 @@ CLI 路径覆盖参数；除 Python 层测试 helper 外，不存在绕过 canon
 runner 必须校验 artifact 与 manifest 的一致性；任何不一致都是
 `CANDIDATE_INTEGRITY_FAILURE`，必须拒绝运行，而不是降级继续。
 
+### 2.2 裁决记录的机器可读契约（冻结）
+
+`research/results/S4C_R1_PROSPECTIVE_ACTIVATION_DECISION_V1.md` 必须包含**恰好一条**
+独立行：
+
+```text
+ACTIVATION_DECISION: <ACTIVATE_S4C_R1_PROSPECTIVE_SHADOW | DEFER_S4C_R1_PROSPECTIVE_ACTIVATION | REJECT_S4C_R1_PROSPECTIVE_ACTIVATION | BLOCK_S4C_R1_ACTIVATION_CORRECTNESS>
+```
+
+runner 解析该行，并要求其值**恰好**为 `ACTIVATE_S4C_R1_PROSPECTIVE_SHADOW` 才承认
+activation。正文其他位置提到 ACTIVATE token（例如"允许的裁决"清单）不构成授权，
+必须失败而不是通过。整个 decision record 仍按归一化 SHA-256 绑定。
+
 ## 3. Runner 行为契约
 
 唯一新增实现：`research/experiments/run_s4c_r1_shadow.py`（最小、candidate-specific）。
@@ -91,8 +104,11 @@ runner 必须校验 artifact 与 manifest 的一致性；任何不一致都是
 --verify-activation    只读：报告 activation 状态；artifact 存在但校验失败则非零退出
 --as-of YYYY-MM-DD     前瞻 decision 的显式研究日期（wall-clock 默认值被禁止）
 --vintage-dir PATH     candidate-specific vintage 目录
---record-path PATH     仅用于测试的 observations 路径覆盖
 ```
+
+生产 CLI **不提供**任何 activation / observation 路径覆盖选项。`activation_path`、
+`record_path`、`enforce_canonical_vintage` 只作为 Python 层 `run_decision(...)` 参数存在，
+专供 `tmp_path` 测试，不构成用户可用的授权路径。
 
 前瞻写入路径必须依次满足：
 
@@ -100,10 +116,11 @@ runner 必须校验 artifact 与 manifest 的一致性；任何不一致都是
 2. `require_activation`：activation artifact 存在、状态为 `ACTIVE`、且与 manifest 一致。
 3. 显式 `--as-of`：缺失即拒绝，不使用 `datetime.now()` 推断 research date。
 4. as-of 边界：`as_of > historical_cutoff` 且 `as_of >= first_eligible_prospective_signal`。
-5. as-of 必须是该月最后一个 canonical 交易日（月末 signal）。
-6. vintage 位置必须是 candidate-specific canonical 目录
+5. vintage 位置必须是 candidate-specific canonical 目录
    `research/shadow/s4c_r1/vintages/<as-of ISO date>/`，目录名必须等于 `--as-of`；任意
-   外部目录不得成为官方前瞻证据。该检查在加载数据**之前**执行。
+   外部目录不得成为官方前瞻证据。该检查**先于任何 vintage 文件访问**执行
+   （即在 `load_calendar` / `load_prospective_inputs` 之前），因此外部目录的内容不会被读取。
+6. as-of 必须是该月最后一个 canonical 交易日（月末 signal）。
 7. vintage 校验：三件套齐全；列一致；与冻结历史重叠逐值一致；不含 as-of 之后行情。
 8. 冻结语义推导 target：60 条对齐日收益 → 官方 ERC；不足 6 个合格资产则整只 fallback。
 9. 记录契约：append-only、duplicate-safe，且 decision 行不得包含任何执行结果；

@@ -58,6 +58,13 @@ OBSERVATION_SCHEMA_VERSION = "S4C_R1_OBSERVATIONS_V1"
 PENDING_EXECUTION_STATUS = "PENDING_NEXT_CANONICAL_OBSERVATION"
 ACTIVE_STATUS = "ACTIVE"
 ACTIVATION_DECISION_TOKEN = "ACTIVATE_S4C_R1_PROSPECTIVE_SHADOW"
+ACTIVATION_DECISION_LINE_PREFIX = "ACTIVATION_DECISION:"
+ALLOWED_ACTIVATION_DECISIONS = (
+    "ACTIVATE_S4C_R1_PROSPECTIVE_SHADOW",
+    "DEFER_S4C_R1_PROSPECTIVE_ACTIVATION",
+    "REJECT_S4C_R1_PROSPECTIVE_ACTIVATION",
+    "BLOCK_S4C_R1_ACTIVATION_CORRECTNESS",
+)
 DECISION_RECORD_POLICY = "APPEND_ONLY_ONE_DECISION_PER_SIGNAL_DATE_BEFORE_EXECUTION"
 EXECUTION_RECORD_POLICY = "APPEND_ONLY_ONE_EXECUTION_PER_DECISION_AFTER_SIGNAL_DATE"
 
@@ -186,6 +193,27 @@ def verify_activation_timestamp(activation: dict[str, Any], manifest: dict[str, 
         raise ValueError("activation 决策时间必须严格晚于 candidate freeze timestamp")
 
 
+def parse_activation_decision(text: str) -> str:
+    """解析 activation decision record 的机器可读裁决行。
+
+    只接受唯一一条 `ACTIVATION_DECISION: <verdict>` 行；正文其他位置提到 ACTIVATE
+    token（例如备选方案目录）不构成授权。
+    """
+    verdicts = [
+        line.split(":", 1)[1].strip()
+        for line in text.splitlines()
+        if line.strip().startswith(ACTIVATION_DECISION_LINE_PREFIX)
+    ]
+    if len(verdicts) != 1:
+        raise ValueError("activation decision record 必须恰好包含一条 ACTIVATION_DECISION 行")
+    decision = verdicts[0]
+    if decision not in ALLOWED_ACTIVATION_DECISIONS:
+        raise ValueError(f"activation decision record 的裁决不是允许值: {decision}")
+    if decision != ACTIVATION_DECISION_TOKEN:
+        raise ValueError("activation decision record 选择的裁决不是 ACTIVATE")
+    return decision
+
+
 def verify_activation_evidence(activation: dict[str, Any], root: Path = ROOT) -> None:
     """activation artifact 必须绑定 reviewed protocol 与 activation decision record。"""
     protocol_path = root / activation["activation_protocol_path"]
@@ -203,8 +231,7 @@ def verify_activation_evidence(activation: dict[str, Any], root: Path = ROOT) ->
         != activation["activation_decision_record_sha256"]
     ):
         raise ValueError("activation artifact 的 decision record hash 不一致")
-    if ACTIVATION_DECISION_TOKEN not in record_path.read_text(encoding="utf-8"):
-        raise ValueError("activation decision record 未包含冻结裁决 token")
+    parse_activation_decision(record_path.read_text(encoding="utf-8"))
 
 
 def verify_candidate_shadow(
@@ -620,11 +647,11 @@ def run_decision(
     vintage_path = Path(vintage_dir)
     verify_candidate_shadow(resolved_manifest, root)
     require_activation(resolved_activation, resolved_manifest, root=root)
-    validate_month_end(
-        load_calendar(vintage_path / "trading_calendar.csv"), as_of, resolved_manifest
-    )
     if enforce_canonical_vintage:
+        # 位置校验必须先于任何 vintage 文件访问：外部目录不得成为官方前瞻证据。
         verify_canonical_vintage_location(vintage_path, as_of, root)
+    vintage_calendar = load_calendar(vintage_path / "trading_calendar.csv")
+    validate_month_end(vintage_calendar, as_of, resolved_manifest)
     prices, _, vintage_hash = load_prospective_inputs(
         vintage_path, resolved_manifest, as_of=as_of, root=root
     )

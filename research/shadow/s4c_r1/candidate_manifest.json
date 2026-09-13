@@ -3,8 +3,8 @@
   "candidate_version": "R1",
   "strategy_family": "S4C Canonical ERC / Risk Budgeting",
   "strategy_version": "canonical_erc_skfolio_transfer_v1",
-  "freeze_commit": "356ed98208dbc30fc283e4af605183e5d39a7d6a",
-  "freeze_decision_commit": "7cef1bcdd4678a77ff884dfb1fd0efa5e2b12ad7",
+  "historical_semantics_freeze_commit": "356ed98208dbc30fc283e4af605183e5d39a7d6a",
+  "priority_decision_commit": "7cef1bcdd4678a77ff884dfb1fd0efa5e2b12ad7",
   "freeze_timestamp": "2026-09-13T13:28:15Z",
   "historical_cutoff": "2026-08-31",
   "first_eligible_prospective_signal": "2026-09-30",
@@ -82,7 +82,9 @@
     "tacticore/strategies/multi_asset_trend.py": "2a11156f2f44f2cda9774b7c035bed9cb9757a83900b17028f6fd8c65eb7d1a6",
     "tacticore/data/tradability.py": "ff6e3d863ee329f253894efdee1227ff8b33ee5e9ef321c5aa58b13944ddddc3",
     "tacticore/engines/rqalpha_adapter.py": "76c551f703b354d033fbb11849170dadee39654d947c1e93e389db5694530477",
-    "research/experiments/run_s4c_erc_skfolio_transfer.py": "34224359b70f6d9932a9d7a640a216bc011635f287d2577527a0f79c9813dad1"
+    "research/experiments/run_s4c_erc_skfolio_transfer.py": "34224359b70f6d9932a9d7a640a216bc011635f287d2577527a0f79c9813dad1",
+    "research/experiments/run_s4c_rqalpha_execution_review.py": "00da934307ee8e1d8cfc8d9b2ebce5efc6956fff17642d025144c11d2e8d1450",
+    "research/experiments/run_s2_rqalpha_validation.py": "446faeba1b529a1c270bc6058d7e8a557805afca286b756964a417651d0527ad"
   },
   "frozen_target_structure": {
     "row_count": 161,

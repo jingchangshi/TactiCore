@@ -89,6 +89,25 @@ def test_frozen_identity_hash_mismatch_is_rejected() -> None:
         candidate.verify_candidate(manifest, verify_framework=False)
 
 
+@pytest.mark.parametrize(
+    "relative_path",
+    [
+        "research/experiments/run_s2_rqalpha_validation.py",
+        "research/experiments/run_s4c_rqalpha_execution_review.py",
+        "research/experiments/run_s4c_erc_skfolio_transfer.py",
+        "tacticore/engines/rqalpha_adapter.py",
+    ],
+)
+def test_accepted_rqalpha_replay_path_is_part_of_the_frozen_identity(relative_path: str) -> None:
+    manifest = candidate.load_manifest()
+    assert relative_path in manifest["frozen_identity_artifacts"]
+
+    manifest["frozen_identity_artifacts"][relative_path] = "0" * 64
+
+    with pytest.raises(ValueError, match="冻结身份 hash 不一致"):
+        candidate.verify_candidate(manifest, verify_framework=False)
+
+
 def test_tampered_target_artifact_is_rejected_by_hash(tmp_path: Path) -> None:
     path = tmp_path / "frozen.csv"
     path.write_text("execution_date,510300.SS\n2013-04-01,1\n", encoding="utf-8", newline="")
@@ -101,8 +120,53 @@ def test_strategy_semantics_reject_a_submission_policy_rewrite() -> None:
     manifest = candidate.load_manifest()
     manifest["strategy_semantics"]["target_submission_policy"] = "SIGNAL_CHANGE_ONLY"
 
-    with pytest.raises(ValueError, match="目标提交政策被改写"):
+    with pytest.raises(ValueError, match="冻结经济语义被改写"):
         candidate.verify_strategy_semantics(manifest)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("risk_measure", "RiskMeasure.MAD"),
+        ("risk_budgets", "custom"),
+        ("min_weights", -0.1),
+        ("max_weights", 0.5),
+        ("long_only", False),
+        ("fully_invested", False),
+        ("leverage", "2x"),
+        ("price_window", 81),
+        ("returns_window", 80),
+        ("signal_timing", "月中"),
+        ("minimum_eligible_assets", 5),
+    ],
+)
+def test_every_frozen_economic_field_is_machine_verified(field: str, value: object) -> None:
+    manifest = candidate.load_manifest()
+    manifest["strategy_semantics"][field] = value
+
+    with pytest.raises(ValueError, match=f"冻结经济语义被改写: {field}"):
+        candidate.verify_strategy_semantics(manifest)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("order_api", "order_target_percent"),
+        ("partial_fill_on_insufficient_cash", False),
+        ("matching_type", "next_bar"),
+        ("volume_limit", False),
+        ("volume_percent", 1.0),
+        ("replay_input", "recomputed in replay"),
+        ("recomputation_inside_replay", "erc weights"),
+        ("authority", "local execution engine"),
+    ],
+)
+def test_every_frozen_execution_field_is_machine_verified(field: str, value: object) -> None:
+    manifest = candidate.load_manifest()
+    manifest["execution_semantics"][field] = value
+
+    with pytest.raises(ValueError, match=f"冻结执行语义被改写: {field}"):
+        candidate.verify_execution_semantics(manifest)
 
 
 def test_s4c_and_s2_are_frozen_with_different_submission_policies() -> None:

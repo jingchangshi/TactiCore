@@ -34,6 +34,43 @@ FROZEN_LAST_DATE = pd.Timestamp("2026-08-03")
 MINIMUM_ELIGIBLE_ASSETS = 6
 RETURNS_WINDOW = 60
 
+# 逐字冻结的经济语义：manifest 自身不得偏离这些字面值。
+FROZEN_STRATEGY_CONTRACT: tuple[tuple[str, object], ...] = (
+    ("canonical_strategy", "equal risk contribution / risk budgeting"),
+    ("upstream_implementation", "skfolio.optimization.RiskBudgeting"),
+    ("upstream_version", "1.0.6"),
+    ("risk_measure", "RiskMeasure.VARIANCE"),
+    ("risk_budgets", "equal (library default risk budget)"),
+    ("min_weights", 0.0),
+    ("max_weights", 1.0),
+    ("long_only", True),
+    ("fully_invested", True),
+    ("leverage", "none"),
+    ("minimum_eligible_assets", MINIMUM_ELIGIBLE_ASSETS),
+    ("price_window", 61),
+    ("returns_window", RETURNS_WINDOW),
+    (
+        "returns_definition",
+        "aligned_window 上 pct_change(fill_method=None).dropna(how='any')，60 条有效对齐日收益",
+    ),
+    ("signal_timing", "月末 canonical 观测日收盘后估计"),
+    ("execution_timing", "不得早于信号日后的下一 canonical 观测日"),
+    ("target_submission_policy", "MONTHLY_TARGET_SUBMISSION"),
+    ("strategy_inception", "2013-04-01"),
+)
+
+# 逐字冻结的权威执行语义：不得由 manifest 单方面改写。
+FROZEN_EXECUTION_CONTRACT: tuple[tuple[str, object], ...] = (
+    ("authority", "RQAlpha 6.3.x native execution"),
+    ("order_api", "order_target_portfolio"),
+    ("partial_fill_on_insufficient_cash", True),
+    ("matching_type", "current_bar"),
+    ("volume_limit", True),
+    ("volume_percent", 0.25),
+    ("replay_input", "committed frozen target schedule only"),
+    ("recomputation_inside_replay", "none"),
+)
+
 RECORD_FIELDS = (
     "record_type",
     "candidate_id",
@@ -125,14 +162,16 @@ def verify_strategy_semantics(manifest: dict[str, Any], root: Path = ROOT) -> No
     for field, actual in expected.items():
         if semantics[field] != actual:
             raise ValueError(f"candidate manifest 与当前冻结策略不一致: {field}")
-    if semantics["minimum_eligible_assets"] != MINIMUM_ELIGIBLE_ASSETS:
-        raise ValueError("candidate manifest 的 min eligible 不是 6")
-    if semantics["returns_window"] != RETURNS_WINDOW:
-        raise ValueError("candidate manifest 的 returns window 不是 60")
-    if semantics["target_submission_policy"] != "MONTHLY_TARGET_SUBMISSION":
-        raise ValueError("S4C 的目标提交政策被改写")
-    if semantics["execution_timing"] != "不得早于信号日后的下一 canonical 观测日":
-        raise ValueError("candidate manifest 的执行时点语义被改写")
+    for field, frozen_value in FROZEN_STRATEGY_CONTRACT:
+        if semantics.get(field) != frozen_value:
+            raise ValueError(f"S4C 冻结经济语义被改写: {field}")
+
+
+def verify_execution_semantics(manifest: dict[str, Any]) -> None:
+    execution = manifest["execution_semantics"]
+    for field, frozen_value in FROZEN_EXECUTION_CONTRACT:
+        if execution.get(field) != frozen_value:
+            raise ValueError(f"S4C 冻结执行语义被改写: {field}")
 
 
 def verify_frozen_targets(
@@ -172,6 +211,7 @@ def verify_candidate(
         raise ValueError("本 Goal 不授权激活 S4C R1 前瞻影子")
     verify_prospective_boundary(manifest)
     verify_strategy_semantics(manifest, root)
+    verify_execution_semantics(manifest)
     if verify_framework:
         verify_framework_versions(manifest)
     for relative_path, expected_hash in manifest["frozen_identity_artifacts"].items():

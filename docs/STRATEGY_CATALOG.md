@@ -132,6 +132,6 @@ V1 的 `1e-12` reproduction 判据不可跨平台达成，作为 `INVALID_RUN` �
 | S4A | inverse-volatility allocation | E2 | 复杂度是否有增量价值，REJECTED | inverse-vol 方法无用 |
 | S8A | moving-average tactical allocation | E3 | 两资产中国ETF规则，REJECTED | trend literature 被否定 |
 | S27A | trend + inverse-vol sizing | E3 | candidate-freeze review eligible | 新异常或生产资格 |
-| S4B / S4C | equal risk contribution | E2 | S4B Riskfolio BLOCKED；S4C R1 FROZEN（前瞻未激活，非生产候选） | ERC 方法、文献、执行能力或前瞻有效性已被证明 |
+| S4B / S4C | equal risk contribution | E2 | S4B Riskfolio BLOCKED；S4C R1 FROZEN（前瞻未激活，非生产候选） | 前瞻有效性、生产适用性或 ERC 的一般优越性；历史冻结目标日程的原生可执行性已证明，但不构成未来可执行性或有效性证据 |
 | S10A | unlevered volatility targeting | E3 | native cash rejection 后 execution review 未推进 | volatility-managed 文献已被本地证明 |
 | S30 | naive/static diversification | E1 | REFERENCE_BASELINE | alpha 策略 |

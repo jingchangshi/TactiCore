@@ -663,6 +663,35 @@ def test_runner_refuses_to_write_when_not_active(
     assert shadow.observation_record_count(root / "research/shadow/s4c_r1/observations.csv") == 0
 
 
+@pytest.mark.parametrize(
+    ("as_of", "match"),
+    [
+        ("2026-09-29", "first_eligible_prospective_signal"),
+        ("2026-09-13", "first_eligible_prospective_signal"),
+        ("2026-08-31", "严格晚于 historical_data_cutoff"),
+    ],
+)
+def test_runner_refuses_real_record_before_first_eligible_date(
+    tmp_path: Path,
+    candidate_verification_stubbed: None,
+    frozen_record_time: None,
+    as_of: str,
+    match: str,
+) -> None:
+    """写入门必须以候选 completeness 之后的边界校验拒绝非前瞻时点，且不落盘。"""
+    root = _fake_repo(tmp_path)
+    _write_activation(root)
+    vintage = _write_vintage(root / shadow.VINTAGE_PARENT_RELATIVE_PATH, as_of)
+    observations = root / "research/shadow/s4c_r1/observations.csv"
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match=match):
+        shadow.run_decision(pd.Timestamp(as_of), vintage, root=root)
+
+    assert observations.read_bytes() == before
+    assert shadow.observation_record_count(observations) == 0
+
+
 def test_production_write_path_appends_once_and_rejects_rerun(
     tmp_path: Path,
     candidate_verification_stubbed: None,

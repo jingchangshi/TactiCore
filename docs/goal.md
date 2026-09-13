@@ -1,4 +1,4 @@
-# Goal: TactiCore — S4C Authoritative Execution Review
+# Goal: TactiCore — S4C Candidate Freeze Review
 
 Repository:
 
@@ -12,34 +12,61 @@ Execution mode:
 Codex with ChatGPT / C2C
 ```
 
-本 Goal 只回答一个问题：**冻结语义的 S4C ERC 目标能否在 RQAlpha 原生语义下被忠实执行？** External Evidence Gate（`ERC_RISK_PARITY`，E2 成熟构造方法，`UPSTREAM_COMPARE`）、PIT Tradability Gate、冻结范围（skfolio `RiskBudgeting` / `RiskMeasure.VARIANCE` / equal risk budgets / long-only、fully invested、无杠杆 / min eligible 6 / 60 aligned returns / 511010.SS fallback / 月末估计→下一 canonical observation execution / 10 bps fee + 5 bps slippage）与禁止事项全部在 Protocol V1/V2 中预先冻结。
+本 Goal 由独立研究优先级决策授权，问题只有一个：**已经通过 transfer、PIT correctness、bounded robustness 与 RQAlpha 6.3.0 原生执行审查的 S4C 经济身份，是否应冻结为研究候选 `S4C_R1`？**
 
-## Status: completed
+优先级决策见 [`research/results/RESEARCH_PRIORITY_DECISION_V1.md`](../research/results/RESEARCH_PRIORITY_DECISION_V1.md)；它在任何候选实现之前已提交。本 Goal 不重开该决策，也不自动执行第二顺位选项。
+
+## External Evidence Gate
 
 | 项 | 值 |
 | --- | --- |
-| Starting HEAD | `f85b802` |
-| Architect review commit | `8df12b2` |
-| Protocol V1 freeze | `356ed98` |
-| Protocol V2 freeze | `61c4962` |
-| Commit B（结果与文档同步） | `ec01d30` |
-| Milestone 结果 HEAD | `ec01d30e013b9018196d86bab0a300000e7588de` |
-| 冻结目标 | 161 行，2013-04-01 至 2026-08-03，SHA-256 `f7bf398d7f8a016933cbe287bfa1cac98b3cccf175d40ef99092b95db1227e47` |
-| 机械决定 | `ADVANCE_S4C_TO_CANDIDATE_FREEZE_REVIEW` |
-| RQAlpha 6.3.0 | CAGR 12.0929%、signed MaxDD -18.3512%、Sharpe 0.7758、cash rejection 0、平均 execution-date deviation 0.3246%、material dates 3/161 |
+| Canonical mapping | `ERC_RISK_PARITY` — equal risk contribution / risk budgeting |
+| External tier | `E2_ESTABLISHED_METHOD` |
+| External conclusion | 成熟构造方法，不是 alpha 主张 |
+| Relevant contradictions | 协方差/相关性估计、无约束下的集中度、无杠杆 ETF 域实现 |
+| Upstream implementation | 官方 skfolio `RiskBudgeting`；S4B 的 Riskfolio-Lib dependency block 保持历史事实 |
+| Existing TactiCore evidence | S4C transfer PASS → PIT correctness restored → 40/60/80 bounded robustness PASS → RQAlpha 6.3.0 authoritative execution PASS |
+| Remaining local gap | 该历史身份是否完备、可复现、可追溯、可执行且具备前瞻协议准备度 |
+| Research action | `UPSTREAM_COMPARE` 已通过执行阶段完成；当前动作只是候选身份/冻结裁决 |
 
-V1 的 `1e-12` reproduction 判据不可跨平台达成，作为 `INVALID_RUN` R1 保留；Protocol V2 只替代该 portability 判据并加入已冻结的数值容差，不放松任何 native execution gate，也不改变 S4C 经济语义或冻结目标。S2 未改动，仍是唯一 prospective shadow；集中度（P95 max weight 51.84%）仍是未消除的风险特征。
+## PIT Tradability Gate
 
-结果、文档同步与 ledger 条目（RL-040）已记录于 Commit B `ec01d30`，完整验证通过（pytest 123 passed、ruff、ruff format、mypy、strict S2 R1 verification），并已推送到 `origin/main`。紧随其后的 metadata-only 收尾提交只同步本文件，不改变任何结果、语义或验证状态；该提交 SHA 见 `git log`。
+沿用 RL-031 / RL-033 已关闭的 PIT contract：date-aware universe、asset lifetime metadata、上市前 fallback 处理、execution price 缺失处理与 strategy inception（`2013-04-01`）均已建立；正目标只在 execution timestamp 上标的 active 且 canonical 价格有限、正值时合法。本 Goal 不重新审计该契约，只验证它仍支撑冻结身份。
 
-## 里程碑边界
+## 冻结范围（禁止事项）
 
-本里程碑只授权了 Batch 05 之后的一个 research Goal：S4C authoritative execution review。该 Goal 现已完成并记录，**本 Goal 不自动选择或启动下一阶段**。
+```text
+不新增 return window
+不重跑 40 / 80
+不新增 covariance estimator
+不搜索 risk measure
+不搜索 solver
+不优化 weight cap 或集中度 cap
+不改 fallback
+不优化 asset universe
+不调 cost
+不按表现选择参数
+```
 
-S4C 的下一有界问题是独立的 `S4C_CANDIDATE_FREEZE_REVIEW`：判断 S4C 是否具备冻结为研究候选所需的经济身份、冻结清单、数据 provenance、执行语义与前瞻协议准备度。它目前只是**资格**，不是已授权的活动 Goal，须由下一次独立的 research-priority 决策授权。
+审查的对象是**实际获得资格的 S4C**，不是可以被改进的 S4C。
 
-无论何时开始，边界都是：不得改参数、窗口、risk measure 或 fallback；不得添加集中度 cap；不得以本次执行结果重跑历史区间；不得创建 candidate 或激活 prospective shadow（candidate-freeze review 本身才是判断这些条件的场所）。
+## 允许的终局裁决
 
-## Status: AWAIT_NEXT_ARCHITECT_RESEARCH_DECISION
+```text
+FREEZE_S4C_RESEARCH_CANDIDATE_R1
+DEFER_S4C_CANDIDATE_FREEZE
+REJECT_S4C_CANDIDATE_FREEZE
+BLOCK_S4C_CANDIDATE_FREEZE_CORRECTNESS
+```
 
-不启动 candidate-freeze review、其他策略、Batch 06 或新的 prospective shadow；不修改 S2、冻结产物、永久架构/规则或外部证据 tier。
+不使用含糊的 PASS。
+
+## 边界
+
+只有当审查独立得出 `FREEZE_S4C_RESEARCH_CANDIDATE_R1` 时，才创建最小候选身份（`research/shadow/s4c_r1/`）并预注册前瞻协议；不得建设通用 candidate framework、scheduler、daemon、数据库或注册服务。
+
+无论裁决如何：不得改写 S2 R1 及其冻结输入、不得改写 Batch 05 冻结产物或 `INVALID_RUN`、不得用历史结果制造前瞻证据、不得继续第二顺位研究方向。
+
+## Status
+
+本 Goal 由 C2C 协议执行；完成时的裁决、证据链状态与文档同步记录在 `research/results/`，并且只在其拥有的语义变化时更新 `CURRENT_STATE.md`、`RESEARCH_LEDGER.md`、`STRATEGY_CATALOG.md`、`STRATEGY_RESEARCH_MAP.md`。

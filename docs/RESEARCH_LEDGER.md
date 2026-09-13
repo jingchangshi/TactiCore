@@ -385,3 +385,11 @@
 - 结论：`ADVANCE_S4C_TO_CANDIDATE_FREEZE_REVIEW`。RQAlpha CAGR 12.0929%、signed MaxDD -18.3512%、Sharpe 0.7758、cash rejection 0、平均 execution-date total absolute weight deviation 0.3246%、material dates 3/161（1.86%：两个 >5pp 单资产差异都有具体 native 原因，第三个是最大单资产偏差 3.84pp、现金残差 3.80% 的组合层偏离，不产生 5pp 条目）、平均现金 0.1399%。V1 的 `1e-12` reproduction 判据不可跨平台达成，作为 INVALID_RUN R1 保留并由 Protocol V2 的数值 portability 容差替代；该项替代不放松任何 native gate。集中度（P95 max weight 51.84%、maximum 66.35%）仍是未消除的风险特征。本条目只授予 candidate-freeze review 资格，不授权启动该阶段。
 - 证据：[S4C execution review V2](../research/results/S4C_RQALPHA_EXECUTION_REVIEW_V2.md)、[Protocol V2](../research/batches/s4c_execution_review/PROTOCOL_V2.md)、[INVALID_RUN R1](../research/results/INVALID_RUN_S4C_EXECUTION_R1.md)。
 - 重开条件：仅在 canonical 数据契约、S4C 经济语义或 RQAlpha 订单/撮合/账户语义变化，或出现具体矛盾证据时；不得以集中度、历史收益或参数偏好为由改参数、加 cap 或重跑窗口。
+
+## RL-041 研究优先级决策（Batch 05 之后的首个独立选择）
+
+- 状态：CLOSED。在候选实现之前完成一次独立 RESEARCH_PRIORITY_DECISION，比较 A（S4C candidate-freeze review）、B（S27A candidate-freeze review）、C（只保留 S2 前瞻影子并等待）、D（开启新的经济正交本地缺口），并把结果作为 Commit 先行提交。
+- 范围：只做优先级裁决与 Goal 授权；不实现候选、不激活前瞻、不重跑历史、不修改任何冻结产物或 S2。
+- 结论：选定 **A**，唯一主 Goal 为 `S4C_CANDIDATE_FREEZE_REVIEW`。判据与 `STRATEGY_RESEARCH_MAP` 的未来选择规则一致（相关性、证据质量、经济正交、低实现自由度、机制区分度），历史 CAGR 不参与排序。S4C 同时满足阶段已获得资格、实现自由度接近零、机制与 S2 不同；S27A 与 S2 共用趋势信号故继续推迟；C 不减少任何当前可减少的不确定性；D 需先过 External Evidence Gate 与 PIT Tradability Gate，成本与数据挖掘风险更高。它同时确认候选人名额是稀缺预算：是否占用取决于 S4C 冻结审查自身的终局裁决，而不是本次优先级决策。
+- 证据：[research priority decision](../research/results/RESEARCH_PRIORITY_DECISION_V1.md)、[Goal](goal.md)。
+- 重开条件：仅当 S4C 冻结审查终局裁决出现新矛盾证据、S2 候选完整性失败，或候选预算/前瞻注意力分配需要用户决策时；不得用历史收益或“换名重做”重开本次排序。

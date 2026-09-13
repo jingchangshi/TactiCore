@@ -2,7 +2,7 @@
 
 ## 当前策略与最新决策
 
-S2 Research Candidate R1 保持 **`FROZEN / PROSPECTIVE_SHADOW_ACTIVE`**，仍是唯一活动前瞻候选，且 PIT integrity pass。S4C 权威执行审查已完成并通过全部预注册 gate，`ADVANCE_S4C_TO_CANDIDATE_FREEZE_REVIEW`；S27A 保留同一资格但推迟；S10A 维持 `DO_NOT_ADVANCE_S10A_EXECUTION`。三者均非候选、前瞻或生产批准。
+S2 Research Candidate R1 保持 **`FROZEN / PROSPECTIVE_SHADOW_ACTIVE`**，仍是唯一活动前瞻候选，且 PIT integrity pass。S4C 权威执行审查已完成并通过全部预注册 gate，`ADVANCE_S4C_TO_CANDIDATE_FREEZE_REVIEW`；S27A 保留同一资格但推迟；S10A 维持 `DO_NOT_ADVANCE_S10A_EXECUTION`。独立 [research priority decision](../research/results/RESEARCH_PRIORITY_DECISION_V1.md) 已在 A/B/C/D 之间完成比较并选定 A，因此唯一活动 Goal 是 S4C candidate-freeze review。三者均非候选、前瞻或生产批准。
 
 ## 最新决定性证据
 
@@ -14,10 +14,10 @@ S2 仍缺少足够前瞻 observation：中期完整性复核不早于 12 个日�
 
 ## 下一项唯一实验
 
-当前没有已授权的下一项实验。S4C 的下一有界问题是独立的 candidate-freeze review，但它只是**资格**：本里程碑不自动选择或启动该阶段，须由下一次独立的 research-priority 决策授权。无论何时开始，都不得以集中度或历史收益为由改参数、加 cap 或重跑窗口。
+唯一已授权实验是 **`S4C_CANDIDATE_FREEZE_REVIEW`**，由独立的 [research priority decision](../research/results/RESEARCH_PRIORITY_DECISION_V1.md) 选定（V1，Commit 先行于任何候选实现）。它只裁决已通过 transfer、PIT correctness、40/60/80 bounded robustness 与 RQAlpha 6.3.0 原生执行的 S4C 经济身份是否冻结为 `S4C_R1`；终局裁决只允许 `FREEZE_S4C_RESEARCH_CANDIDATE_R1`、`DEFER_S4C_CANDIDATE_FREEZE`、`REJECT_S4C_CANDIDATE_FREEZE`、`BLOCK_S4C_CANDIDATE_FREEZE_CORRECTNESS`。不得以集中度或历史收益为由改参数、加 cap、重跑窗口或用历史结果制造前瞻证据。
 
 ## External Evidence Foundation
 
 `BATCH_00_EXTERNAL_EVIDENCE_FOUNDATION_COMPLETE` 保持有效；Batch 02 的三条有界 gap 已按外部证据、冻结协议和本地证据完成。外部 tier 未因本地结果改变，Theme Rotation 未开始。
 
-当前前沿为 `AWAIT_NEXT_ARCHITECT_RESEARCH_DECISION`：Batch 05 之后的唯一授权 Goal（S4C authoritative execution review）已完成并记录，里程碑结束，不再自动开启下一阶段。未来策略选择必须先完成 External Evidence Gate 与 PIT Tradability Gate，并从本地 remaining gap 而非历史收益或叙事开始。
+当前前沿为 `S4C_CANDIDATE_FREEZE_REVIEW_ACTIVE`：研究优先级决策已在 A（S4C candidate-freeze review）、B（S27A candidate-freeze review）、C（暂不新增候选）、D（新的经济正交本地缺口）之间比较并选定 A；S27A 资格保留但继续推迟，D 需先通过 External Evidence Gate 与 PIT Tradability Gate。未来策略选择仍必须从本地 remaining gap 而非历史收益或叙事开始。

@@ -1,5 +1,8 @@
 # Portfolio Objective 10P — 预注册协议 V1
 
+> 状态：由 [`PROTOCOL_V2.md`](PROTOCOL_V2.md) 取代裁决基础、窗口归属、年度报告口径、复现容差与
+> 输出 schema。V1 保留为历史记录，本文件其余条款继续有效。
+
 本协议在任何 blend 结果产生之前提交（Commit A）。它只回答一个问题，且只做历史诊断。
 
 ## 1. 唯一问题

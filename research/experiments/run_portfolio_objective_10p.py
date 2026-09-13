@@ -69,6 +69,26 @@ BLEND_WEIGHTS: tuple[tuple[float, float], ...] = (
     (0.25, 0.75),
     (0.00, 1.00),
 )
+BLEND_SERIES_NAMES = tuple(
+    f"BLEND_S2_{int(s2_share * 100):02d}_S4C_{int(s4c_share * 100):02d}"
+    for s2_share, s4c_share in BLEND_WEIGHTS
+)
+INTERIOR_BLEND_WEIGHTS = tuple(
+    (s2_share, s4c_share)
+    for s2_share, s4c_share in BLEND_WEIGHTS
+    if s2_share > 0.0 and s4c_share > 0.0
+)
+INTERIOR_BLEND_SERIES_NAMES = tuple(
+    f"BLEND_S2_{int(s2_share * 100):02d}_S4C_{int(s4c_share * 100):02d}"
+    for s2_share, s4c_share in INTERIOR_BLEND_WEIGHTS
+)
+ANCHOR_SERIES_NAMES = ("S2_R1_committed_anchor", "S4C_R1_committed_anchor")
+S30_SERIES_NAME = "S30_REFERENCE"
+
+# 主窗口只包含两个真实候选 anchor 与五个派生 blend；S30 只出现在单独标注的共同窗口比较中，
+# 并且永远不是第三个策略组件。派生端点不参与可行性裁决。
+PRIMARY_SERIES_NAMES = ANCHOR_SERIES_NAMES + BLEND_SERIES_NAMES
+COMMON_WINDOW_SERIES_NAMES = PRIMARY_SERIES_NAMES + (S30_SERIES_NAME,)
 
 # 预注册的目标判定阈值；它们只用于把历史诊断分类，不是收益预测或参数搜索。
 TARGET_CAGR = 0.10
@@ -79,6 +99,21 @@ COMPLEXITY_DRAWDOWN_MARGIN = 0.02
 # 已提交冻结日程以 8 位小数保存；S2 的 1/9 sleeve 因此合计为 0.99999999。
 # 该容差只吸收已记录的 CSV 定点舍入，不改变任何冻结数值，也不授权重新归一化。
 ROW_SUM_TOLERANCE = 1e-7
+
+# 复现 gate 的容差：直接回放**已提交的 8 位小数**冻结目标，与当初用内存全精度目标计算的
+# 已提交指标之间必然存在定点舍入差。实测偏差（见 reproduction CSV）远小于以下容差，而任何真实
+# 语义错误都会显著超过它。
+REPRODUCTION_METRIC_TOLERANCE = 1e-4
+REPRODUCTION_TURNOVER_TOLERANCE = 1e-3
+REPRODUCTION_COLUMNS = (
+    "series",
+    "metric",
+    "replayed",
+    "committed",
+    "absolute_difference",
+    "tolerance",
+    "within_tolerance",
+)
 
 PERIODS = (
     ("2013-2016", "2013-04-01", "2016-12-31"),
@@ -118,6 +153,7 @@ ROLLING_COLUMNS = (
     "sharpe_median",
     "positive_cagr_share",
 )
+ANNUAL_COLUMNS = ("series", "year", "return")
 DECISION_TOKENS = (
     "FEASIBLE_WITH_EXISTING_COMPONENTS",
     "FEASIBLE_BUT_DEPENDS_TOO_HEAVILY_ON_ONE_COMPONENT",
@@ -324,26 +360,34 @@ def correlation_row(
 
 
 def objective_feasibility_decision(summary: pd.DataFrame, *, corrected: bool) -> str:
-    """按预注册阈值给出唯一裁决；历史 CAGR 不构成前瞻或生产结论。"""
+    """按预注册阈值给出唯一裁决；历史 CAGR 不构成前瞻或生产结论。
+
+    裁决只依据**三个内部固定 blend**与**两个真实候选 anchor**。派生端点（100/0、0/100）是
+    组合层派生日程，既不是 standalone 候选，也不参与分类。
+    """
     if not corrected:
         return "BLOCKED_BY_CORRECTNESS"
-    blends = summary.loc[summary["series_kind"].eq("blend")]
-    if len(blends) != len(BLEND_WEIGHTS):
-        raise ValueError("blend 结果必须且只能包含预注册的固定权重")
-    best_overall = float(blends["cagr"].max())
-    interior = blends.loc[blends["s2_share"].ne(0.0) & blends["s4c_share"].ne(0.0)]
+    interior = summary.loc[summary["series"].isin(INTERIOR_BLEND_SERIES_NAMES)]
+    anchors = summary.loc[summary["series"].isin(ANCHOR_SERIES_NAMES)]
+    if len(interior) != len(INTERIOR_BLEND_WEIGHTS):
+        raise ValueError("内部 blend 结果必须且只能包含预注册的内部固定权重")
+    if len(anchors) != len(ANCHOR_SERIES_NAMES):
+        raise ValueError("必须同时提供两个 standalone 候选 anchor")
     best_interior = float(interior["cagr"].max())
+    best_anchor = float(anchors["cagr"].max())
     if best_interior >= TARGET_CAGR:
         return "FEASIBLE_WITH_EXISTING_COMPONENTS"
-    if best_overall >= TARGET_CAGR:
+    if best_anchor >= TARGET_CAGR:
         return "FEASIBLE_BUT_DEPENDS_TOO_HEAVILY_ON_ONE_COMPONENT"
-    if best_overall >= NEAR_TARGET_CAGR:
+    if max(best_interior, best_anchor) >= NEAR_TARGET_CAGR:
         return "PLAUSIBLE_BUT_PROSPECTIVE_EVIDENCE_INSUFFICIENT"
     return "NOT_SUPPORTED_BY_EXISTING_COMPONENTS"
 
 
 def complexity_verdict(blends: pd.DataFrame, s30: pd.Series) -> str:
-    """S30 是复杂度门槛；这里只回答动态复杂度是否带来可记录的增量。"""
+    """S30 是复杂度门槛；只用内部固定 blend 回答动态复杂度是否带来可记录的增量。"""
+    if not set(blends["series"]).issubset(set(INTERIOR_BLEND_SERIES_NAMES)):
+        raise ValueError("复杂度比较只能使用内部固定 blend，不使用派生端点")
     best = blends.sort_values("cagr", ascending=False).iloc[0]
     cagr_margin = float(best["cagr"]) - float(s30["cagr"])
     drawdown_margin = float(best["max_drawdown"]) - float(s30["max_drawdown"])
@@ -387,9 +431,7 @@ def diversification_rows(summary: pd.DataFrame) -> list[dict[str, Any]]:
 def verify_reproductions(
     s2_result: ResearchResult,
     s4c_result: ResearchResult,
-    *,
-    tolerance: float = 1e-9,
-) -> bool:
+) -> tuple[bool, pd.DataFrame]:
     """两个冻结组件的 anchor 必须复现已提交证据，否则一切比较不可信。"""
     committed_s2 = pd.read_csv(S2_PLATEAU_PATH)
     committed_s2 = committed_s2.loc[committed_s2["trend_window"].eq(200)].iloc[0]
@@ -399,23 +441,48 @@ def verify_reproductions(
         S2_REPRODUCTION_START,
         EVALUATION_END,
     )
-    s2_ok = (
-        all(
-            abs(float(s2_metrics[key]) - float(committed_s2[key])) < tolerance
-            for key in ("cagr", "max_drawdown", "sharpe", "calmar")
-        )
-        and abs(
-            realized_turnover(s2_result.portfolio, S2_REPRODUCTION_START, EVALUATION_END)
-            - float(committed_s2["turnover"])
-        )
-        < 1e-6
-    )
-    committed_s4c = pd.read_csv(S4C_COMPARISON_PATH).iloc[0]
-    s4c_ok = all(
-        abs(float(s4c_result.metrics[key]) - float(committed_s4c[key])) < 1e-12
+    s2_replayed = {
+        **{key: float(s2_metrics[key]) for key in ("cagr", "max_drawdown", "sharpe", "calmar")},
+        "turnover": realized_turnover(s2_result.portfolio, S2_REPRODUCTION_START, EVALUATION_END),
+    }
+    s2_committed = {
+        key: float(committed_s2[key])
         for key in ("cagr", "max_drawdown", "sharpe", "calmar", "turnover")
-    )
-    return bool(s2_ok and s4c_ok)
+    }
+    committed_s4c = pd.read_csv(S4C_COMPARISON_PATH).iloc[0]
+    s4c_replayed = {
+        key: float(s4c_result.metrics[key])
+        for key in ("cagr", "max_drawdown", "sharpe", "calmar", "turnover")
+    }
+    s4c_committed = {
+        key: float(committed_s4c[key])
+        for key in ("cagr", "max_drawdown", "sharpe", "calmar", "turnover")
+    }
+    rows: list[dict[str, Any]] = []
+    for label, replayed, committed in (
+        ("S2_R1_committed_anchor", s2_replayed, s2_committed),
+        ("S4C_R1_committed_anchor", s4c_replayed, s4c_committed),
+    ):
+        for metric, value in replayed.items():
+            tolerance = (
+                REPRODUCTION_TURNOVER_TOLERANCE
+                if metric == "turnover"
+                else REPRODUCTION_METRIC_TOLERANCE
+            )
+            difference = abs(value - float(committed[metric]))
+            rows.append(
+                {
+                    "series": label,
+                    "metric": metric,
+                    "replayed": value,
+                    "committed": float(committed[metric]),
+                    "absolute_difference": difference,
+                    "tolerance": tolerance,
+                    "within_tolerance": bool(difference <= tolerance),
+                }
+            )
+    frame = pd.DataFrame(rows).reindex(columns=REPRODUCTION_COLUMNS)
+    return bool(frame["within_tolerance"].all()), frame
 
 
 def main() -> None:
@@ -437,7 +504,7 @@ def main() -> None:
         prices, s2_schedule, metric_start=S2_REPRODUCTION_START, **replay_kwargs
     )
     s4c_anchor = replay_schedule(prices, s4c_schedule, metric_start=PRIMARY_START, **replay_kwargs)
-    corrected = verify_reproductions(s2_anchor, s4c_anchor)
+    corrected, reproduction = verify_reproductions(s2_anchor, s4c_anchor)
 
     blend_schedules = {
         f"BLEND_S2_{int(s2_share * 100):02d}_S4C_{int(s4c_share * 100):02d}": (
@@ -466,34 +533,29 @@ def main() -> None:
         lifetimes=lifetimes,
     )
 
-    series_specs: list[tuple[str, str, str, ResearchResult, float | None, float | None]] = [
+    # 主窗口只含两个候选 anchor 与五个派生 blend；S30 只进入共同窗口比较。
+    specs: list[tuple[str, str, str, ResearchResult, float | None, float | None, pd.Timestamp]] = [
         (
-            "S2_R1_committed_anchor",
+            ANCHOR_SERIES_NAMES[0],
             "component_anchor",
             "SIGNAL_CHANGE_ONLY (committed R1, 103 rows)",
             s2_anchor,
             None,
             None,
+            PRIMARY_START,
         ),
         (
-            "S4C_R1_committed_anchor",
+            ANCHOR_SERIES_NAMES[1],
             "component_anchor",
             "MONTHLY_TARGET_SUBMISSION (committed R1, 161 rows)",
             s4c_anchor,
             None,
             None,
-        ),
-        (
-            "S30_REFERENCE",
-            "reference_baseline",
-            "ANNUAL_TARGET_SUBMISSION (S30 reference)",
-            s30_result,
-            None,
-            None,
+            PRIMARY_START,
         ),
     ]
     for name, (_, s2_share, s4c_share) in blend_schedules.items():
-        series_specs.append(
+        specs.append(
             (
                 name,
                 "blend",
@@ -501,8 +563,25 @@ def main() -> None:
                 blend_results[name],
                 s2_share,
                 s4c_share,
+                PRIMARY_START,
             )
         )
+    primary_specs = list(specs)
+    common_window_specs = specs + [
+        (
+            S30_SERIES_NAME,
+            "reference_baseline",
+            "ANNUAL_TARGET_SUBMISSION (S30 reference)",
+            s30_result,
+            None,
+            None,
+            s30_start,
+        )
+    ]
+    if tuple(spec[0] for spec in primary_specs) != PRIMARY_SERIES_NAMES:
+        raise ValueError("主窗口序列必须与预注册列表一致（不含 S30）")
+    if tuple(spec[0] for spec in common_window_specs) != COMMON_WINDOW_SERIES_NAMES:
+        raise ValueError("共同窗口序列必须与预注册列表一致（含 S30）")
 
     summary = pd.DataFrame(
         [
@@ -511,12 +590,12 @@ def main() -> None:
                 kind,
                 policy,
                 result,
-                PRIMARY_START,
+                start,
                 EVALUATION_END,
                 s2_share=s2_share,
                 s4c_share=s4c_share,
             )
-            for name, kind, policy, result, s2_share, s4c_share in series_specs
+            for name, kind, policy, result, s2_share, s4c_share, start in primary_specs
         ]
     ).reindex(columns=SUMMARY_COLUMNS)
     common_summary = pd.DataFrame(
@@ -526,20 +605,16 @@ def main() -> None:
                 kind,
                 policy,
                 result,
-                s30_start,
+                max(start, s30_start),
                 EVALUATION_END,
                 s2_share=s2_share,
                 s4c_share=s4c_share,
             )
-            for name, kind, policy, result, s2_share, s4c_share in series_specs
+            for name, kind, policy, result, s2_share, s4c_share, start in common_window_specs
         ]
     ).reindex(columns=SUMMARY_COLUMNS)
 
-    rolling_series = [
-        ("S2_R1_committed", s2_anchor),
-        ("S4C_R1_committed", s4c_anchor),
-        *[(name, blend_results[name]) for name in blend_schedules],
-    ]
+    rolling_series = [(spec[0], spec[3]) for spec in primary_specs]
     period_frame = pd.DataFrame(
         [row for name, result in rolling_series for row in period_rows(name, result)]
     ).reindex(columns=PERIOD_COLUMNS)
@@ -552,30 +627,32 @@ def main() -> None:
     diversification = pd.DataFrame(diversification_rows(summary)).reindex(
         columns=DIVERSIFICATION_COLUMNS
     )
-    annual_source = [
-        ("S2_R1_committed", s2_anchor),
-        ("S4C_R1_committed", s4c_anchor),
-        ("S30_REFERENCE", s30_result),
-        *[(name, blend_results[name]) for name in blend_schedules],
-    ]
+    # 每个序列只在自己的可评价起点之后报告年度收益；不得为 S30 制造上市前年份。
     annual = pd.DataFrame(
-        {name: annual_returns(result.equity.loc[PRIMARY_START:]) for name, result in annual_source}
-    )
-    annual.index.name = "year"
-    annual = annual.reset_index()
+        [
+            {
+                "series": name,
+                "year": int(year),
+                "return": float(value),
+            }
+            for name, kind, policy, result, s2_share, s4c_share, start in common_window_specs
+            for year, value in annual_returns(result.equity.loc[max(start, s30_start) :]).items()
+        ]
+    ).reindex(columns=ANNUAL_COLUMNS)
 
     decision = objective_feasibility_decision(summary, corrected=corrected)
     if decision not in DECISION_TOKENS:
         raise ValueError("裁决必须属于预注册的五个 token")
-    blends_summary = summary.loc[summary["series_kind"].eq("blend")]
-    common_blends = common_summary.loc[common_summary["series_kind"].eq("blend")]
-    s30_row = common_summary.loc[common_summary["series"].eq("S30_REFERENCE")].iloc[0]
-    complexity = complexity_verdict(common_blends, s30_row)
+    interior_summary = summary.loc[summary["series"].isin(INTERIOR_BLEND_SERIES_NAMES)]
+    common_interior = common_summary.loc[common_summary["series"].isin(INTERIOR_BLEND_SERIES_NAMES)]
+    s30_row = common_summary.loc[common_summary["series"].eq(S30_SERIES_NAME)].iloc[0]
+    complexity = complexity_verdict(common_interior, s30_row)
 
     for filename, frame in (
         ("portfolio_objective_10p_summary_v1.csv", summary),
         ("portfolio_objective_10p_common_window_v1.csv", common_summary),
         ("portfolio_objective_10p_diversification_v1.csv", diversification),
+        ("portfolio_objective_10p_reproduction_v1.csv", reproduction),
         ("portfolio_objective_10p_periods_v1.csv", period_frame),
         ("portfolio_objective_10p_rolling_v1.csv", rolling_frame),
         ("portfolio_objective_10p_correlation_v1.csv", correlation),
@@ -585,7 +662,7 @@ def main() -> None:
 
     print(summary.to_string(index=False))
     print(f"\nreproductions_ok={corrected}")
-    print(f"blend_best_cagr={float(blends_summary['cagr'].max()):.6f}")
+    print(f"interior_best_cagr={float(interior_summary['cagr'].max()):.6f}")
     print(f"decision={decision}")
     print(f"complexity={complexity}")
 

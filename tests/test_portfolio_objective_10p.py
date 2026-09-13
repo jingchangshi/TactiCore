@@ -190,72 +190,96 @@ def test_every_blend_row_is_pit_legal(
         validate_execution_targets(blend, prices, mask, lifetimes)
 
 
-def _blend_summary(cagr_by_pair: dict[tuple[float, float], float]) -> pd.DataFrame:
-    rows = [
-        {"series_kind": "blend", "s2_share": s2_share, "s4c_share": s4c_share, "cagr": cagr}
-        for (s2_share, s4c_share), cagr in cagr_by_pair.items()
-    ]
+def _decision_summary(
+    anchor_cagrs: tuple[float, float],
+    interior_cagrs: tuple[float, float, float],
+    endpoint_cagrs: tuple[float, float],
+) -> pd.DataFrame:
+    """构造裁决输入：两个真实 anchor、三个内部 blend、两个上下文端点。"""
+    rows: list[dict[str, object]] = []
+    for name, cagr in zip(objective.ANCHOR_SERIES_NAMES, anchor_cagrs, strict=True):
+        rows.append({"series": name, "series_kind": "component_anchor", "cagr": cagr})
+    for name, cagr in zip(objective.INTERIOR_BLEND_SERIES_NAMES, interior_cagrs, strict=True):
+        rows.append({"series": name, "series_kind": "blend", "cagr": cagr})
+    for name, cagr in zip(
+        (
+            "BLEND_S2_100_S4C_00",
+            "BLEND_S2_00_S4C_100",
+        ),
+        endpoint_cagrs,
+        strict=True,
+    ):
+        rows.append({"series": name, "series_kind": "blend", "cagr": cagr})
     return pd.DataFrame(rows)
 
 
 @pytest.mark.parametrize(
-    ("cagr_by_pair", "expected"),
+    ("anchors", "interior", "endpoints", "expected"),
     [
+        ((0.08, 0.11), (0.105, 0.115, 0.125), (0.09, 0.13), "FEASIBLE_WITH_EXISTING_COMPONENTS"),
         (
-            {
-                (1.0, 0.0): 0.12,
-                (0.75, 0.25): 0.115,
-                (0.5, 0.5): 0.105,
-                (0.25, 0.75): 0.10,
-                (0.0, 1.0): 0.09,
-            },
-            "FEASIBLE_WITH_EXISTING_COMPONENTS",
-        ),
-        (
-            {
-                (1.0, 0.0): 0.13,
-                (0.75, 0.25): 0.099,
-                (0.5, 0.5): 0.098,
-                (0.25, 0.75): 0.097,
-                (0.0, 1.0): 0.09,
-            },
+            (0.08, 0.105),
+            (0.097, 0.098, 0.099),
+            (0.09, 0.11),
             "FEASIBLE_BUT_DEPENDS_TOO_HEAVILY_ON_ONE_COMPONENT",
         ),
         (
-            {
-                (1.0, 0.0): 0.098,
-                (0.75, 0.25): 0.097,
-                (0.5, 0.5): 0.096,
-                (0.25, 0.75): 0.095,
-                (0.0, 1.0): 0.09,
-            },
+            (0.08, 0.09),
+            (0.094, 0.093, 0.092),
+            (0.13, 0.12),
+            "NOT_SUPPORTED_BY_EXISTING_COMPONENTS",
+        ),
+        (
+            (0.08, 0.09),
+            (0.094, 0.093, 0.096),
+            (0.09, 0.10),
             "PLAUSIBLE_BUT_PROSPECTIVE_EVIDENCE_INSUFFICIENT",
         ),
         (
-            {
-                (1.0, 0.0): 0.094,
-                (0.75, 0.25): 0.09,
-                (0.5, 0.5): 0.088,
-                (0.25, 0.75): 0.086,
-                (0.0, 1.0): 0.08,
-            },
-            "NOT_SUPPORTED_BY_EXISTING_COMPONENTS",
+            (0.08, 0.096),
+            (0.09, 0.091, 0.092),
+            (0.09, 0.10),
+            "PLAUSIBLE_BUT_PROSPECTIVE_EVIDENCE_INSUFFICIENT",
         ),
+        ((0.06, 0.08), (0.09, 0.088, 0.086), (0.08, 0.09), "NOT_SUPPORTED_BY_EXISTING_COMPONENTS"),
     ],
 )
 def test_objective_decision_thresholds_are_preregistered(
-    cagr_by_pair: dict[tuple[float, float], float], expected: str
+    anchors: tuple[float, float],
+    interior: tuple[float, float, float],
+    endpoints: tuple[float, float],
+    expected: str,
 ) -> None:
     decision = objective.objective_feasibility_decision(
-        _blend_summary(cagr_by_pair), corrected=True
+        _decision_summary(anchors, interior, endpoints), corrected=True
     )
 
     assert decision == expected
     assert decision in objective.DECISION_TOKENS
 
 
+def test_derived_endpoint_cannot_drive_component_dependence() -> None:
+    # 一个高 CAGR 的派生 100/0 端点不是 standalone S2_R1，不得把裁决升级为
+    # FEASIBLE_BUT_DEPENDS_TOO_HEAVILY_ON_ONE_COMPONENT。
+    summary = _decision_summary((0.07, 0.08), (0.090, 0.088, 0.086), (0.20, 0.19))
+
+    assert (
+        objective.objective_feasibility_decision(summary, corrected=True)
+        == "NOT_SUPPORTED_BY_EXISTING_COMPONENTS"
+    )
+
+
+def test_high_standalone_anchor_can_drive_component_dependence() -> None:
+    summary = _decision_summary((0.07, 0.115), (0.090, 0.088, 0.086), (0.07, 0.115))
+
+    assert (
+        objective.objective_feasibility_decision(summary, corrected=True)
+        == "FEASIBLE_BUT_DEPENDS_TOO_HEAVILY_ON_ONE_COMPONENT"
+    )
+
+
 def test_failed_reproduction_blocks_the_decision() -> None:
-    summary = _blend_summary(dict.fromkeys(EXPECTED_BLEND_WEIGHTS, 0.12))
+    summary = _decision_summary((0.12, 0.12), (0.12, 0.12, 0.12), (0.12, 0.12))
 
     assert (
         objective.objective_feasibility_decision(summary, corrected=False)
@@ -264,10 +288,12 @@ def test_failed_reproduction_blocks_the_decision() -> None:
 
 
 def test_complexity_verdict_uses_the_preregistered_margins() -> None:
+    names = objective.INTERIOR_BLEND_SERIES_NAMES
     blends = pd.DataFrame(
         [
-            {"cagr": 0.101, "max_drawdown": -0.20},
-            {"cagr": 0.099, "max_drawdown": -0.16},
+            {"series": names[0], "cagr": 0.101, "max_drawdown": -0.20},
+            {"series": names[1], "cagr": 0.099, "max_drawdown": -0.16},
+            {"series": names[2], "cagr": 0.098, "max_drawdown": -0.17},
         ]
     )
     s30 = pd.Series({"cagr": 0.099, "max_drawdown": -0.15})
@@ -275,8 +301,22 @@ def test_complexity_verdict_uses_the_preregistered_margins() -> None:
     assert objective.complexity_verdict(blends, s30) == "COMPLEXITY_NOT_JUSTIFIED_BY_THIS_EVIDENCE"
     s30_better = pd.Series({"cagr": 0.0945, "max_drawdown": -0.15})
     assert objective.complexity_verdict(blends, s30_better) == "COMPLEXITY_CLEARS_S30_HURDLE"
-    deeper = pd.DataFrame([{"cagr": 0.0995, "max_drawdown": -0.12}])
+    deeper = pd.DataFrame(
+        [
+            {"series": names[0], "cagr": 0.0995, "max_drawdown": -0.12},
+            {"series": names[1], "cagr": 0.099, "max_drawdown": -0.13},
+            {"series": names[2], "cagr": 0.098, "max_drawdown": -0.14},
+        ]
+    )
     assert objective.complexity_verdict(deeper, s30) == "COMPLEXITY_CLEARS_S30_HURDLE"
+
+
+def test_complexity_verdict_refuses_derived_endpoints() -> None:
+    blends = pd.DataFrame([{"series": "BLEND_S2_100_S4C_00", "cagr": 0.20, "max_drawdown": -0.10}])
+    s30 = pd.Series({"cagr": 0.099, "max_drawdown": -0.15})
+
+    with pytest.raises(ValueError, match="内部固定 blend"):
+        objective.complexity_verdict(blends, s30)
 
 
 def test_protocol_output_schema_is_frozen() -> None:
@@ -360,3 +400,21 @@ def test_preregistered_windows_and_targets_are_unchanged() -> None:
     assert objective.TARGET_CAGR == 0.10
     assert objective.NEAR_TARGET_CAGR == 0.095
     assert len(objective.PERIODS) == 4
+
+
+def test_primary_summary_excludes_s30_and_common_window_includes_it() -> None:
+    assert objective.PRIMARY_SERIES_NAMES == objective.ANCHOR_SERIES_NAMES + (
+        objective.BLEND_SERIES_NAMES
+    )
+    assert objective.S30_SERIES_NAME not in objective.PRIMARY_SERIES_NAMES
+    assert objective.S30_SERIES_NAME in objective.COMMON_WINDOW_SERIES_NAMES
+    assert objective.COMMON_WINDOW_SERIES_NAMES == objective.PRIMARY_SERIES_NAMES + (
+        objective.S30_SERIES_NAME,
+    )
+    assert objective.INTERIOR_BLEND_SERIES_NAMES == (
+        "BLEND_S2_75_S4C_25",
+        "BLEND_S2_50_S4C_50",
+        "BLEND_S2_25_S4C_75",
+    )
+    assert len(objective.BLEND_SERIES_NAMES) == 5
+    assert objective.ANNUAL_COLUMNS == ("series", "year", "return")

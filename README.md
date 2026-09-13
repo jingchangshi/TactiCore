@@ -29,7 +29,24 @@ uv run python research/experiments/run_s2_parameter_plateau.py
 uv run python research/experiments/run_s2_rqalpha_validation.py --partial-fill-on-insufficient-cash --output-prefix s2_rqalpha_upstream_native
 ```
 
-RQAlpha 官方 bundle 保存在仓库外的 `~/.rqalpha/bundle`。重建 Tushare 数据需要通过环境变量提供 `TUSHARE_TOKEN`，具体契约见 [canonical 数据说明](data/canonical/README.md)。
+RQAlpha 官方 bundle 保存在仓库外的主目录下。重建 Tushare 数据需要通过环境变量提供 `TUSHARE_TOKEN`，具体契约见 [canonical 数据说明](data/canonical/README.md)。
+
+### 原生 Windows 与 WSL 边界
+
+原生 Windows 11 开发路径已验证可用（`WINDOWS_NATIVE_STATUS = B_SUPPORTED_WITH_MINIMAL_PORTABILITY_FIXES`），完整环境基线、解释器分类与静态移植性审计见 [Phase A Windows native portability audit](research/results/PHASE_A_WINDOWS_NATIVE_PORTABILITY_AUDIT_V1.md)。
+
+**WSL 未经验证**：仓库目前不要求 WSL，也没有 WSL 实测证据，因此不声明 WSL 受支持。若将来在 WSL 中执行，必须在 WSL 内重新准备解释器、虚拟环境、bundle 与凭据，并重新运行严格校验。
+
+`~` 在不同环境中解析到不同主目录，以下路径不可互换：
+
+| 资源 | 原生 Windows | WSL |
+| --- | --- | --- |
+| RQAlpha bundle | `%USERPROFILE%\.rqalpha\bundle`（本机为 `C:\Users\<用户>\.rqalpha\bundle`） | `<WSL 家目录>/.rqalpha/bundle` |
+| 开发解释器 | 仓库 `.python-version`（Python 3.11） | 需在该 Linux 环境内自行创建并重新验证 |
+| `TUSHARE_TOKEN` | 必须在执行数据命令的那个环境中设置 | 必须在执行数据命令的那个环境中设置 |
+
+在一个环境中安装的 bundle 不是另一个环境的 bundle，两者不共享。
+
 ## 权威文档
 
 - [稳定架构](docs/ARCHITECTURE.md)

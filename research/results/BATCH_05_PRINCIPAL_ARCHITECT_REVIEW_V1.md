@@ -58,3 +58,124 @@ Protocol freeze `0450799`、V2 `1028dea`、V3 `6ce67f6` 三个提交均早于唯
 ## 仓库状态
 
 评审在 `main@f85b802` 开始；本记录与其文档同步只改变 `.python-version`、`README.md`、本记录、`docs/RESEARCH_LEDGER.md`、`docs/CURRENT_STATE.md`、`docs/STRATEGY_CATALOG.md`、`docs/STRATEGY_RESEARCH_MAP.md` 与 `docs/goal.md`，不触及策略代码、实验 runner、冻结产物或 S2 冻结输入。
+
+## ARCHITECT_REVIEW（Batch 05 评审时点快照）
+
+以下结构化块是本记录在 **Batch 05 architect-review 时点**的不可变快照，先于其后的 S4C authoritative execution work。后续仓库状态不得回填到该历史决策中；特别是 `FREEZE_DECISION` 不得因 S4C 之后通过执行审查而被改写。
+
+```text
+ARCHITECT_REVIEW
+
+STARTING_HEAD:
+f85b802
+
+WINDOWS_STATUS:
+B_SUPPORTED_WITH_MINIMAL_PORTABILITY_FIXES
+
+SYSTEM_MISSION:
+Low-frequency multi-asset tactical-allocation research;
+discover robust, explainable, executable, low-maintenance strategies;
+strategy research > infrastructure.
+
+ARCHITECTURE_MODEL:
+External evidence
+-> local evidence gap
+-> canonical/PIT data
+-> strategy semantics
+-> research screening
+-> authoritative execution validation
+-> evidence/decision
+-> future production decision.
+No generic quant platform.
+
+ENGINE_OWNERSHIP:
+TactiCore owns economic semantics, canonical data contracts,
+evidence, bounded orchestration and decisions.
+VectorBT owns rapid research/simulation.
+RQAlpha owns authoritative execution/accounting/cash/lots/matching/costs.
+Tushare Pro is canonical research data;
+RQAlpha bundle supplies authoritative China execution semantics.
+
+RESEARCH_CONTROL_PLANE:
+External Evidence Gate
+-> PIT Tradability Gate
+-> bounded historical research
+-> robustness
+-> execution review
+-> candidate-freeze review
+-> prospective shadow.
+Protocol freeze and INVALID_RUN discipline apply;
+closed questions are not reopened without contradictory evidence.
+
+BATCH_05_PROTOCOL_VALIDITY:
+VALID_V3_ONLY.
+V1/V2 remain preserved INVALID_RUN history;
+V3 was frozen before the accepted complete rerun.
+
+BATCH_05_RESULT_VALIDITY:
+VALID.
+V3 accepted results are authoritative;
+S2 R1 was not modified by Batch 05.
+
+S2_STATE:
+FROZEN / PROSPECTIVE_SHADOW_ACTIVE;
+sole active prospective candidate;
+PIT integrity PASS.
+
+S27A_STATE:
+ADVANCE_S27A_TO_CANDIDATE_FREEZE_REVIEW;
+eligible but deferred;
+not candidate/shadow/production approved.
+
+S10A_STATE:
+DO_NOT_ADVANCE_S10A_EXECUTION;
+native cash-rejection gate failed;
+no local repair authorized.
+
+S4C_STATE:
+ADVANCE_S4C_TO_EXECUTION_REVIEW;
+selected as the single next bounded Goal at this review point;
+not candidate/shadow/production approved.
+
+REPRODUCIBILITY_STATUS:
+Native Windows supported with minimal portability fixes:
+Python 3.11 development/verification pin,
+CRLF-safe frozen repository-text hashing,
+strict S2 verification demonstrated.
+Python 3.12 development mypy failure classified as resolver/stub skew,
+not a project typing or strategy defect.
+WSL was not audited.
+
+CURRENT_FRONTIER:
+AWAIT_S4C_EXECUTION_REVIEW
+
+FREEZE_DECISION:
+NOT_READY_TO_FREEZE
+```
+
+`NOT_READY_TO_FREEZE` 在该时点意为“不追加新的候选冻结”：S2 已经冻结并处于前瞻影子；S27A 已获得审查资格但因与 S2 机制高度重叠而被有意推迟；S4C 仍需权威执行审查；S10A 未通过执行 gate。
+
+## Findings（Batch 05 评审时点）
+
+### P0 — no open correctness/architecture blocker after accepted V3
+
+- **Evidence**：V1/V2 作为 `INVALID_RUN` 保留；V3 protocol 先于唯一被采纳的完整结果；PIT/correctness contract 已建立；S2 候选完整性始终保持不变。
+- **Why it matters**：它决定 Batch 05 证据能否被接受，而不是整批判为无效。
+- **Stage Blocking**：NO
+- **Smallest Closure**：无需额外动作；保留 V3 作为唯一被接受的 Batch 05 结果，并保留 invalid-run 历史。
+
+### P1 — native Windows reproducibility required minimal portability fixes
+
+- **Evidence**：Python 3.10/3.11 解析到 NumPy 1.26.4 并通过项目 mypy；Python 3.12 因 RQAlpha 约束解析到 NumPy 2.x，mypy 在项目 Python 3.10 typing 目标下解析这些 stub 时失败。Windows checkout 还需要既有的 CRLF-safe frozen-text hashing 才能通过严格 S2 校验。
+- **Why it matters**：缺少开发解释器固定与换行安全的 frozen-text 契约时，受支持的原生 Windows checkout 会因为工具链/checkout 原因而验证失败，而这与策略语义无关。
+- **Stage Blocking**：YES — 在最小移植性修复落地前阻塞 milestone/environment closure；现已 CLOSED。
+- **Smallest Closure**：保留 `.python-version = 3.11`、保留窄口径 CRLF 归一化、显式记录 native Windows/WSL 边界并记录 Phase A 审计。不要收窄 `requires-python`、不要仅为该问题引入 lockfile、不要在没有独立证据时添加 `.gitattributes`。
+
+### P2 — external registry local lifecycle fields are a stale snapshot
+
+- **Evidence**：外部证据 registry 的时点为 `2026-09-11`；其内嵌 local-status 字段早于后续 Batch 05 生命周期证据，而当前生命周期归属在冻结产物 / ledger / catalog / current state。
+- **Why it matters**：读者可能把外部证据快照误认为当前本地策略状态，但这既不否定外部 tier，也不否定本地结果。
+- **Stage Blocking**：NO
+- **Smallest Closure**：外部 registry 保持不变；在本评审记录中显式保留 authority/snapshot 澄清。本地 PASS/FAIL 不得改写外部证据 tier。
+
+Phase A 环境基线与静态移植性审计证据见 [Phase A Windows native portability audit](PHASE_A_WINDOWS_NATIVE_PORTABILITY_AUDIT_V1.md)。

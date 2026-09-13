@@ -14,7 +14,7 @@ Codex with ChatGPT / C2C
 
 本 Goal 只回答一个问题：**冻结语义的 S4C ERC 目标能否在 RQAlpha 原生语义下被忠实执行？** External Evidence Gate（`ERC_RISK_PARITY`，E2 成熟构造方法，`UPSTREAM_COMPARE`）、PIT Tradability Gate、冻结范围（skfolio `RiskBudgeting` / `RiskMeasure.VARIANCE` / equal risk budgets / long-only、fully invested、无杠杆 / min eligible 6 / 60 aligned returns / 511010.SS fallback / 月末估计→下一 canonical observation execution / 10 bps fee + 5 bps slippage）与禁止事项全部在 Protocol V1/V2 中预先冻结。
 
-## Status: completed（结果等待独立复核）
+## Status: completed
 
 | 项 | 值 |
 | --- | --- |
@@ -22,13 +22,15 @@ Codex with ChatGPT / C2C
 | Architect review commit | `8df12b2` |
 | Protocol V1 freeze | `356ed98` |
 | Protocol V2 freeze | `61c4962` |
+| Commit B（结果与文档同步） | `ec01d30` |
+| Milestone 结果 HEAD | `ec01d30e013b9018196d86bab0a300000e7588de` |
 | 冻结目标 | 161 行，2013-04-01 至 2026-08-03，SHA-256 `f7bf398d7f8a016933cbe287bfa1cac98b3cccf175d40ef99092b95db1227e47` |
 | 机械决定 | `ADVANCE_S4C_TO_CANDIDATE_FREEZE_REVIEW` |
 | RQAlpha 6.3.0 | CAGR 12.0929%、signed MaxDD -18.3512%、Sharpe 0.7758、cash rejection 0、平均 execution-date deviation 0.3246%、material dates 3/161 |
 
 V1 的 `1e-12` reproduction 判据不可跨平台达成，作为 `INVALID_RUN` R1 保留；Protocol V2 只替代该 portability 判据并加入已冻结的数值容差，不放松任何 native execution gate，也不改变 S4C 经济语义或冻结目标。S2 未改动，仍是唯一 prospective shadow；集中度（P95 max weight 51.84%）仍是未消除的风险特征。
 
-结果、文档同步与 ledger 条目尚未提交（无 Commit B）。
+结果、文档同步与 ledger 条目（RL-040）已记录于 Commit B `ec01d30`，完整验证通过（pytest 123 passed、ruff、ruff format、mypy、strict S2 R1 verification），并已推送到 `origin/main`。紧随其后的 metadata-only 收尾提交只同步本文件，不改变任何结果、语义或验证状态；该提交 SHA 见 `git log`。
 
 ## 里程碑边界
 

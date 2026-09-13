@@ -1,0 +1,103 @@
+{
+  "candidate_id": "S4C_R1",
+  "candidate_version": "R1",
+  "strategy_family": "S4C Canonical ERC / Risk Budgeting",
+  "strategy_version": "canonical_erc_skfolio_transfer_v1",
+  "freeze_commit": "356ed98208dbc30fc283e4af605183e5d39a7d6a",
+  "freeze_decision_commit": "7cef1bcdd4678a77ff884dfb1fd0efa5e2b12ad7",
+  "freeze_timestamp": "2026-09-13T13:28:15Z",
+  "historical_cutoff": "2026-08-31",
+  "first_eligible_prospective_signal": "2026-09-30",
+  "prospective_activation": "NOT_ACTIVE",
+  "strategy_semantics": {
+    "canonical_strategy": "equal risk contribution / risk budgeting",
+    "upstream_implementation": "skfolio.optimization.RiskBudgeting",
+    "upstream_version": "1.0.6",
+    "risk_measure": "RiskMeasure.VARIANCE",
+    "risk_budgets": "equal (library default risk budget)",
+    "min_weights": 0.0,
+    "max_weights": 1.0,
+    "long_only": true,
+    "fully_invested": true,
+    "leverage": "none",
+    "minimum_eligible_assets": 6,
+    "eligible_fallback_rule": "少于 6 个合格风险资产时整只组合回退 fallback_symbol，不做部分持有",
+    "price_window": 61,
+    "returns_window": 60,
+    "returns_definition": "aligned_window 上 pct_change(fill_method=None).dropna(how='any')，60 条有效对齐日收益",
+    "risk_symbols": [
+      "510300.SS",
+      "510500.SS",
+      "513500.SS",
+      "513100.SS",
+      "159920.SZ",
+      "513520.SS",
+      "513030.SS",
+      "518880.SS",
+      "159980.SZ"
+    ],
+    "fallback_symbol": "511010.SS",
+    "signal_timing": "月末 canonical 观测日收盘后估计",
+    "execution_timing": "不得早于信号日后的下一 canonical 观测日",
+    "target_submission_policy": "MONTHLY_TARGET_SUBMISSION",
+    "target_submission_note": "使用 build_execution_weights；不是 S2 的 SIGNAL_CHANGE_ONLY",
+    "fees": 0.001,
+    "slippage": 0.0005,
+    "initial_cash": 1000000.0,
+    "strategy_inception": "2013-04-01"
+  },
+  "execution_semantics": {
+    "authority": "RQAlpha 6.3.x native execution",
+    "order_api": "order_target_portfolio",
+    "partial_fill_on_insufficient_cash": true,
+    "matching_type": "current_bar",
+    "volume_limit": true,
+    "volume_percent": 0.25,
+    "replay_input": "committed frozen target schedule only",
+    "recomputation_inside_replay": "none"
+  },
+  "framework_versions": {
+    "skfolio": "1.0.6",
+    "rqalpha": "6.3.0",
+    "vectorbt": "0.28.5",
+    "pandas": "2.3.3",
+    "numpy": "1.26.4",
+    "tushare": "1.4.29"
+  },
+  "data_contract": {
+    "source": "Tushare Pro",
+    "adjustment": "后复权：fund_daily.close × fund_adj.adj_factor",
+    "missing_values": "缺失保持未知，不前向填充、插值、置零或猜测。",
+    "historical_policy": "data/canonical 是截至 historical_cutoff 的冻结历史基线；后续数据只能写入 candidate-specific vintages。",
+    "pit_contract": "正目标权重只在 execution timestamp 上标的 active 且 canonical 价格有限、正值时合法；参数化 universe start_date 提供生命周期。"
+  },
+  "frozen_identity_artifacts": {
+    "research/results/s4c_pit_corrected_frozen_targets_v1.csv": "f7bf398d7f8a016933cbe287bfa1cac98b3cccf175d40ef99092b95db1227e47",
+    "research/results/s4c_pit_corrected_comparison_v1.csv": "668a80cfe81ef7e9fa1d653e7f346e2babebb5182e98553ff9b74139cb9f2443",
+    "config/strategy.toml": "9935dbdb54f3ea369574f2edfcdba2103c97d539697ff119c7ac9d084931c2ce",
+    "config/universe.csv": "190aacbca6feadd2ba825b1f284c06f48f30bdc3b5a4618f405711e5aadb8829",
+    "data/canonical/etf_adjusted_close.csv": "0ab40b9cf12cb900fa1c3ff53afc35f9963e44e10f67157a007f3fd7e15d8e93",
+    "data/canonical/trading_calendar.csv": "ad942a3e1e3e3ae4b7703ea5319ec12793d484b4c49423181682357a1a9d7512",
+    "data/canonical/provenance.json": "7af2e21890080cec4a4d2ed08a0bd9c6c89fae666fe98d866e33e55837a8d4e3",
+    "tacticore/strategies/multi_asset_trend.py": "2a11156f2f44f2cda9774b7c035bed9cb9757a83900b17028f6fd8c65eb7d1a6",
+    "tacticore/data/tradability.py": "ff6e3d863ee329f253894efdee1227ff8b33ee5e9ef321c5aa58b13944ddddc3",
+    "tacticore/engines/rqalpha_adapter.py": "76c551f703b354d033fbb11849170dadee39654d947c1e93e389db5694530477",
+    "research/experiments/run_s4c_erc_skfolio_transfer.py": "34224359b70f6d9932a9d7a640a216bc011635f287d2577527a0f79c9813dad1"
+  },
+  "frozen_target_structure": {
+    "row_count": 161,
+    "first_execution_date": "2013-04-01",
+    "last_execution_date": "2026-08-03",
+    "columns": "canonical universe 12 列；511260.SS 与 511880.SS 在 S4C 中恒为 0"
+  },
+  "known_risks": {
+    "concentration_disposition": "ACCEPT_AS_KNOWN_CANDIDATE_RISK",
+    "median_maximum_weight": 0.26937437826143806,
+    "p95_maximum_weight": 0.5183933251586632,
+    "maximum_observed_weight": 0.6634975007699047,
+    "months_any_asset_gt_50pct": 9,
+    "median_effective_number_assets": 6.231935489612608,
+    "p05_effective_number_assets": 3.240704896855434,
+    "note": "集中度是已知候选风险，不是待优化项；冻结后不得添加集中度 cap 或据此改参。"
+  }
+}

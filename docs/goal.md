@@ -67,6 +67,20 @@ BLOCK_S4C_CANDIDATE_FREEZE_CORRECTNESS
 
 无论裁决如何：不得改写 S2 R1 及其冻结输入、不得改写 Batch 05 冻结产物或 `INVALID_RUN`、不得用历史结果制造前瞻证据、不得继续第二顺位研究方向。
 
-## Status
+## Status: completed
 
-本 Goal 由 C2C 协议执行；完成时的裁决、证据链状态与文档同步记录在 `research/results/`，并且只在其拥有的语义变化时更新 `CURRENT_STATE.md`、`RESEARCH_LEDGER.md`、`STRATEGY_CATALOG.md`、`STRATEGY_RESEARCH_MAP.md`。
+| 项 | 值 |
+| --- | --- |
+| Starting HEAD | `1b74b8e` |
+| 优先级决策 commit | `7cef1bc`（先于任何候选实现） |
+| 终局裁决 | `FREEZE_S4C_RESEARCH_CANDIDATE_R1` |
+| 集中度处置 | `ACCEPT_AS_KNOWN_CANDIDATE_RISK` |
+| 候选身份 | [research/shadow/s4c_r1/](../research/shadow/s4c_r1/README.md)（`prospective_activation = NOT_ACTIVE`） |
+| 审查记录 | [S4C candidate-freeze review V1](../research/results/S4C_CANDIDATE_FREEZE_REVIEW_V1.md) |
+| 前瞻观测数 | 0（`observations.csv` 只有表头） |
+
+本 Goal 已由 C2C 协议执行完成并记录。它只冻结候选身份与预注册前瞻协议，**不激活**前瞻影子、不采集 observation、不创建 vintage。
+
+## Status: AWAIT_NEXT_ARCHITECT_RESEARCH_DECISION
+
+下一个可能的 Goal 是独立的前瞻影子激活决策，或由下一次 research-priority 决策另行授权；本 Goal 不自动启动它，也不启动第二顺位研究方向。

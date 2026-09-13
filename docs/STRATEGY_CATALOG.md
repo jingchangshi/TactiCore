@@ -105,6 +105,19 @@ V1 的 `1e-12` reproduction 判据不可跨平台达成，作为 `INVALID_RUN` �
 
 记录见 [S4C execution review V2](../research/results/S4C_RQALPHA_EXECUTION_REVIEW_V2.md)。
 
+## S4C Research Candidate R1（已冻结，前瞻未激活）
+
+状态：`FROZEN / NOT_ACTIVE`。独立候选冻结审查的裁决为 `FREEZE_S4C_RESEARCH_CANDIDATE_R1`；集中度裁决为 `ACCEPT_AS_KNOWN_CANDIDATE_RISK`。这不是生产候选，前瞻影子**未激活**。
+
+- 冻结身份：官方 skfolio `RiskBudgeting` / `RiskMeasure.VARIANCE` / equal risk budgets / long-only、fully invested、无杠杆；min eligible 6；61 价格 / 60 `fill_method=None` 对齐收益；现有 9 个风险资产 + `511010.SS` fallback；月末估计 → 下一 canonical 观测日执行；`MONTHLY_TARGET_SUBMISSION`（不是 S2 的 `SIGNAL_CHANGE_ONLY`）；10 bps fee + 5 bps slippage；RQAlpha 6.3.x 原生执行与 `partial_fill_on_insufficient_cash`。
+- 历史截止 / 前瞻边界：`historical_cutoff = 2026-08-31`，`freeze_timestamp = 2026-09-13T13:28:15Z`，`first_eligible_prospective_signal = 2026-09-30`；不得回溯前瞻证据。
+- 冻结目标：161 行，`2013-04-01` 至 `2026-08-03`，SHA-256 `f7bf398d…1227e47`。
+- 阶段限制：冻结候选 ≠ 激活前瞻 ≠ 生产批准。前瞻协议已预注册但未激活；`observations.csv` 只有表头。
+- 已知风险：P95 最大权重 51.84%、历史最大 66.35%、effective assets median 6.23 / P05 3.24。不得添加集中度 cap 或据此改参；那属于新策略版本。
+- 下一步：前瞻影子激活是**独立的下一项决策**，本 Goal 不自动启动。
+
+身份与协议见 [S4C R1](../research/shadow/s4c_r1/README.md)、[manifest](../research/shadow/s4c_r1/candidate_manifest.json)；审查记录见 [S4C candidate-freeze review](../research/results/S4C_CANDIDATE_FREEZE_REVIEW_V1.md)。
+
 ## 外部 canonical 映射与本地边界
 
 详细外部范围见 [策略研究地图](STRATEGY_RESEARCH_MAP.md)，此处只记录已实现策略的本地生命周期。
@@ -119,6 +132,6 @@ V1 的 `1e-12` reproduction 判据不可跨平台达成，作为 `INVALID_RUN` �
 | S4A | inverse-volatility allocation | E2 | 复杂度是否有增量价值，REJECTED | inverse-vol 方法无用 |
 | S8A | moving-average tactical allocation | E3 | 两资产中国ETF规则，REJECTED | trend literature 被否定 |
 | S27A | trend + inverse-vol sizing | E3 | candidate-freeze review eligible | 新异常或生产资格 |
-| S4B / S4C | equal risk contribution | E2 | S4B Riskfolio BLOCKED；S4C candidate-freeze review eligible | ERC 方法、文献或执行能力无效 |
+| S4B / S4C | equal risk contribution | E2 | S4B Riskfolio BLOCKED；S4C R1 FROZEN（前瞻未激活，非生产候选） | ERC 方法、文献、执行能力或前瞻有效性已被证明 |
 | S10A | unlevered volatility targeting | E3 | native cash rejection 后 execution review 未推进 | volatility-managed 文献已被本地证明 |
 | S30 | naive/static diversification | E1 | REFERENCE_BASELINE | alpha 策略 |

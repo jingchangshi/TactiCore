@@ -393,3 +393,11 @@
 - 结论：选定 **A**，唯一主 Goal 为 `S4C_CANDIDATE_FREEZE_REVIEW`。判据与 `STRATEGY_RESEARCH_MAP` 的未来选择规则一致（相关性、证据质量、经济正交、低实现自由度、机制区分度），历史 CAGR 不参与排序。S4C 同时满足阶段已获得资格、实现自由度接近零、机制与 S2 不同；S27A 与 S2 共用趋势信号故继续推迟；C 不减少任何当前可减少的不确定性；D 需先过 External Evidence Gate 与 PIT Tradability Gate，成本与数据挖掘风险更高。它同时确认候选人名额是稀缺预算：是否占用取决于 S4C 冻结审查自身的终局裁决，而不是本次优先级决策。
 - 证据：[research priority decision](../research/results/RESEARCH_PRIORITY_DECISION_V1.md)、[Goal](goal.md)。
 - 重开条件：仅当 S4C 冻结审查终局裁决出现新矛盾证据、S2 候选完整性失败，或候选预算/前瞻注意力分配需要用户决策时；不得用历史收益或“换名重做”重开本次排序。
+
+## RL-042 S4C 候选冻结审查与 S4C R1 身份
+
+- 状态：CLOSED。对已通过 transfer、PIT correctness、bounded robustness 与 RQAlpha 6.3.0 原生执行的 S4C 经济身份做一次只读候选冻结审查，不作任何优化。
+- 范围：只读核对冻结目标 SHA-256、结构与 PIT、canonical/config/策略 hash、框架版本与已接受机器产物的一致性。不重跑 40/80、VectorBT 历史或 RQAlpha 历史。
+- 结论：`FREEZE_S4C_RESEARCH_CANDIDATE_R1`。存在唯一无歧义的权威证据链；经济身份全部维度可从源代码与冻结产物核对；canonical provenance 完整（截至 `2026-08-31`）；PIT inception 为 `2013-04-01`；upstream/execution 语义可固定（skfolio 1.0.6 / RQAlpha 6.3.0）；historical/prospective 边界可干净划定。集中度裁决为 `ACCEPT_AS_KNOWN_CANDIDATE_RISK`（P95 最大权重 51.84%、历史最大 66.35%、effective assets median 6.23 / P05 3.24），不得以 cap 消除或据此改参。同时明确 `material_asset_difference`（单资产 >5pp）与 `material_portfolio_tracking_date`（组合层总绝对偏差 >5pp）是两个不同的量，历史条件下后者多于前者，不得声称每个组合层跟踪日期都有已记录的原生单资产原因；历史结论与 V2 gate 不改写。
+- 结论边界：S4C R1 为**已冻结研究候选**，`prospective_activation = NOT_ACTIVE`；前瞻影子激活是独立的下一项决策，本条目不授权。候选身份与预注册前瞻协议见 [S4C R1](../research/shadow/s4c_r1/README.md) 与 [manifest](../research/shadow/s4c_r1/candidate_manifest.json)，审查记录见 [S4C candidate-freeze review](../research/results/S4C_CANDIDATE_FREEZE_REVIEW_V1.md)。RL-001 到 RL-041 的内容未改写。
+- 重开条件：仅在 canonical 数据契约、S4C 经济语义或 RQAlpha 订单/撮合/账户语义变化，或出现具体矛盾证据时；不得以集中度、历史收益、短期前瞻回撤或参数偏好为由改参数、加 cap 或重跑窗口。前瞻期出现连续亏损或跑输基准只能是 `STRATEGY_PERFORMANCE_WEAK`。

@@ -91,6 +91,12 @@
 - S10A：同一 native replay 发生一个 cash rejection，`DO_NOT_ADVANCE_S10A_EXECUTION`；不得用本地 cash buffer、手工 sizing 或 retry 修补。
 - S4C：40/60/80 returns、固定 periods、rolling 和 50bps robustness gates 通过，`ADVANCE_S4C_TO_EXECUTION_REVIEW`；P95 max weight 51.84% 是后续执行审查的风险证据。
 
+## Batch 05 architect review disposition
+
+独立 Principal Architect 复核后：S2 保持 `FROZEN / PROSPECTIVE_SHADOW_ACTIVE` 且仍是唯一前瞻候选；S27A 保留 `ADVANCE_S27A_TO_CANDIDATE_FREEZE_REVIEW` 资格但**推迟**（与 S2 的趋势信号机制重叠度高）；S10A 维持 `DO_NOT_ADVANCE_S10A_EXECUTION`，不得以本地现金、retry 或 sizing 修补；S4C 的 `ADVANCE_S4C_TO_EXECUTION_REVIEW` 成立并被选为唯一下一 Goal，集中度（P95 max weight 51.84%、maximum 66.35%、effective assets median 6.23 / P05 3.24）保留为执行审查的诊断证据。三者的资格都不构成候选、前瞻或生产批准。
+
+记录见 [Batch 05 principal architect review](../research/results/BATCH_05_PRINCIPAL_ARCHITECT_REVIEW_V1.md)。
+
 ## 外部 canonical 映射与本地边界
 
 详细外部范围见 [策略研究地图](STRATEGY_RESEARCH_MAP.md)，此处只记录已实现策略的本地生命周期。

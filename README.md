@@ -6,26 +6,30 @@ TactiCore 是一个面向个人投资者的低频、多资产战术配置研究�
 
 ## 基本使用
 
-要求 Python 3.10–3.12，建议使用 [uv](https://docs.astral.sh/uv/)：
+运行时支持 Python 3.10–3.12；仓库开发与验证解释器固定为 Python 3.11（[`.python-version`](.python-version)），因此普通的 `uv sync` / `uv run` 都会选中 3.11。S2 Research Candidate R1 冻结的框架版本包含 `numpy==1.26.4`，而 `rqalpha>=6.3` 在 Python 3.12 上要求 `numpy>=2`，因此 Python 3.12 环境无法完成冻结候选校验，也无法在 `mypy` 的 Python 3.10 目标下解析 NumPy stub。
 
-```bash
-uv sync --extra dev
+`uv sync --extra dev` 只安装基础开发依赖（pytest / ruff / mypy）；S4C 的 skfolio 研究路径需要 research extra，否则一个测试会因缺少 skfolio 而失败，完整引导为 `uv sync --extra dev --extra research`。
+
+建议使用 [uv](https://docs.astral.sh/uv/)，Windows PowerShell 示例：
+
+```powershell
+uv sync --extra dev --extra research
 uv run pytest
 uv run ruff check .
 uv run ruff format --check .
 uv run mypy
 
+# 冻结 S2 R1 候选的严格校验（冻结输入 hash 与框架版本）
+uv run python research/experiments/run_s2_r1_shadow.py --verify-candidate
+
 # 重现 S2 粗粒度参数平台检验
 uv run python research/experiments/run_s2_parameter_plateau.py
 
 # 重放冻结的 S2 V2B 目标，并启用已采用的 RQAlpha 原生能力
-uv run python research/experiments/run_s2_rqalpha_validation.py \
-  --partial-fill-on-insufficient-cash \
-  --output-prefix s2_rqalpha_upstream_native
+uv run python research/experiments/run_s2_rqalpha_validation.py --partial-fill-on-insufficient-cash --output-prefix s2_rqalpha_upstream_native
 ```
 
 RQAlpha 官方 bundle 保存在仓库外的 `~/.rqalpha/bundle`。重建 Tushare 数据需要通过环境变量提供 `TUSHARE_TOKEN`，具体契约见 [canonical 数据说明](data/canonical/README.md)。
-
 ## 权威文档
 
 - [稳定架构](docs/ARCHITECTURE.md)

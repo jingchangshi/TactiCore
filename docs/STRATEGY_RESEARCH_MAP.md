@@ -15,8 +15,8 @@
 | Per-sector trend | tactical | E3 | trend transfer而非新异常 | S3C | REJECTED | PIT/工具域 | LOCAL_ADJUDICATION |
 | Inverse volatility | allocation | E2 | 成熟风险配置，不是alpha | S4A | REJECTED | 简单比较器下复杂度 | UPSTREAM_COMPARE |
 | Equity/bond tactical trend | tactical | E3 | GTAA相关但单规则域敏感 | S8A | REJECTED | 非S8A救援的新问题 | LOCAL_ADJUDICATION |
-| Trend + inverse vol | composite | E3 | 成熟组件的组合 | S27A | candidate-freeze review eligible | 独立 candidate review；非前瞻/生产资格 | LOCAL_ADJUDICATION |
-| Equal risk contribution | allocation | E2 | 成熟构造方法，非收益异常 | S4B blocked / S4C | execution-review eligible | S4C authoritative execution；S4B block 保留 | UPSTREAM_COMPARE |
+| Trend + inverse vol | composite | E3 | 成熟组件的组合 | S27A | candidate-freeze review eligible（deferred） | 独立候选冻结审查；与 S2 机制重叠，非前瞻/生产资格 | LOCAL_ADJUDICATION |
+| Equal risk contribution | allocation | E2 | 成熟构造方法，非收益异常 | S4B blocked / S4C | execution-review eligible（selected next goal） | S4C authoritative execution；S4B block 保留 | UPSTREAM_COMPARE |
 | Volatility targeting | overlay | E3 | 支持与反证并存 | S10A | execution review did not advance | native cash rejection；不以 local repair 重开 | LOCAL_ADJUDICATION |
 | Static diversification | allocation | E1 | 复杂度门槛 | S30 | REFERENCE_BASELINE | 机制匹配比较器 | REFERENCE_ONLY |
 
@@ -40,7 +40,7 @@ PIT ETF universe、上市/退市与 execution-date price 已在 Batch 04 升级�
 
 ## 已关闭本地问题与当前缺口
 
-S1、S3A、S3B、S3C、S4A、S8A 与 S10A 的具体问题已关闭，不能换名或调参重开。S2 R1 是唯一前瞻影子候选；S27A 仅获 candidate-freeze review，S4C 仅获 execution-review 资格，均非前瞻或生产候选。S4B 因 Riskfolio-Lib 依赖阻塞的历史结论保持不变。S30 是简单复杂度门槛，不是alpha策略。
+S1、S3A、S3B、S3C、S4A、S8A 与 S10A 的具体问题已关闭，不能换名或调参重开。S2 R1 是唯一前瞻影子候选；S27A 获 candidate-freeze review 资格但已推迟，S4C 获 execution-review 资格并被选为唯一下一 Goal；两者均非候选、前瞻或生产资格。S4B 因 Riskfolio-Lib 依赖阻塞的历史结论保持不变。S30 是简单复杂度门槛，不是alpha策略。
 
 ## 未来选择规则
 

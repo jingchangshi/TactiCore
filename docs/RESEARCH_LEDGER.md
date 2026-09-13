@@ -369,3 +369,11 @@
 
 - 状态：CLOSED。Protocol V1/V2 的实现缺陷均作为 INVALID_RUN 由 V3 完整 rerun 取代；外部 evidence tier 未变，S2 R1 未改动。
 - 证据：[Batch 05](../research/results/BATCH_05_EARNED_STAGE_VALIDATION.md)、[Protocol V3](../research/batches/batch_05/PROTOCOL_V3.md)。
+
+## RL-039 Batch 05 principal architect review
+
+- 状态：CLOSED。独立复核 Batch 05 冻结证据、Windows 开发引导与权威文档后，选定唯一下一 Goal 为 `S4C_AUTHORITATIVE_EXECUTION_REVIEW`；`AWAIT_BATCH_05_ARCHITECT_REVIEW` 前沿关闭。
+- 范围：S2 / S27A / S10A / S4C 阶段处置、开发解释器固定与归属正确的文档同步。不重跑、不修改冻结结果、不创建候选、不运行 S4C RQAlpha。
+- 结论：S2 保持 `FROZEN / PROSPECTIVE_SHADOW_ACTIVE` 且仍是唯一前瞻候选；S27A 保留 candidate-freeze review 资格但推迟（与 S2 趋势信号机制重叠度高）；S10A 维持 `DO_NOT_ADVANCE_S10A_EXECUTION`，不得以本地现金/retry/sizing 修补；S4C 获得 execution review 并被选为下一 Goal，集中度作为执行审查诊断证据保留。Windows 开发引导为 resolver/toolchain skew 而非项目 typing 缺陷，处置为固定 Python 3.11 开发解释器并记录于 README。
+- 证据：[Batch 05 principal architect review](../research/results/BATCH_05_PRINCIPAL_ARCHITECT_REVIEW_V1.md)、[Batch 05](../research/results/BATCH_05_EARNED_STAGE_VALIDATION.md)。
+- 重开条件：仅当 Batch 05 冻结证据出现矛盾、S2 候选完整性失败、canonical 数据契约或框架语义变化时才可重开；不得以历史收益、参数偏好或“换名重做”重开。

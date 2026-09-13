@@ -47,12 +47,28 @@ T_blend(t) = w_S2 * T_S2(t) + w_S4C * T_S4C(t)
 - 两个 anchor 是**分别单独回放**的（S2 用其 103 行日程，S4C 用其 161 行日程），它们是各自候选
   的正确性参照；派生的 100/0 端点不是 standalone `S2_R1`。
 
-## 2. 组件 anchor（独立回放，主窗口 2013-04-01 – 2026-08-31）
+## 2. CURRENT_RETURN_ENGINE_MAP
+
+### 2.1 组件 anchor 的量化事实（独立回放，主窗口 2013-04-01 – 2026-08-31）
 
 | 序列 | 提交政策 | CAGR | signed MaxDD | Sharpe | Calmar | Worst year | Turnover | 交易数 | 年化动作日 |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | `S2_R1_committed_anchor` | SIGNAL_CHANGE_ONLY（103 行） | 6.5713% | -26.1813% | 0.648 | 0.251 | -16.28% | 25.34 | 379 | 7.68 |
 | `S4C_R1_committed_anchor` | MONTHLY_TARGET_SUBMISSION（161 行） | 11.6375% | -18.3512% | 1.091 | 0.634 | -8.07% | 11.46 | 575 | 11.11 |
+| `S30_REFERENCE` 组件锚（自身窗口 2014-01-15 起） | 年频静态 | 9.9249% | -15.0381% | 1.114 | 0.660 | -5.47% | 1.15 | 27 | 1.03 |
+
+平均持有期（VectorBT 原生交易记录）：`S2_R1` 292.7 天、`S4C_R1` 2091.4 天、`S30` 2729.0 天。
+
+### 2.2 每个引擎的经济与运行解释
+
+| 项 | `S30_REFERENCE` | `S2_R1` | `S4C_R1` |
+| --- | --- | --- | --- |
+| Economic mechanism | 固定 25/25/25/25 的静态多资产战略配置（无信号） | 时序趋势方向选择 + 逐资产防御切换（等额 sleeve） | 无杠杆 ERC 风险预算（skfolio `RiskBudgeting`，variance，equal budget） |
+| Execution evidence | 本实验 VectorBT 原生记录 | RL-014 / RL-016：RQAlpha 6.3.0 原生 `partial_fill_on_insufficient_cash` 闭环通过 | RL-040：committed 161 目标 RQAlpha 6.3.0 原生回放全部 gate 通过 |
+| Prospective status | 未预注册前瞻（`REFERENCE_BASELINE`，不升级为候选） | `FROZEN / PROSPECTIVE_SHADOW_ACTIVE`，前瞻观测仍在积累 | `FROZEN / NOT_ACTIVE`，前瞻协议已预注册但未激活 |
+| Known risks | 无信号、无 regime 适应 | 趋势滞后；2013–2016 与 2020–2022 段明显偏弱 | 集中度：P95 最大权重 51.84%、历史最大 66.35%、effective assets median 6.23 / P05 3.24 |
+| Maintenance burden | 最低（年化 1.03 次动作） | 中（年化 7.68 次动作，信号变化驱动） | 中高（年化 11.11 次动作，月度估计与提交） |
+| Role in a future portfolio | 复杂度门槛与 beta 参照 | 机制分散与回撤控制 | 收益量级来源 + 风险分配 |
 
 组件身份与复现证据（`portfolio_objective_10p_correctness_v1.csv`）：两个 anchor 的冻结 SHA-256、
 行数、日期唯一递增、行合计序列化容差、逐行 PIT 合法性与"回放输入逐值等于冻结 artifact"全部通过；
@@ -112,6 +128,40 @@ S30 的 natural inception（`513500.SS` 上市）为 2014-01-15，运行时断�
 - 但没有任何 blend 的 Sharpe 超过 `S4C_R1` 单独运行；S2 的价值是**回撤与机制分散**，
   不是提高风险调整后收益。
 
+### 5.1 对 S2 角色的五个具体问题（逐条回答）
+
+```text
+是否改善 blend 的 drawdown？
+  是。50/50 signed MaxDD -15.9165%、25/75 -17.1282%，均优于任一单独 anchor（-26.1813% / -18.3512%）。
+
+是否降低与 S4C 的机制依赖？
+  部分。50/50 与 25/75 的 signed MaxDD 改善说明下行暴露不同，但日收益相关性仍有 0.7835；
+  组合并未把 S4C 的收益贡献替换掉，只是分担了它的下行。
+
+是否改善极端市场状态？
+  有证据但有限。2020–2022 是最弱分期，S2 单独 3.63%、S4C 单独 5.64%，50/50 为 4.85%，
+  25/75 为 5.28% —— blend 落在两者之间，没有出现 S2 单独拉升该状态的证据。
+
+是否降低集中风险？
+  方向上是。S4C 的集中度（P95 最大权重 51.84%、历史最大 66.35%）在 blend 中按权重被稀释，
+  且 S2 的 sleeve 是等额分散的；但本实验没有对 blend 层集中度做独立度量，不作更强声明。
+
+是否值得牺牲部分 CAGR？
+  对 50/50 是：相对 S4C 单独运行，它牺牲 2.37pp CAGR 换取 2.43pp 更浅的 signed MaxDD，并保持
+  高于 10% 的共同窗口水平（10.8404%）。对 25/75，牺牲 1.15pp CAGR 换取 1.22pp 更浅的回撤。
+  但两者都没有超过 S4C 单独运行的 Sharpe，因此结论是"以风险换收益量级更稳"，不是"更优"。
+```
+
+### 5.2 冻结的 S4C 集中度特征（必须保留，不得优化）
+
+```text
+P95 maximum weight          51.84%
+historical maximum weight   66.35%
+effective assets            median 6.23 / P05 3.24
+```
+
+本实验**未**添加任何集中度 cap，也未据此改参；它们是已登记的候选风险，只作为解释证据保留。
+
 ## 6. 分期与滚动
 
 四个固定分期的 CAGR（区间起于各期首个 canonical 观测日）：
@@ -124,8 +174,16 @@ S30 的 natural inception（`513500.SS` 上市）为 2014-01-15，运行时断�
 | `BLEND_S2_25_S4C_75` | 8.1025% | 8.6624% | 5.2796% | 19.1644% |
 
 四个分期均为正 CAGR；`2020–2022` 是所有序列最弱的区间（组合仍为正）。滚动证据
-（`portfolio_objective_10p_rolling_v1.csv`）：3 年与 5 年窗口的 **positive-CAGR 占比对全部序列均为
-100%**；5 年 CAGR 中位数分别为 S2 7.14%、S4C 9.97%、50/50 8.99%、25/75 9.57%。
+（`portfolio_objective_10p_rolling_v1.csv`）：
+
+| 序列 | 3Y 窗口数 | 3Y CAGR 最小 / 中位数 | 3Y positive share | 5Y 窗口数 | 5Y CAGR 最小 / 中位数 | 5Y positive share |
+| --- | ---: | --- | ---: | ---: | --- | ---: |
+| `S2_R1_committed_anchor` | 123 | 0.80% / 6.83% | 100% | 99 | 2.49% / 7.14% | 100% |
+| `S4C_R1_committed_anchor` | 123 | 2.30% / 9.29% | 100% | 99 | 5.17% / 9.97% | 100% |
+| `BLEND_S2_50_S4C_50` | 123 | 3.19% / 8.36% | 100% | 99 | 5.04% / 8.99% | 100% |
+| `BLEND_S2_25_S4C_75` | 123 | 2.83% / 9.00% | 100% | 99 | 5.13% / 9.57% | 100% |
+
+所有序列在全部 3 年与 5 年滚动窗口中均为正 CAGR；没有任何序列依赖单一窗口。
 
 ## 7. Gap 分析
 

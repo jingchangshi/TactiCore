@@ -44,25 +44,41 @@ MANIFEST_PATH = SHADOW_DIR / "candidate_manifest.json"
 ACTIVATION_PATH = SHADOW_DIR / "activation.json"
 VINTAGE_FILES = ("etf_adjusted_close.csv", "trading_calendar.csv", "provenance.json")
 
+MANIFEST_RELATIVE_PATH = "research/shadow/s4c_r1/candidate_manifest.json"
+ACTIVATION_RELATIVE_PATH = "research/shadow/s4c_r1/activation.json"
+VINTAGE_PARENT_RELATIVE_PATH = "research/shadow/s4c_r1/vintages"
+ACTIVATION_PROTOCOL_RELATIVE_PATH = "research/batches/s4c_activation/PROTOCOL.md"
+ACTIVATION_DECISION_RECORD_RELATIVE_PATH = (
+    "research/results/S4C_R1_PROSPECTIVE_ACTIVATION_DECISION_V1.md"
+)
+
 PROTOCOL_VERSION = "V1"
 ACTIVATION_PROTOCOL_VERSION = "V1"
 OBSERVATION_SCHEMA_VERSION = "S4C_R1_OBSERVATIONS_V1"
 PENDING_EXECUTION_STATUS = "PENDING_NEXT_CANONICAL_OBSERVATION"
 ACTIVE_STATUS = "ACTIVE"
+ACTIVATION_DECISION_TOKEN = "ACTIVATE_S4C_R1_PROSPECTIVE_SHADOW"
+DECISION_RECORD_POLICY = "APPEND_ONLY_ONE_DECISION_PER_SIGNAL_DATE_BEFORE_EXECUTION"
+EXECUTION_RECORD_POLICY = "APPEND_ONLY_ONE_EXECUTION_PER_DECISION_AFTER_SIGNAL_DATE"
 
 ACTIVATION_FIELDS = (
     "candidate_id",
     "candidate_version",
     "activation_status",
+    "activation_decision_token",
     "activation_decision_timestamp",
     "activation_protocol_version",
+    "activation_protocol_path",
+    "activation_protocol_sha256",
+    "activation_decision_record",
+    "activation_decision_record_sha256",
     "candidate_manifest_sha256",
+    "candidate_freeze_timestamp",
     "historical_cutoff",
     "first_eligible_prospective_signal",
     "observation_schema_version",
     "decision_record_policy",
     "execution_record_policy",
-    "activation_decision_record",
 )
 
 # decision 行不得携带任何执行结果；这些列只能由后续 execution 行填充。
@@ -113,7 +129,8 @@ def verify_activation(
     missing = [field for field in ACTIVATION_FIELDS if field not in activation]
     if missing:
         raise ValueError(f"activation artifact 缺少字段: {missing}")
-    if tuple(activation.keys()) != ACTIVATION_FIELDS:
+    unexpected = [field for field in activation if field not in ACTIVATION_FIELDS]
+    if unexpected:
         raise ValueError("activation artifact 字段集合与冻结 schema 不一致")
     if activation["candidate_id"] != manifest["candidate_id"]:
         raise ValueError("activation artifact 的 candidate_id 与 manifest 不一致")
@@ -121,12 +138,22 @@ def verify_activation(
         raise ValueError("activation artifact 的 candidate_version 与 manifest 不一致")
     if activation["activation_status"] != ACTIVE_STATUS:
         raise ValueError("activation artifact 的 activation_status 不是 ACTIVE")
+    if activation["activation_decision_token"] != ACTIVATION_DECISION_TOKEN:
+        raise ValueError("activation artifact 的 activation_decision_token 不是冻结裁决")
     if activation["activation_protocol_version"] != ACTIVATION_PROTOCOL_VERSION:
         raise ValueError("activation artifact 的 protocol version 不是冻结版本")
+    if activation["activation_protocol_path"] != ACTIVATION_PROTOCOL_RELATIVE_PATH:
+        raise ValueError("activation artifact 的 protocol path 不是冻结协议")
+    if activation["decision_record_policy"] != DECISION_RECORD_POLICY:
+        raise ValueError("activation artifact 的 decision_record_policy 被改写")
+    if activation["execution_record_policy"] != EXECUTION_RECORD_POLICY:
+        raise ValueError("activation artifact 的 execution_record_policy 被改写")
     if activation["observation_schema_version"] != OBSERVATION_SCHEMA_VERSION:
         raise ValueError("activation artifact 的 observation schema version 不一致")
     if activation["historical_cutoff"] != manifest["historical_cutoff"]:
         raise ValueError("activation artifact 的 historical_cutoff 与 manifest 不一致")
+    if activation["candidate_freeze_timestamp"] != manifest["freeze_timestamp"]:
+        raise ValueError("activation artifact 的 candidate freeze timestamp 与 manifest 不一致")
     if (
         activation["first_eligible_prospective_signal"]
         != manifest["first_eligible_prospective_signal"]
@@ -135,13 +162,49 @@ def verify_activation(
             "activation artifact 的 first_eligible_prospective_signal 与 manifest 不一致"
         )
     expected_manifest_hash = manifest_sha256 or sha256_frozen_repository_text(
-        root / "research/shadow/s4c_r1/candidate_manifest.json"
+        root / MANIFEST_RELATIVE_PATH
     )
     if activation["candidate_manifest_sha256"] != expected_manifest_hash:
         raise ValueError("activation artifact 的 candidate manifest hash 不一致")
-    # activation 决策时间必须可解析；是否晚于 wall-clock 不属于证据契约，
-    # 因为它会让协议依赖运行机器的时钟（reproducibility 由 decision record 保证）。
-    pd.Timestamp(activation["activation_decision_timestamp"])
+    verify_activation_timestamp(activation, manifest)
+    verify_activation_evidence(activation, root)
+
+
+def verify_activation_timestamp(activation: dict[str, Any], manifest: dict[str, Any]) -> None:
+    """activation 决策时间必须带时区，且严格晚于候选冻结时刻。"""
+    raw = activation["activation_decision_timestamp"]
+    try:
+        timestamp = pd.Timestamp(raw)
+    except (TypeError, ValueError) as error:
+        raise ValueError("activation 决策时间不可解析") from error
+    if timestamp.tzinfo is None:
+        raise ValueError("activation 决策时间必须带时区，不得使用 naive timestamp")
+    freeze = pd.Timestamp(manifest["freeze_timestamp"])
+    if freeze.tzinfo is None:
+        freeze = freeze.tz_localize("UTC")
+    if timestamp <= freeze:
+        raise ValueError("activation 决策时间必须严格晚于 candidate freeze timestamp")
+
+
+def verify_activation_evidence(activation: dict[str, Any], root: Path = ROOT) -> None:
+    """activation artifact 必须绑定 reviewed protocol 与 activation decision record。"""
+    protocol_path = root / activation["activation_protocol_path"]
+    if not protocol_path.is_file():
+        raise ValueError("activation artifact 引用的预注册协议不存在")
+    if sha256_frozen_repository_text(protocol_path) != activation["activation_protocol_sha256"]:
+        raise ValueError("activation artifact 的预注册协议 hash 不一致")
+    if activation["activation_decision_record"] != ACTIVATION_DECISION_RECORD_RELATIVE_PATH:
+        raise ValueError("activation artifact 的 decision record path 不是冻结路径")
+    record_path = root / ACTIVATION_DECISION_RECORD_RELATIVE_PATH
+    if not record_path.is_file():
+        raise ValueError("activation artifact 引用的 activation decision record 不存在")
+    if (
+        sha256_frozen_repository_text(record_path)
+        != activation["activation_decision_record_sha256"]
+    ):
+        raise ValueError("activation artifact 的 decision record hash 不一致")
+    if ACTIVATION_DECISION_TOKEN not in record_path.read_text(encoding="utf-8"):
+        raise ValueError("activation decision record 未包含冻结裁决 token")
 
 
 def verify_candidate_shadow(
@@ -254,6 +317,21 @@ def validate_month_end(
     open_dates = month_calendar.index[month_calendar.any(axis=1)]
     if open_dates.empty or open_dates.max() != as_of:
         raise ValueError("--as-of 必须是该月最后一个 canonical 交易日")
+
+
+def verify_canonical_vintage_location(
+    vintage_dir: Path, as_of: pd.Timestamp, root: Path = ROOT
+) -> None:
+    """真实前瞻 vintage 只能位于 candidate-specific 目录，且目录名等于 as-of 日期。"""
+    expected_parent = (root / VINTAGE_PARENT_RELATIVE_PATH).resolve()
+    resolved = Path(vintage_dir).resolve()
+    if resolved.parent != expected_parent:
+        raise ValueError(
+            "prospective vintage 必须位于 research/shadow/s4c_r1/vintages/<as-of>/；"
+            "任意外部目录不得成为官方前瞻证据"
+        )
+    if resolved.name != pd.Timestamp(as_of).date().isoformat():
+        raise ValueError("vintage 目录名必须等于 --as-of 的 ISO 日期")
 
 
 def load_prospective_inputs(
@@ -506,14 +584,70 @@ def append_execution_record(record: dict[str, str], path: Path = OBSERVATIONS_PA
 # --------------------------------------------------------------------------------------
 
 
+def canonical_activation_path(root: Path = ROOT) -> Path:
+    return root / ACTIVATION_RELATIVE_PATH
+
+
+def canonical_observations_path(root: Path = ROOT) -> Path:
+    return root / "research/shadow/s4c_r1/observations.csv"
+
+
+def run_decision(
+    as_of: pd.Timestamp,
+    vintage_dir: Path,
+    *,
+    manifest: dict[str, Any] | None = None,
+    root: Path = ROOT,
+    activation_path: Path | None = None,
+    record_path: Path | None = None,
+    generated_at: str | None = None,
+    enforce_canonical_vintage: bool = True,
+) -> dict[str, str]:
+    """唯一写入门：候选完整性 → activation → as-of 边界 → vintage → append-only 追加。
+
+    生产 CLI 只使用 canonical 路径；`activation_path` / `record_path` /
+    `enforce_canonical_vintage` 仅供 tmp_path 测试的下层 helper 使用，不对用户暴露。
+    """
+    resolved_manifest = (
+        manifest if manifest is not None else load_manifest(root / MANIFEST_RELATIVE_PATH)
+    )
+    resolved_activation = (
+        Path(activation_path) if activation_path is not None else canonical_activation_path(root)
+    )
+    resolved_records = (
+        Path(record_path) if record_path is not None else canonical_observations_path(root)
+    )
+    vintage_path = Path(vintage_dir)
+    verify_candidate_shadow(resolved_manifest, root)
+    require_activation(resolved_activation, resolved_manifest, root=root)
+    validate_month_end(
+        load_calendar(vintage_path / "trading_calendar.csv"), as_of, resolved_manifest
+    )
+    if enforce_canonical_vintage:
+        verify_canonical_vintage_location(vintage_path, as_of, root)
+    prices, _, vintage_hash = load_prospective_inputs(
+        vintage_path, resolved_manifest, as_of=as_of, root=root
+    )
+    record = build_decision_record(
+        prices,
+        resolved_manifest,
+        as_of=as_of,
+        vintage_identifier=vintage_path.name,
+        prospective_data_hash=vintage_hash,
+        historical_manifest_hash=sha256_frozen_repository_text(root / MANIFEST_RELATIVE_PATH),
+        generated_at=generated_at,
+        root=root,
+    )
+    append_decision_record(record, resolved_records)
+    return record
+
+
 def build_parser() -> ArgumentParser:
     parser = ArgumentParser(description=__doc__)
     parser.add_argument("--verify-candidate", action="store_true")
     parser.add_argument("--verify-activation", action="store_true")
     parser.add_argument("--as-of", help="决策时点 YYYY-MM-DD；不得使用 wall-clock 默认值")
     parser.add_argument("--vintage-dir", type=Path)
-    parser.add_argument("--activation-path", type=Path, default=ACTIVATION_PATH)
-    parser.add_argument("--record-path", type=Path, default=OBSERVATIONS_PATH)
     return parser
 
 
@@ -528,11 +662,11 @@ def main() -> None:
         verify_candidate_shadow(manifest)
         lines = [
             "S4C_R1 candidate manifest、冻结身份输入、PIT 契约与冻结语义再推导校验通过；",
-            f"observation 行数 = {observation_record_count(args.record_path)}，"
-            f"decision 行数 = {decision_record_count(args.record_path)}。",
+            f"observation 行数 = {observation_record_count(OBSERVATIONS_PATH)}，"
+            f"decision 行数 = {decision_record_count(OBSERVATIONS_PATH)}。",
         ]
         if args.verify_activation:
-            activation = load_activation(args.activation_path)
+            activation = load_activation(ACTIVATION_PATH)
             if activation is None:
                 lines.append(
                     "activation_status = NOT_ACTIVE（无 activation artifact）；"
@@ -547,21 +681,7 @@ def main() -> None:
     if not args.as_of or args.vintage_dir is None:
         parser.error("前瞻决策必须同时提供 --as-of 与 --vintage-dir")
 
-    verify_candidate_shadow(manifest)
-    require_activation(args.activation_path, manifest)
-    as_of = pd.Timestamp(args.as_of)
-    vintage_calendar = load_calendar(args.vintage_dir / "trading_calendar.csv")
-    validate_month_end(vintage_calendar, as_of, manifest)
-    prices, _, vintage_hash = load_prospective_inputs(args.vintage_dir, manifest, as_of=as_of)
-    record = build_decision_record(
-        prices,
-        manifest,
-        as_of=as_of,
-        vintage_identifier=args.vintage_dir.name,
-        prospective_data_hash=vintage_hash,
-        historical_manifest_hash=manifest_hash(),
-    )
-    append_decision_record(record, args.record_path)
+    record = run_decision(pd.Timestamp(args.as_of), args.vintage_dir)
     print(f"已追加 S4C_R1 前瞻 decision record: {record['signal_date']}（执行证据尚未产生）")
 
 

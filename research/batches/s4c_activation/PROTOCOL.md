@@ -55,22 +55,29 @@ first_eligible_prospective_signal > candidate freeze date
 
 ### 2.1 Activation State Schema V1（冻结）
 
-`research/shadow/s4c_r1/activation.json` 只允许以下字段：
+`research/shadow/s4c_r1/activation.json` 是**唯一的生产授权来源**。runner 不提供任何
+CLI 路径覆盖参数；除 Python 层测试 helper 外，不存在绕过 canonical artifact 的写入路径。
+字段集合必须**恰好**等于下表（不要求 JSON key 顺序），任何额外字段都视为 schema drift。
 
 | 字段 | 含义 |
 | --- | --- |
 | `candidate_id` | 必须为 `S4C_R1` |
 | `candidate_version` | 必须为 `R1` |
 | `activation_status` | `ACTIVE`（未激活时文件不存在） |
-| `activation_decision_timestamp` | 裁决记录时间（UTC ISO-8601） |
+| `activation_decision_token` | 必须为 `ACTIVATE_S4C_R1_PROSPECTIVE_SHADOW` |
+| `activation_decision_timestamp` | 带时区的裁决时间；必须**严格晚于** candidate freeze timestamp |
 | `activation_protocol_version` | 本协议版本 `V1` |
+| `activation_protocol_path` | 必须为 `research/batches/s4c_activation/PROTOCOL.md` |
+| `activation_protocol_sha256` | 该预注册协议的归一化 SHA-256（文件必须存在） |
+| `activation_decision_record` | 必须为 `research/results/S4C_R1_PROSPECTIVE_ACTIVATION_DECISION_V1.md` |
+| `activation_decision_record_sha256` | 该裁决记录的归一化 SHA-256（文件必须存在） |
 | `candidate_manifest_sha256` | 冻结文本归一化后的 manifest SHA-256 |
+| `candidate_freeze_timestamp` | 必须等于 manifest `freeze_timestamp` |
 | `historical_cutoff` | 必须等于 manifest 值 |
 | `first_eligible_prospective_signal` | 必须等于 manifest 值 |
 | `observation_schema_version` | `S4C_R1_OBSERVATIONS_V1` |
-| `decision_record_policy` | decision 行写入策略的机器可读摘要 |
-| `execution_record_policy` | execution 行写入策略的机器可读摘要 |
-| `activation_decision_record` | 本 Goal 裁决文件路径 |
+| `decision_record_policy` | 必须为 `APPEND_ONLY_ONE_DECISION_PER_SIGNAL_DATE_BEFORE_EXECUTION` |
+| `execution_record_policy` | 必须为 `APPEND_ONLY_ONE_EXECUTION_PER_DECISION_AFTER_SIGNAL_DATE` |
 
 runner 必须校验 artifact 与 manifest 的一致性；任何不一致都是
 `CANDIDATE_INTEGRITY_FAILURE`，必须拒绝运行，而不是降级继续。
@@ -94,9 +101,13 @@ runner 必须校验 artifact 与 manifest 的一致性；任何不一致都是
 3. 显式 `--as-of`：缺失即拒绝，不使用 `datetime.now()` 推断 research date。
 4. as-of 边界：`as_of > historical_cutoff` 且 `as_of >= first_eligible_prospective_signal`。
 5. as-of 必须是该月最后一个 canonical 交易日（月末 signal）。
-6. vintage 校验：三件套齐全；列一致；与冻结历史重叠逐值一致；不含 as-of 之后行情。
-7. 冻结语义推导 target：60 条对齐日收益 → 官方 ERC；不足 6 个合格资产则整只 fallback。
-8. 记录契约：append-only、duplicate-safe，且 decision 行不得包含任何执行结果。
+6. vintage 位置必须是 candidate-specific canonical 目录
+   `research/shadow/s4c_r1/vintages/<as-of ISO date>/`，目录名必须等于 `--as-of`；任意
+   外部目录不得成为官方前瞻证据。该检查在加载数据**之前**执行。
+7. vintage 校验：三件套齐全；列一致；与冻结历史重叠逐值一致；不含 as-of 之后行情。
+8. 冻结语义推导 target：60 条对齐日收益 → 官方 ERC；不足 6 个合格资产则整只 fallback。
+9. 记录契约：append-only、duplicate-safe，且 decision 行不得包含任何执行结果；
+   `record_generated_at` 不得早于 `signal_date`。
 
 不实现 scheduler、daemon、notification、broker、generic shadow engine、generic candidate framework。
 不引入新依赖。

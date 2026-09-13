@@ -418,3 +418,77 @@ def test_primary_summary_excludes_s30_and_common_window_includes_it() -> None:
     )
     assert len(objective.BLEND_SERIES_NAMES) == 5
     assert objective.ANNUAL_COLUMNS == ("series", "year", "return")
+
+
+def test_s2_correctness_gate_is_identity_based() -> None:
+    # S2 的 correctness 依赖冻结身份与回放输入，而不是任何性能容差。
+    identity = pd.DataFrame(
+        [
+            {"gate": "identity", "passed": True},
+            {"gate": "identity", "passed": True},
+            {"gate": "descriptive_only", "passed": False},
+        ]
+    )
+    assert objective.correctness_passed(identity) is True
+
+    broken = pd.DataFrame(
+        [
+            {"gate": "identity", "passed": True},
+            {"gate": "identity", "passed": False},
+            {"gate": "descriptive_only", "passed": True},
+        ]
+    )
+    assert objective.correctness_passed(broken) is False
+
+    checks = pd.DataFrame(
+        [
+            {
+                "series": "S2_R1_committed_anchor",
+                "check": "replay_input_equals_frozen_schedule",
+                "gate": "identity",
+                "passed": True,
+            },
+            {
+                "series": "S2_R1_committed_anchor",
+                "check": "committed_metric_descriptive",
+                "gate": "descriptive_only",
+                "passed": True,
+            },
+        ]
+    )
+    assert objective.CORRECTNESS_COLUMNS[1:3] == ("check", "gate")
+    assert checks["gate"].eq("identity").sum() == 1
+
+
+def test_s4c_portability_tolerance_matches_the_existing_s4c_rule() -> None:
+    assert objective.s4c_portability_tolerance(0.05) == pytest.approx(1e-4)
+    assert objective.s4c_portability_tolerance(-0.18) == pytest.approx(1e-4)
+    assert objective.s4c_portability_tolerance(12.0) == pytest.approx(1.2e-3)
+
+
+def test_s30_common_window_inception_is_enforced() -> None:
+    assert objective.S30_COMMON_WINDOW_START == pd.Timestamp("2014-01-15")
+
+    objective.assert_s30_inception(pd.Timestamp("2014-01-15"))
+    with pytest.raises(ValueError, match="共同窗口 inception"):
+        objective.assert_s30_inception(pd.Timestamp("2013-04-01"))
+
+
+def test_annual_rows_keep_each_series_own_history() -> None:
+    index_early = pd.date_range("2013-04-01", "2014-12-31", freq="D")
+    index_late = pd.date_range("2014-01-15", "2014-12-31", freq="D")
+    early = pd.Series(1.0 + 0.0001 * pd.RangeIndex(len(index_early)), index=index_early)
+    late = pd.Series(1.0 + 0.0002 * pd.RangeIndex(len(index_late)), index=index_late)
+
+    frame = objective.annual_rows(
+        [
+            ("BLEND_S2_50_S4C_50", early, pd.Timestamp("2013-04-01")),
+            ("S30_REFERENCE", late, pd.Timestamp("2014-01-15")),
+        ]
+    )
+
+    blend_years = frame.loc[frame["series"].eq("BLEND_S2_50_S4C_50"), "year"].tolist()
+    s30_years = frame.loc[frame["series"].eq("S30_REFERENCE"), "year"].tolist()
+    assert blend_years == [2013, 2014]
+    assert s30_years == [2014]
+    assert list(frame.columns) == list(objective.ANNUAL_COLUMNS)

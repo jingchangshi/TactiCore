@@ -1,5 +1,8 @@
 # Portfolio Objective 10P — 预注册协议 V2（取代 V1 的裁决与窗口口径）
 
+> 状态：correctness 依据、年度报告起点与 S30 共同窗口 inception 契约已由
+> [`PROTOCOL_V3.md`](PROTOCOL_V3.md) 取代；V2 保留为历史记录，其余条款继续有效。
+
 本文件在**任何可用于研究解释的 blend 结果**产生之前提交，用于纠正 V1 的程序与语义缺陷。
 [`PROTOCOL.md`](PROTOCOL.md)（V1）保留为历史记录，但下列条款由本文件取代。
 

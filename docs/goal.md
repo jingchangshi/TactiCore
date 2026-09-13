@@ -96,9 +96,11 @@ Commit C : 独立 RESEARCH_PRIORITY_DECISION + 选定唯一下一 Goal 的授权
 
 | 项 | 值 |
 | --- | --- |
-| Starting HEAD | `f04ae0c` |
-| Commit A | `f04ae0c`（目标文档、协议、实现、测试；无结果产物） |
-| 预注册协议 | [PROTOCOL_V2](../research/batches/portfolio_objective_10p/PROTOCOL_V2.md) |
+| Starting HEAD | `ea5dc86` |
+| Commit A（初始） | `f04ae0c`（目标文档、协议、实现、测试；无结果产物） |
+| Corrective pre-result commits | `86e711d` 及其后的 correctness 修正 commit（见 git log） |
+| 生效预注册协议 | [PROTOCOL_V3](../research/batches/portfolio_objective_10p/PROTOCOL_V3.md)（V1/V2 保留为历史记录） |
+| 无效运行 | V1 阶段被提前执行产生的一次输出已判定为 `INVALID_FOR_RESEARCH_INTERPRETATION`，未提交并已移除 |
 | 冻结候选状态 | S2 R1 `FROZEN / PROSPECTIVE_SHADOW_ACTIVE`；S4C R1 `FROZEN / NOT_ACTIVE`（均未改动） |
 | 可行性裁决 | 尚未产生（Commit B） |
 | 下一 Goal | 尚未选择（Commit C） |
@@ -106,4 +108,4 @@ Commit C : 独立 RESEARCH_PRIORITY_DECISION + 选定唯一下一 Goal 的授权
 前一个已完成 Goal（S4C candidate freeze review）的历史事实保留在
 [`RESEARCH_LEDGER.md`](RESEARCH_LEDGER.md) RL-042、[`STRATEGY_CATALOG.md`](STRATEGY_CATALOG.md)
 与 [`S4C candidate-freeze review`](../research/results/S4C_CANDIDATE_FREEZE_REVIEW_V1.md)；
-本文件按 Goal 契约更新为当前执行指令。
+本文件按 Goal 契约更新为当前执行指令。本 Goal 目前**没有**任何有效的组合层研究结果。

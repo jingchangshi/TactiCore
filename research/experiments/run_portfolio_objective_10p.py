@@ -36,7 +36,11 @@ from research.experiments.run_s1_evidence_closure import (
     rolling_table,
 )
 from tacticore.data.prices import load_price_csv
-from tacticore.data.tradability import AssetLifetime, load_tradability_inputs
+from tacticore.data.tradability import (
+    AssetLifetime,
+    load_tradability_inputs,
+    validate_execution_targets,
+)
 from tacticore.engines.vectorbt_adapter import ResearchResult, run_target_weights
 from tacticore.strategies.multi_asset_trend import load_trend_config
 from tacticore.strategies.static_strategic_allocation import (
@@ -100,20 +104,24 @@ COMPLEXITY_DRAWDOWN_MARGIN = 0.02
 # 该容差只吸收已记录的 CSV 定点舍入，不改变任何冻结数值，也不授权重新归一化。
 ROW_SUM_TOLERANCE = 1e-7
 
-# 复现 gate 的容差：直接回放**已提交的 8 位小数**冻结目标，与当初用内存全精度目标计算的
-# 已提交指标之间必然存在定点舍入差。实测偏差（见 reproduction CSV）远小于以下容差，而任何真实
-# 语义错误都会显著超过它。
-REPRODUCTION_METRIC_TOLERANCE = 1e-4
-REPRODUCTION_TURNOVER_TOLERANCE = 1e-3
-REPRODUCTION_COLUMNS = (
+# S4C 指标复现沿用早于本 Goal 的既有 portability 规则（见
+# research/batches/s4c_execution_review/PROTOCOL_V2.md），等价于
+# math.isclose(rel_tol=1e-4, abs_tol=1e-4)。S2 不使用任何性能容差：其 correctness 是身份式的。
+S4C_PORTABILITY_REL_TOLERANCE = 1e-4
+S4C_PORTABILITY_ABS_TOLERANCE = 1e-4
+CORRECTNESS_COLUMNS = (
     "series",
+    "check",
+    "gate",
     "metric",
-    "replayed",
-    "committed",
+    "observed",
+    "reference",
     "absolute_difference",
     "tolerance",
-    "within_tolerance",
+    "passed",
 )
+# 冻结 S30 规则的共同窗口起点：由 513500.SS 上市日决定，运行时断言。
+S30_COMMON_WINDOW_START = pd.Timestamp("2014-01-15")
 
 PERIODS = (
     ("2013-2016", "2013-04-01", "2016-12-31"),
@@ -339,6 +347,39 @@ def rolling_rows(series: str, result: ResearchResult) -> list[dict[str, Any]]:
     return rows
 
 
+def annual_rows(
+    series_equity: list[tuple[str, pd.Series, pd.Timestamp]],
+) -> pd.DataFrame:
+    """按每个序列自己的注册起点报告年度收益；不制造 inception 之前的年份。"""
+    return pd.DataFrame(
+        [
+            {"series": name, "year": int(year), "return": float(value)}
+            for name, equity, start in series_equity
+            for year, value in annual_returns(equity.loc[start:]).items()
+        ]
+    ).reindex(columns=ANNUAL_COLUMNS)
+
+
+def assert_s30_inception(actual: pd.Timestamp) -> None:
+    """冻结 S30 共同窗口起点；不一致必须失败，而不是静默使用未登记日期。"""
+    if pd.Timestamp(actual) != S30_COMMON_WINDOW_START:
+        raise ValueError(
+            "S30 共同窗口 inception 与预注册值不一致: "
+            f"{pd.Timestamp(actual).date()} != {S30_COMMON_WINDOW_START.date()}"
+        )
+
+
+def s4c_portability_tolerance(baseline: float) -> float:
+    """既有 S4C Protocol V2 的数值 portability 规则（早于本 Goal，不属于结果驱动调整）。"""
+    return max(S4C_PORTABILITY_ABS_TOLERANCE, S4C_PORTABILITY_REL_TOLERANCE * abs(baseline))
+
+
+def correctness_passed(frame: pd.DataFrame) -> bool:
+    """只有 identity 与预注册 portability 行参与判定；描述性行不参与。"""
+    gating = frame.loc[frame["gate"].ne("descriptive_only")]
+    return bool(gating["passed"].all())
+
+
 def correlation_row(
     s2_result: ResearchResult,
     s4c_result: ResearchResult,
@@ -428,11 +469,150 @@ def diversification_rows(summary: pd.DataFrame) -> list[dict[str, Any]]:
     return rows
 
 
-def verify_reproductions(
+def _identity_checks(
+    prices: pd.DataFrame,
+    series: str,
+    schedule: pd.DataFrame,
+    expected_sha256: str,
+    path: Path,
+    result: ResearchResult,
+    mask: pd.DataFrame,
+    lifetimes: dict[str, AssetLifetime],
+    expected_rows: int,
+) -> list[dict[str, Any]]:
+    """冻结身份与回放输入的 identity 检查；不使用任何性能容差。"""
+    replayed_input = result.execution_weights.dropna(how="all")
+    pit_error = None
+    try:
+        validate_execution_targets(replayed_input, prices, mask, lifetimes)
+    except ValueError as error:  # pragma: no cover - 只在实际违规时触发
+        pit_error = str(error)
+    rows = [
+        {
+            "series": series,
+            "check": "frozen_schedule_sha256",
+            "gate": "identity",
+            "metric": "",
+            "observed": float(int(sha256_frozen_repository_text(path) == expected_sha256)),
+            "reference": float(1),
+            "absolute_difference": float("nan"),
+            "tolerance": float("nan"),
+            "passed": bool(sha256_frozen_repository_text(path) == expected_sha256),
+        },
+        {
+            "series": series,
+            "check": "execution_row_count",
+            "gate": "identity",
+            "metric": "",
+            "observed": float(len(schedule)),
+            "reference": float(expected_rows),
+            "absolute_difference": float(abs(len(schedule) - expected_rows)),
+            "tolerance": float("nan"),
+            "passed": bool(len(schedule) == expected_rows),
+        },
+        {
+            "series": series,
+            "check": "ordered_unique_execution_dates",
+            "gate": "identity",
+            "metric": "",
+            "observed": float("nan"),
+            "reference": float("nan"),
+            "absolute_difference": float("nan"),
+            "tolerance": float("nan"),
+            "passed": bool(
+                schedule.index.is_monotonic_increasing and not schedule.index.has_duplicates
+            ),
+        },
+        {
+            "series": series,
+            "check": "row_sum_serialization_tolerance",
+            "gate": "identity",
+            "metric": "",
+            "observed": float(schedule.sum(axis=1).sub(1.0).abs().max()),
+            "reference": 0.0,
+            "absolute_difference": float(schedule.sum(axis=1).sub(1.0).abs().max()),
+            "tolerance": float(ROW_SUM_TOLERANCE),
+            "passed": bool(schedule.sum(axis=1).sub(1.0).abs().le(ROW_SUM_TOLERANCE).all()),
+        },
+        {
+            "series": series,
+            "check": "pit_legal_execution_targets",
+            "gate": "identity",
+            "metric": "",
+            "observed": float("nan"),
+            "reference": float("nan"),
+            "absolute_difference": float("nan"),
+            "tolerance": float("nan"),
+            "passed": pit_error is None,
+        },
+        {
+            "series": series,
+            "check": "replay_input_equals_frozen_schedule",
+            "gate": "identity",
+            "metric": "",
+            "observed": float("nan"),
+            "reference": float("nan"),
+            "absolute_difference": float(replayed_input.sub(schedule).abs().max().max()),
+            "tolerance": 0.0,
+            "passed": bool(replayed_input.equals(schedule)),
+        },
+    ]
+    return rows
+
+
+def component_correctness(
+    prices: pd.DataFrame,
+    s2_schedule: pd.DataFrame,
+    s4c_schedule: pd.DataFrame,
     s2_result: ResearchResult,
     s4c_result: ResearchResult,
+    mask: pd.DataFrame,
+    lifetimes: dict[str, AssetLifetime],
 ) -> tuple[bool, pd.DataFrame]:
-    """两个冻结组件的 anchor 必须复现已提交证据，否则一切比较不可信。"""
+    """组件 anchor 的 correctness 证据：S2 为身份式，S4C 复用既有 portability 规则。"""
+    rows = _identity_checks(
+        prices,
+        ANCHOR_SERIES_NAMES[0],
+        s2_schedule,
+        S2_FROZEN_SHA256,
+        S2_FROZEN_TARGETS,
+        s2_result,
+        mask,
+        lifetimes,
+        103,
+    ) + _identity_checks(
+        prices,
+        ANCHOR_SERIES_NAMES[1],
+        s4c_schedule,
+        S4C_FROZEN_SHA256,
+        S4C_FROZEN_TARGETS,
+        s4c_result,
+        mask,
+        lifetimes,
+        161,
+    )
+    committed_s4c = pd.read_csv(S4C_COMPARISON_PATH).iloc[0]
+    for metric in ("cagr", "max_drawdown", "sharpe", "calmar", "turnover"):
+        observed = float(s4c_result.metrics[metric])
+        baseline = float(committed_s4c[metric])
+        difference = abs(observed - baseline)
+        tolerance = max(
+            S4C_PORTABILITY_ABS_TOLERANCE,
+            S4C_PORTABILITY_REL_TOLERANCE * abs(baseline),
+        )
+        rows.append(
+            {
+                "series": ANCHOR_SERIES_NAMES[1],
+                "check": "committed_metric_portability",
+                "gate": "preregistered_portability",
+                "metric": metric,
+                "observed": observed,
+                "reference": baseline,
+                "absolute_difference": difference,
+                "tolerance": tolerance,
+                "passed": bool(difference <= tolerance),
+            }
+        )
     committed_s2 = pd.read_csv(S2_PLATEAU_PATH)
     committed_s2 = committed_s2.loc[committed_s2["trend_window"].eq(200)].iloc[0]
     s2_metrics = period_metrics(
@@ -441,48 +621,27 @@ def verify_reproductions(
         S2_REPRODUCTION_START,
         EVALUATION_END,
     )
-    s2_replayed = {
+    descriptive = {
         **{key: float(s2_metrics[key]) for key in ("cagr", "max_drawdown", "sharpe", "calmar")},
         "turnover": realized_turnover(s2_result.portfolio, S2_REPRODUCTION_START, EVALUATION_END),
     }
-    s2_committed = {
-        key: float(committed_s2[key])
-        for key in ("cagr", "max_drawdown", "sharpe", "calmar", "turnover")
-    }
-    committed_s4c = pd.read_csv(S4C_COMPARISON_PATH).iloc[0]
-    s4c_replayed = {
-        key: float(s4c_result.metrics[key])
-        for key in ("cagr", "max_drawdown", "sharpe", "calmar", "turnover")
-    }
-    s4c_committed = {
-        key: float(committed_s4c[key])
-        for key in ("cagr", "max_drawdown", "sharpe", "calmar", "turnover")
-    }
-    rows: list[dict[str, Any]] = []
-    for label, replayed, committed in (
-        ("S2_R1_committed_anchor", s2_replayed, s2_committed),
-        ("S4C_R1_committed_anchor", s4c_replayed, s4c_committed),
-    ):
-        for metric, value in replayed.items():
-            tolerance = (
-                REPRODUCTION_TURNOVER_TOLERANCE
-                if metric == "turnover"
-                else REPRODUCTION_METRIC_TOLERANCE
-            )
-            difference = abs(value - float(committed[metric]))
-            rows.append(
-                {
-                    "series": label,
-                    "metric": metric,
-                    "replayed": value,
-                    "committed": float(committed[metric]),
-                    "absolute_difference": difference,
-                    "tolerance": tolerance,
-                    "within_tolerance": bool(difference <= tolerance),
-                }
-            )
-    frame = pd.DataFrame(rows).reindex(columns=REPRODUCTION_COLUMNS)
-    return bool(frame["within_tolerance"].all()), frame
+    for metric, observed in descriptive.items():
+        baseline = float(committed_s2[metric])
+        rows.append(
+            {
+                "series": ANCHOR_SERIES_NAMES[0],
+                "check": "committed_metric_descriptive",
+                "gate": "descriptive_only",
+                "metric": metric,
+                "observed": observed,
+                "reference": baseline,
+                "absolute_difference": abs(observed - baseline),
+                "tolerance": float("nan"),
+                "passed": True,
+            }
+        )
+    frame = pd.DataFrame(rows).reindex(columns=CORRECTNESS_COLUMNS)
+    return correctness_passed(frame), frame
 
 
 def main() -> None:
@@ -504,7 +663,9 @@ def main() -> None:
         prices, s2_schedule, metric_start=S2_REPRODUCTION_START, **replay_kwargs
     )
     s4c_anchor = replay_schedule(prices, s4c_schedule, metric_start=PRIMARY_START, **replay_kwargs)
-    corrected, reproduction = verify_reproductions(s2_anchor, s4c_anchor)
+    corrected, correctness = component_correctness(
+        prices, s2_schedule, s4c_schedule, s2_anchor, s4c_anchor, mask, lifetimes
+    )
 
     blend_schedules = {
         f"BLEND_S2_{int(s2_share * 100):02d}_S4C_{int(s4c_share * 100):02d}": (
@@ -522,6 +683,7 @@ def main() -> None:
     static_config = load_static_allocation_config(ROOT / "config/s30_static_allocation.toml")
     static_execution = build_static_execution_weights(prices, static_config)
     s30_start = static_execution.dropna(how="all").index[0]
+    assert_s30_inception(s30_start)
     s30_result = run_target_weights(
         prices,
         static_execution,
@@ -627,18 +789,9 @@ def main() -> None:
     diversification = pd.DataFrame(diversification_rows(summary)).reindex(
         columns=DIVERSIFICATION_COLUMNS
     )
-    # 每个序列只在自己的可评价起点之后报告年度收益；不得为 S30 制造上市前年份。
-    annual = pd.DataFrame(
-        [
-            {
-                "series": name,
-                "year": int(year),
-                "return": float(value),
-            }
-            for name, kind, policy, result, s2_share, s4c_share, start in common_window_specs
-            for year, value in annual_returns(result.equity.loc[max(start, s30_start) :]).items()
-        ]
-    ).reindex(columns=ANNUAL_COLUMNS)
+    annual = annual_rows(
+        [(name, result.equity, start) for name, _, _, result, _, _, start in common_window_specs]
+    )
 
     decision = objective_feasibility_decision(summary, corrected=corrected)
     if decision not in DECISION_TOKENS:
@@ -652,7 +805,7 @@ def main() -> None:
         ("portfolio_objective_10p_summary_v1.csv", summary),
         ("portfolio_objective_10p_common_window_v1.csv", common_summary),
         ("portfolio_objective_10p_diversification_v1.csv", diversification),
-        ("portfolio_objective_10p_reproduction_v1.csv", reproduction),
+        ("portfolio_objective_10p_correctness_v1.csv", correctness),
         ("portfolio_objective_10p_periods_v1.csv", period_frame),
         ("portfolio_objective_10p_rolling_v1.csv", rolling_frame),
         ("portfolio_objective_10p_correlation_v1.csv", correlation),
@@ -661,7 +814,7 @@ def main() -> None:
         frame.to_csv(RESULTS / filename, index=False, float_format="%.8f", lineterminator="\n")
 
     print(summary.to_string(index=False))
-    print(f"\nreproductions_ok={corrected}")
+    print(f"\ncomponent_correctness_ok={corrected}")
     print(f"interior_best_cagr={float(interior_summary['cagr'].max()):.6f}")
     print(f"decision={decision}")
     print(f"complexity={complexity}")

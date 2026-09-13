@@ -114,7 +114,7 @@ V1 的 `1e-12` reproduction 判据不可跨平台达成，作为 `INVALID_RUN` �
 - 冻结目标：161 行，`2013-04-01` 至 `2026-08-03`，SHA-256 `f7bf398d…1227e47`。
 - 阶段限制：冻结候选 ≠ 激活前瞻 ≠ 生产批准。前瞻协议已预注册但未激活；`observations.csv` 只有表头。
 - 已知风险：P95 最大权重 51.84%、历史最大 66.35%、effective assets median 6.23 / P05 3.24。不得添加集中度 cap 或据此改参；那属于新策略版本。
-- 下一步：前瞻影子激活是**独立的下一项决策**，本 Goal 不自动启动。
+- 下一步：前瞻影子激活由 [research priority decision V2](../research/results/RESEARCH_PRIORITY_DECISION_V2.md) 选定为唯一下一 Goal（`S4C_R1_PROSPECTIVE_SHADOW_ACTIVATION_DECISION`），但**尚未启动**；它不修改 R1 身份，也不自动激活前瞻影子。
 
 身份与协议见 [S4C R1](../research/shadow/s4c_r1/README.md)、[manifest](../research/shadow/s4c_r1/candidate_manifest.json)；审查记录见 [S4C candidate-freeze review](../research/results/S4C_CANDIDATE_FREEZE_REVIEW_V1.md)。
 

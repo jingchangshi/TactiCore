@@ -92,7 +92,7 @@ Commit C : 独立 RESEARCH_PRIORITY_DECISION + 选定唯一下一 Goal 的授权
 本 Goal 只回答可行性并选择下一项研究；它**不**产生生产配置、**不**激活 S4C R1 前瞻影子、
 **不**创建候选、**不**自动启动所选下一 Goal。生产/真实持仓需要前瞻证据与独立生产审查。
 
-## Status: COMMIT_B_COMPLETE / AWAIT_PRIORITY_DECISION
+## Status: COMPLETED（Commit C 决策完成，未启动下一 Goal）
 
 | 项 | 值 |
 | --- | --- |
@@ -104,9 +104,12 @@ Commit C : 独立 RESEARCH_PRIORITY_DECISION + 选定唯一下一 Goal 的授权
 | 冻结候选状态 | S2 R1 `FROZEN / PROSPECTIVE_SHADOW_ACTIVE`；S4C R1 `FROZEN / NOT_ACTIVE`（均未改动） |
 | 可行性裁决 | `FEASIBLE_WITH_EXISTING_COMPONENTS`（详见 [报告](../research/results/PORTFOLIO_OBJECTIVE_10P_FEASIBILITY_V1.md)） |
 | 组合候选 / 生产配置 | 无（本 Goal 不创建候选、不激活前瞻影子、不产生生产配置） |
-| 下一 Goal | 尚未选择（Commit C） |
+| 下一 Goal（已选定，未启动） | `S4C_R1_PROSPECTIVE_SHADOW_ACTIVATION_DECISION`（见 [priority decision V2](../research/results/RESEARCH_PRIORITY_DECISION_V2.md)） |
+| 当前前沿 | `AWAIT_S4C_R1_PROSPECTIVE_ACTIVATION_DECISION` |
 
 前一个已完成 Goal（S4C candidate freeze review）的历史事实保留在
 [`RESEARCH_LEDGER.md`](RESEARCH_LEDGER.md) RL-042、[`STRATEGY_CATALOG.md`](STRATEGY_CATALOG.md)
 与 [`S4C candidate-freeze review`](../research/results/S4C_CANDIDATE_FREEZE_REVIEW_V1.md)；
-本文件按 Goal 契约更新为当前执行指令。本 Goal 的可行性结果只是历史诊断，不是前瞻证据。
+本文件按 Goal 契约更新为当前执行指令。本 Goal 的可行性结果只是历史诊断，不是前瞻证据；
+本 Goal **不**激活 S4C R1 前瞻影子、**不**创建候选、**不**产生生产配置，也**不**自动启动已选定的
+下一 Goal。

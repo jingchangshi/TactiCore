@@ -20,16 +20,17 @@ S2 仍缺少足够前瞻 observation：中期完整性复核不早于 12 个日�
 
 ## 下一项唯一实验
 
-当前没有已授权的下一项实验。S4C R1 的下一有界问题是**独立的前瞻影子激活决策**（prospective-shadow protocol / activation）；本 Goal 只冻结身份并预注册协议，不自动启动该阶段。无论何时启动，都不得以集中度或历史收益为由改参数、加 cap、重跑窗口或用历史结果制造前瞻证据。
-
-组合目标可行性已完成，下一项是独立的 research-priority decision（Commit C）：在"S4C R1 前瞻影子激活"、
-"只保留 S2 前瞻影子"、"未来独立研究固定组合候选"、"开启新的经济正交 return source"、
-"只改进组合/风险度量"之间选择**一个**下一 Goal。本文件不预先选定，也不自动启动。
+下一项唯一实验是**独立的前瞻影子激活决策**：`S4C_R1_PROSPECTIVE_SHADOW_ACTIVATION_DECISION`。
+它由 [research priority decision V2](../research/results/RESEARCH_PRIORITY_DECISION_V2.md) 在
+组合可行性完成之后单独授权，本身不激活前瞻影子、不修改 R1 身份、不生成任何 observation。
+无论何时启动，都不得以集中度、历史收益或 `2026-09-30` 的时间压力为由改参数、加 cap、重跑窗口或用历史结果制造前瞻证据。
 
 ## External Evidence Foundation
 
 `BATCH_00_EXTERNAL_EVIDENCE_FOUNDATION_COMPLETE` 保持有效；Batch 02 的三条有界 gap 已按外部证据、冻结协议和本地证据完成。外部 tier 未因本地结果改变，Theme Rotation 未开始。
 
-当前前沿为 `AWAIT_NEXT_ARCHITECT_RESEARCH_DECISION`：研究优先级决策已选定并关闭 S4C candidate-freeze review，S4C R1 已冻结但前瞻未激活。下一个可能的 Goal 是独立的前瞻影子激活决策，或由下一次 research-priority 决策另行授权；S27A 资格保留但继续推迟；D 类本地缺口需先通过 External Evidence Gate 与 PIT Tradability Gate。未来策略选择仍必须从本地 remaining gap 而非历史收益或叙事开始。
-
-当前前沿更新为 `AWAIT_PORTFOLIO_OBJECTIVE_PRIORITY_DECISION`：10% portfolio objective 的可行性历史诊断已完成并记录，组合层无待办实验；下一项是独立 research-priority decision，用于选择唯一的下一 Goal。S27A 资格保留但继续推迟；S4C R1 前瞻仍未激活；D 类本地缺口需先通过 External Evidence Gate 与 PIT Tradability Gate。未来选择仍必须从本地 remaining gap 而非历史收益或叙事开始。
+当前唯一前沿为 `AWAIT_S4C_R1_PROSPECTIVE_ACTIVATION_DECISION`：10% portfolio objective 的可行性
+历史诊断已完成并记录（`FEASIBLE_WITH_EXISTING_COMPONENTS`），研究优先级决策 V2 已选定唯一的下一
+Goal 为 S4C R1 前瞻影子激活决策。S4C R1 仍为 `FROZEN / NOT_ACTIVE`；S2 R1 仍为唯一**活动**前瞻
+候选；S27A 资格保留但继续推迟；D 类本地缺口需先通过 External Evidence Gate 与 PIT Tradability
+Gate。未来选择仍必须从本地 remaining gap 而非历史收益或叙事开始。

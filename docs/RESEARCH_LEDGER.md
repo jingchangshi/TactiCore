@@ -429,3 +429,23 @@
 - 框架/版本：VectorBT 0.28.5 组合记录；skfolio 1.0.6 / RQAlpha 6.3.0 仅作为组件既有证据的版本。
 - 重开条件：仅在 canonical 数据契约、组件经济语义或框架语义变化，或出现具体矛盾证据时；不得以
   历史收益、集中度或短期前瞻表现为由改参数、加 cap、搜索权重或重跑组件。
+
+## RL-044 研究优先级决策 V2（10% portfolio objective 之后）
+
+- 状态：CLOSED。
+- 问题/范围：在组合可行性历史诊断完成、且未创建任何组合候选之后，决定下一单位研究预算投向
+  A（S4C R1 前瞻影子激活决策）、B（只保留 S2 前瞻影子）、C（组合候选/执行审查）、D（新的经济
+  正交 return source）还是 E（只改进组合/风险度量）。
+- 结论：选定 **A**，唯一主 Goal 为 `S4C_R1_PROSPECTIVE_SHADOW_ACTIVATION_DECISION`。判据是本地
+  remaining gap 的减少量、证据质量、机制区分度与实现自由度；历史 CAGR 未参与排序。S2 前瞻影子
+  已在运行，因此 B 不减少最大不确定性；组合可行性依赖较高的 S4C 权重而 S4C 前瞻观测为零；S4C 与
+  S2 机制不同，前瞻信息更具区分度；C 在缺少 S4C 前瞻证据时过早且会叠加不确定性；D 无本地 gap
+  支持且数据挖掘风险高；E 缺乏具体 correctness gap。
+- 时间价值：`S4C_R1` 的 `first_eligible_prospective_signal = 2026-09-30` 且不可回溯；本决策记录
+  该时间价值，但时间压力不得覆盖 research correctness。
+- 边界：本条目**不**激活前瞻影子、**不**修改 R1 manifest、**不**生成 observation、**不**创建组合
+  候选；激活（若获授权）必须由独立 activation artifact / state 记录生命周期转换。
+- 证据：[RESEARCH_PRIORITY_DECISION_V2](../research/results/RESEARCH_PRIORITY_DECISION_V2.md)、
+  [可行性报告](../research/results/PORTFOLIO_OBJECTIVE_10P_FEASIBILITY_V1.md)。
+- 重开条件：仅当 S4C 激活决策被明确否决、出现新矛盾证据，或候选/前瞻注意力分配需要用户决策时；
+  不得用历史收益、叙事或"换名重做"重开本次排序。

@@ -59,7 +59,7 @@ AND INDEPENDENTLY REVIEWED.
 | Relevant contradictions | 协方差/相关估计误差、无约束 ERC 的结构性集中度、无杠杆 ETF 实现域 |
 | Upstream implementation | 官方 `skfolio` `RiskBudgeting`；RQAlpha 6.3.x 原生执行 |
 | Existing TactiCore evidence | RL-030 / RL-031 / RL-033 / RL-037 / RL-040 / RL-042 |
-| Remaining local gap | 前瞻影子未激活；`prospective observations = 0` |
+| Remaining local gap | `prospective observations = 0`；第一条真实前瞻 decision 只能在其后真实到达的月末 signal 形成 |
 | Research action | `UPSTREAM_COMPARE`（已在冻结身份内完成，本 Goal 不重跑） |
 
 外部成熟证据不构成本地 PASS；本地结论不改变外部 tier。
@@ -240,12 +240,21 @@ uv run python research/experiments/run_s4c_r1_shadow.py --verify-candidate --ver
 本 Goal 不产生生产配置、不创建候选、不启动下一 Goal。组合层 10% objective 是 portfolio
 objective，不是优化目标；当前问题是证据，不是缺少 alpha。
 
-## Status: IN_PROGRESS
+## Status: COMPLETED（Commit B activation 裁决完成；本 Goal 未产生任何 observation）
 
 | 项 | 值 |
 | --- | --- |
 | Starting HEAD | `2c60f4a` |
 | 生效预注册协议 | [`research/batches/s4c_activation/PROTOCOL.md`](../research/batches/s4c_activation/PROTOCOL.md) |
-| 冻结候选状态 | S2 R1 `FROZEN / PROSPECTIVE_SHADOW_ACTIVE`；S4C R1 `FROZEN / NOT_ACTIVE`（均未改动） |
-| Activation 裁决 | 待 ChatGPT 独立 review 后由 Commit B 记录 |
-| 前瞻 observation | 0（本 Goal 不产生任何 observation） |
+| Commit A | `29933f8`（预注册、activation schema、最小 runner、契约测试；无决策、无 vintage、无 observation） |
+| Corrective pre-decision commits | `23c5cf6`（canonical-only authorization、完整 lifecycle 校验、canonical vintage 位置）、`4c14281`（位置校验先于任何 vintage 读取、机器可读裁决行绑定） |
+| Implementation gate | `ACTIVATION_IMPLEMENTATION_GATE = PASS`（独立 C2C review） |
+| Activation 裁决 | `ACTIVATE_S4C_R1_PROSPECTIVE_SHADOW`（见 [activation decision V1](../research/results/S4C_R1_PROSPECTIVE_ACTIVATION_DECISION_V1.md)） |
+| 生命周期表示 | 候选级 [activation.json](../research/shadow/s4c_r1/activation.json)；`candidate_manifest.json` 的 `prospective_activation = NOT_ACTIVE` 保持不变 |
+| 冻结候选状态 | S2 R1 `FROZEN / PROSPECTIVE_SHADOW_ACTIVE`（未改动）；S4C R1 `FROZEN / PROSPECTIVE_SHADOW_ACTIVE` |
+| 前瞻 observation | `0`；`first_eligible_prospective_signal = 2026-09-30` 尚未到达，本 Goal 未创建 vintage |
+| 下一 Goal（未启动） | `S4C_R1_FIRST_PROSPECTIVE_DECISION`，只能在真实 `2026-09-30` 及之后执行 |
+| 当前前沿 | `AWAIT_FIRST_S4C_R1_PROSPECTIVE_SIGNAL` |
+
+本 Goal 未创建组合候选、未运行 portfolio shadow、未把 25/75 等历史诊断当作 live recommendation、
+未重跑 Portfolio Objective 10P、未引入新框架，也未以集中度或时间压力改变 R1 语义。

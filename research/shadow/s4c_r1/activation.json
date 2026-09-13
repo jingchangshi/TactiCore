@@ -1,0 +1,19 @@
+{
+  "candidate_id": "S4C_R1",
+  "candidate_version": "R1",
+  "activation_status": "ACTIVE",
+  "activation_decision_token": "ACTIVATE_S4C_R1_PROSPECTIVE_SHADOW",
+  "activation_decision_timestamp": "2026-09-13T17:00:47+00:00",
+  "activation_protocol_version": "V1",
+  "activation_protocol_path": "research/batches/s4c_activation/PROTOCOL.md",
+  "activation_protocol_sha256": "7c9a4d933fc052d63ecb2a7f9c27b691f8fb086514b318a6260fdc089d1eeb32",
+  "activation_decision_record": "research/results/S4C_R1_PROSPECTIVE_ACTIVATION_DECISION_V1.md",
+  "activation_decision_record_sha256": "9b37fbe914ee1f1befa1590f6bd86748feaf8c7f439ed2d8f4700ee0070e9cc6",
+  "candidate_manifest_sha256": "09469df0ec06d741bee2f176fd1f8334154edafe84afef5b01d889222f6cd908",
+  "candidate_freeze_timestamp": "2026-09-13T13:28:15Z",
+  "historical_cutoff": "2026-08-31",
+  "first_eligible_prospective_signal": "2026-09-30",
+  "observation_schema_version": "S4C_R1_OBSERVATIONS_V1",
+  "decision_record_policy": "APPEND_ONLY_ONE_DECISION_PER_SIGNAL_DATE_BEFORE_EXECUTION",
+  "execution_record_policy": "APPEND_ONLY_ONE_EXECUTION_PER_DECISION_AFTER_SIGNAL_DATE"
+}

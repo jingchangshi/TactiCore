@@ -2,7 +2,7 @@
 
 ## 当前策略与最新决策
 
-S2 Research Candidate R1 保持 **`FROZEN / PROSPECTIVE_SHADOW_ACTIVE`**，仍是唯一**活动**前瞻候选，且 PIT integrity pass。S4C 经独立 [research priority decision](../research/results/RESEARCH_PRIORITY_DECISION_V1.md)（A/B/C/D 比较后选定 A）完成 [candidate-freeze review](../research/results/S4C_CANDIDATE_FREEZE_REVIEW_V1.md)，裁决 `FREEZE_S4C_RESEARCH_CANDIDATE_R1`：S4C R1 为**已冻结研究候选**，但前瞻影子**未激活**（`prospective_activation = NOT_ACTIVE`），也不是生产候选。S27A 保留 candidate-freeze review 资格但继续推迟；S10A 维持 `DO_NOT_ADVANCE_S10A_EXECUTION`。没有任何候选获得生产资格。
+S2 Research Candidate R1 保持 **`FROZEN / PROSPECTIVE_SHADOW_ACTIVE`**，且 PIT integrity pass。S4C Research Candidate R1 经独立 [activation decision V1](../research/results/S4C_R1_PROSPECTIVE_ACTIVATION_DECISION_V1.md) 完成前瞻影子激活裁决（`ACTIVATION_IMPLEMENTATION_GATE = PASS` 之后），现为 **`FROZEN / PROSPECTIVE_SHADOW_ACTIVE`**，由候选级 lifecycle artifact [activation.json](../research/shadow/s4c_r1/activation.json) 记录；`candidate_manifest.json` 的 `prospective_activation = NOT_ACTIVE` 作为历史冻结身份保持不变。两个候选均**不是**生产候选，prospective observations 均为 0。S27A 保留 candidate-freeze review 资格但继续推迟；S10A 维持 `DO_NOT_ADVANCE_S10A_EXECUTION`。没有任何候选获得生产资格。
 
 组合层新增一次只读历史诊断：[portfolio 10% objective 可行性 V1](../research/results/PORTFOLIO_OBJECTIVE_10P_FEASIBILITY_V1.md)，裁决 `OBJECTIVE_FEASIBILITY_DECISION = FEASIBLE_WITH_EXISTING_COMPONENTS`。它只用两个已冻结组件的粗粒度固定目标级混合，不修改任何候选、不创建组合候选、不构成生产批准。
 
@@ -14,23 +14,27 @@ S2 R1 的 [manifest](../research/shadow/s2_r1/candidate_manifest.json) 与冻结
 
 ## 剩余阻塞
 
-S2 仍缺少足够前瞻 observation：中期完整性复核不早于 12 个日历月，production-candidate review 资格至少 18 个日历月且至少 10 次真实 target-change 执行事件。S4C R1 已冻结并预注册前瞻协议，但其执行证据仍只是历史证据，不是前瞻样本外证据；集中度是已登记的已知候选风险（P95 最大权重 51.84%、历史最大 66.35%），既未被消除也不得通过 cap 修补。S4C R1 前瞻影子尚未激活。S27A 的同类资格继续推迟。S10A 停止在 execution review，不能用局部执行修补重开。S3A、S3B、S3C、S4A、S8A 均已关闭，不得以参数微调重开；S4B Riskfolio-Lib block 保持历史事实。
+S2 仍缺少足够前瞻 observation：中期完整性复核不早于 12 个日历月，production-candidate review 资格至少 18 个日历月且至少 10 次真实 target-change 执行事件。S4C R1 前瞻影子已激活但 prospective observations 仍为 0；其执行证据仍是历史证据，不是前瞻样本外证据；集中度是已登记的已知候选风险（P95 最大权重 51.84%、历史最大 66.35%），既未被消除也不得通过 cap 修补。S27A 的同类资格继续推迟。S10A 停止在 execution review，不能用局部执行修补重开。S3A、S3B、S3C、S4A、S8A 均已关闭，不得以参数微调重开；S4B Riskfolio-Lib block 保持历史事实。
 
 组合层的主导阻塞是 `PROSPECTIVE_EVIDENCE_GAP`：历史 return gap 已经很小，但组合层前瞻观测为零；派生组合也没有独立的 RQAlpha 执行审查。这**不是**缺少 alpha 策略的证据。
 
 ## 下一项唯一实验
 
-下一项唯一实验是**独立的前瞻影子激活决策**：`S4C_R1_PROSPECTIVE_SHADOW_ACTIVATION_DECISION`。
-它由 [research priority decision V2](../research/results/RESEARCH_PRIORITY_DECISION_V2.md) 在
-组合可行性完成之后单独授权，本身不激活前瞻影子、不修改 R1 身份、不生成任何 observation。
-无论何时启动，都不得以集中度、历史收益或 `2026-09-30` 的时间压力为由改参数、加 cap、重跑窗口或用历史结果制造前瞻证据。
+下一项唯一实验是**S4C R1 的第一条真实前瞻 decision**：`S4C_R1_FIRST_PROSPECTIVE_DECISION`。
+它只能在真实日期到达 `2026-09-30` 及之后、且已有该 as-of 的 candidate-specific vintage 时启动，
+流程为 `freeze vintage → verify candidate → verify activation → derive decision → append DECISION`
+并在 append 后立即 STOP（执行证据在下一 canonical 观测日另行追加）。
+无论何时启动，都不得以集中度、历史收益或时间压力为由改参数、加 cap、重跑窗口、回填
+`2026-09-01..2026-09-13` 已可观察的数据，或用历史结果制造前瞻证据。
 
 ## External Evidence Foundation
 
 `BATCH_00_EXTERNAL_EVIDENCE_FOUNDATION_COMPLETE` 保持有效；Batch 02 的三条有界 gap 已按外部证据、冻结协议和本地证据完成。外部 tier 未因本地结果改变，Theme Rotation 未开始。
 
-当前唯一前沿为 `AWAIT_S4C_R1_PROSPECTIVE_ACTIVATION_DECISION`：10% portfolio objective 的可行性
-历史诊断已完成并记录（`FEASIBLE_WITH_EXISTING_COMPONENTS`），研究优先级决策 V2 已选定唯一的下一
-Goal 为 S4C R1 前瞻影子激活决策。S4C R1 仍为 `FROZEN / NOT_ACTIVE`；S2 R1 仍为唯一**活动**前瞻
-候选；S27A 资格保留但继续推迟；D 类本地缺口需先通过 External Evidence Gate 与 PIT Tradability
-Gate。未来选择仍必须从本地 remaining gap 而非历史收益或叙事开始。
+当前唯一前沿为 `AWAIT_FIRST_S4C_R1_PROSPECTIVE_SIGNAL`：10% portfolio objective 的可行性历史诊断
+已完成并记录（`FEASIBLE_WITH_EXISTING_COMPONENTS`），研究优先级决策 V2 选定的 S4C R1 前瞻影子
+激活决策已完成并裁决 `ACTIVATE_S4C_R1_PROSPECTIVE_SHADOW`。S4C R1 现为
+`FROZEN / PROSPECTIVE_SHADOW_ACTIVE` 且 `observation_count = 0`，`first_eligible_prospective_signal`
+仍为 `2026-09-30`；S2 R1 同为活动前瞻候选；S27A 资格保留但继续推迟；D 类本地缺口需先通过
+External Evidence Gate 与 PIT Tradability Gate。未来选择仍必须从本地 remaining gap 而非历史收益
+或叙事开始。

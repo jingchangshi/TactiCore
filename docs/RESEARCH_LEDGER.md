@@ -449,3 +449,40 @@
   [可行性报告](../research/results/PORTFOLIO_OBJECTIVE_10P_FEASIBILITY_V1.md)。
 - 重开条件：仅当 S4C 激活决策被明确否决、出现新矛盾证据，或候选/前瞻注意力分配需要用户决策时；
   不得用历史收益、叙事或"换名重做"重开本次排序。
+
+## RL-045 S4C R1 前瞻影子激活与前瞻 readiness 闭环
+
+- 策略：S4C Research Candidate R1
+- 状态：ACTIVE
+- 问题/范围：`S4C_R1` 是否已满足全部 activation correctness 条件，可以从某个明确时刻开始按
+  预注册协议收集未来 prospective evidence。只做生命周期裁决与证据契约；不重跑历史、不生成
+  observation、不创建 vintage。
+- 结论：`ACTIVATION_IMPLEMENTATION_GATE = PASS`（对 corrective commit `4c14281`）之后，独立
+  activation 裁决为 `ACTIVATE_S4C_R1_PROSPECTIVE_SHADOW`。候选身份、historical/prospective
+  边界、first eligible signal（`2026-09-30`）、vintage 契约、decision/execution 分离、
+  append-only 与 idempotency 契约、candidate-integrity 与 performance-weakness 分离、
+  冻结框架版本全部通过；无必须在 activation 前解决的 correctness blocker。S2 与 S4C 双 shadow
+  的合并维护负担评估为月频、机械、无新增依赖，因此不构成 `DEFER` 理由。
+- 生命周期表示：activation 由候选级 lifecycle artifact
+  [activation.json](../research/shadow/s4c_r1/activation.json) 记录；
+  `candidate_manifest.json` 的 `prospective_activation = NOT_ACTIVE` 作为**历史冻结身份**保持不变，
+  不得原地改写。activation 不创建 `S4C_R2`，不改变经济/执行/数据语义，不添加集中度 cap。
+- 证据契约：`research/batches/s4c_activation/PROTOCOL.md`（V1）冻结 activation state schema、
+  机器可读 `ACTIVATION_DECISION:` 裁决行、canonical vintage 位置（`research/shadow/s4c_r1/vintages/<as-of>/`，
+  位置校验先于任何 vintage 文件访问）、显式 `--as-of`、decision 先行与 append-only 记录契约。
+  最小 runner 为 `research/experiments/run_s4c_r1_shadow.py`（只读校验 + 唯一写入门）。
+- 结论边界：`prospective observations = 0`；本条目**不是**前瞻绩效结论、不是生产批准、不是组合建议，
+  也**不**消除集中度（P95 最大权重 51.84%、历史最大 66.35%、median effective assets 6.23 / P05 3.24，
+  仍为 `ACCEPT_AS_KNOWN_CANDIDATE_RISK`，前瞻期只记录不修补）。Commit A 的三个提交
+  （`29933f8` 预注册、`23c5cf6` 与 `4c14281` corrective pre-decision）均先于任何真实前瞻运行。
+- 证据：[activation decision V1](../research/results/S4C_R1_PROSPECTIVE_ACTIVATION_DECISION_V1.md)、
+  [预注册协议](../research/batches/s4c_activation/PROTOCOL.md)、[S4C R1 候选协议](../research/shadow/s4c_r1/README.md)、
+  [manifest](../research/shadow/s4c_r1/candidate_manifest.json)、[lifecycle artifact](../research/shadow/s4c_r1/activation.json)、
+  [research priority decision V2](../research/results/RESEARCH_PRIORITY_DECISION_V2.md)。
+- 数据快照：canonical 同 RL-001；冻结目标 SHA-256 `f7bf398d…1227e47` 未变；candidate manifest
+  SHA-256（归一化）`09469df0…6cd908` 未变。
+- 框架/版本：skfolio 1.0.6 / RQAlpha 6.3.0 / VectorBT 0.28.5 / pandas 2.3.3 / numpy 1.26.4 /
+  tushare 1.4.29（与冻结 manifest 一致）；无新增依赖。
+- 重开条件：仅当 canonical 数据契约、S4C 经济语义或 RQAlpha 订单/撮合/账户语义变化，或出现具体
+  矛盾证据时；不得以集中度、历史收益、短期前瞻表现或时间压力为由改参数、加 cap、改写 R1 或
+  重写 activation 语义。真实前瞻 observation 只能按协议在 `2026-09-30` 及之后的月末 signal 形成。

@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import inspect
 from pathlib import Path
 
 import pandas as pd
@@ -492,3 +493,23 @@ def test_annual_rows_keep_each_series_own_history() -> None:
     assert blend_years == [2013, 2014]
     assert s30_years == [2014]
     assert list(frame.columns) == list(objective.ANNUAL_COLUMNS)
+
+
+def test_require_component_correctness_is_fail_closed() -> None:
+    assert objective.require_component_correctness(True) is None
+
+    with pytest.raises(RuntimeError, match="BLOCKED_BY_CORRECTNESS"):
+        objective.require_component_correctness(False)
+
+
+def test_main_checks_component_correctness_before_any_blend_research() -> None:
+    source = inspect.getsource(objective.main)
+
+    guard = source.index("require_component_correctness")
+    for downstream in (
+        "blend_target_schedule",
+        "replay_schedule(prices, schedule",
+        "build_static_execution_weights",
+        "to_csv",
+    ):
+        assert guard < source.index(downstream)

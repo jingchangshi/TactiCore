@@ -17,6 +17,9 @@
   - 不得声称 blend 保持了 S2 单独运行时的执行政策行为；
   - 组件自身的 anchor 必须单独回放，作为各自候选的正确性参照；
   - 派生的 100/0 端点**不等于** standalone S2_R1，也不得命名为 S2_R1。
+
+执行顺序是 fail-closed 的：先验证两个组件 anchor 的冻结身份与预注册 portability，通过之后才
+构造派生 blend、运行 S30 比较并写出证据。
 """
 # ruff: noqa: E501
 
@@ -380,6 +383,18 @@ def correctness_passed(frame: pd.DataFrame) -> bool:
     return bool(gating["passed"].all())
 
 
+def require_component_correctness(corrected: bool) -> None:
+    """fail-closed：组件 correctness 未通过时不得进入任何组合层研究计算。
+
+    该 gate 必须在构造派生 blend、回放任何 blend、运行 S30 比较或写出任何产物**之前**触发。
+    """
+    if not corrected:
+        raise RuntimeError(
+            "BLOCKED_BY_CORRECTNESS: 组件 anchor 的冻结身份或预注册 portability 检查未通过；"
+            "禁止计算、解释或写出任何组合层研究证据"
+        )
+
+
 def correlation_row(
     s2_result: ResearchResult,
     s4c_result: ResearchResult,
@@ -666,6 +681,7 @@ def main() -> None:
     corrected, correctness = component_correctness(
         prices, s2_schedule, s4c_schedule, s2_anchor, s4c_anchor, mask, lifetimes
     )
+    require_component_correctness(corrected)
 
     blend_schedules = {
         f"BLEND_S2_{int(s2_share * 100):02d}_S4C_{int(s4c_share * 100):02d}": (

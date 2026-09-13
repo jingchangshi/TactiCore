@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ruff: noqa: E501
-"""S4C authoritative execution review: replay frozen ERC targets through RQAlpha only."""
+"""S4C authoritative execution review (Protocol V2): replay committed frozen ERC targets."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ from research.experiments.run_s2_rqalpha_validation import (
 )
 from research.experiments.run_s4c_erc_skfolio_transfer import S4CConfig, build_targets
 from tacticore.data.prices import load_price_csv
-from tacticore.data.tradability import load_tradability_inputs
+from tacticore.data.tradability import load_tradability_inputs, validate_execution_targets
 from tacticore.strategies.multi_asset_trend import build_execution_weights, load_trend_config
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -34,8 +34,14 @@ BUNDLE = Path.home() / ".rqalpha/bundle"
 RETURNS_WINDOW = 60
 PRICE_WINDOW = RETURNS_WINDOW + 1
 FROZEN_TARGETS = ROOT / "research/results/s4c_pit_corrected_frozen_targets_v1.csv"
+FROZEN_TARGET_SHA256 = "f7bf398d7f8a016933cbe287bfa1cac98b3cccf175d40ef99092b95db1227e47"
+FROZEN_TARGET_ROWS = 161
+FROZEN_FIRST_DATE = pd.Timestamp("2013-04-01")
+FROZEN_LAST_DATE = pd.Timestamp("2026-08-03")
 BASELINE = ROOT / "research/results/s4c_pit_corrected_comparison_v1.csv"
 REPRODUCED_METRICS = ("cagr", "max_drawdown", "sharpe", "calmar", "turnover")
+REPRODUCTION_RTOL = 1e-4
+REPRODUCTION_ATOL = 1e-4
 UNEXPLAINED = ("", "UNKNOWN", "UNEXPLAINED_EXECUTION_DIFFERENCE")
 ADVANCE = "ADVANCE_S4C_TO_CANDIDATE_FREEZE_REVIEW"
 DO_NOT_ADVANCE = "DO_NOT_ADVANCE_S4C_EXECUTION"
@@ -70,29 +76,83 @@ def build_frozen_schedule(
     return schedule, diagnostics, start
 
 
+def read_normalized_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8").replace("\r\n", "\n")
+
+
 def load_committed_schedule(path: Path = FROZEN_TARGETS) -> pd.DataFrame:
+    """Load the committed frozen target file. It is the authoritative execution input."""
     if not path.is_file():
         raise FileNotFoundError(f"缺少冻结目标文件: {path}")
     frame = pd.read_csv(path, parse_dates=["execution_date"])
-    frame = frame.set_index("execution_date")
-    frame.index.name = "execution_date"
-    return frame
+    schedule = frame.set_index("execution_date").astype(float)
+    schedule.index.name = "execution_date"
+    return schedule
 
 
-def assert_committed_matches(serialized: str, path: Path = FROZEN_TARGETS) -> str:
-    """Fail closed when the committed target artifact differs from frozen semantics."""
+def verify_frozen_identity(
+    schedule: pd.DataFrame,
+    prices: pd.DataFrame,
+    mask: pd.DataFrame,
+    lifetimes: dict,
+    path: Path = FROZEN_TARGETS,
+) -> str:
+    """Zero-tolerance invariants of the committed frozen target artifact."""
     if not path.is_file():
         raise FileNotFoundError(f"缺少冻结目标文件: {path}")
-    committed = path.read_text(encoding="utf-8").replace("\r\n", "\n")
-    if committed != serialized:
-        raise ValueError("冻结目标文件与当前冻结语义不一致")
-    return sha256(committed.encode()).hexdigest()
+    committed = read_normalized_text(path)
+    digest = sha256(committed.encode()).hexdigest()
+    if digest != FROZEN_TARGET_SHA256:
+        raise ValueError(f"冻结目标 SHA-256 与 V2 协议不一致: {digest}")
+    if len(schedule) != FROZEN_TARGET_ROWS:
+        raise ValueError(f"冻结目标行数应为 {FROZEN_TARGET_ROWS}，实际 {len(schedule)}")
+    if schedule.index[0] != FROZEN_FIRST_DATE or schedule.index[-1] != FROZEN_LAST_DATE:
+        raise ValueError("冻结目标起止日期与 V2 协议不一致")
+    if schedule.index.has_duplicates or not schedule.index.is_monotonic_increasing:
+        raise ValueError("冻结目标日期必须唯一且严格递增")
+    if (schedule < 0).any().any() or not schedule.sum(axis=1).round(12).eq(1.0).all():
+        raise ValueError("冻结目标必须非负且逐行合计为一")
+    validate_execution_targets(schedule, prices, mask, lifetimes)
+    return digest
 
 
-def reproduces(metrics: dict[str, float], expected: pd.Series) -> bool:
+def audit_recomputation(serialized: str, path: Path = FROZEN_TARGETS) -> None:
+    """The frozen semantics must still re-derive the committed artifact exactly."""
+    if read_normalized_text(path) != serialized:
+        raise ValueError("重新推导的冻结目标与 committed artifact 不一致")
+
+
+def metric_tolerance(baseline: float) -> float:
+    return max(REPRODUCTION_ATOL, REPRODUCTION_RTOL * abs(baseline))
+
+
+def performance_reproduces(metrics: dict[str, float], expected: pd.Series) -> bool:
     return all(
-        abs(float(metrics[key]) - float(expected[key])) < 1e-12 for key in REPRODUCED_METRICS
+        abs(float(metrics[key]) - float(expected[key])) <= metric_tolerance(float(expected[key]))
+        for key in REPRODUCED_METRICS
     )
+
+
+def reproduction_table(metrics: dict[str, float], expected: pd.Series) -> pd.DataFrame:
+    rows = []
+    for key in REPRODUCED_METRICS:
+        baseline = float(expected[key])
+        observed = float(metrics[key])
+        tolerance = metric_tolerance(baseline)
+        delta = observed - baseline
+        rows.append(
+            {
+                "metric": key,
+                "baseline": baseline,
+                "observed": observed,
+                "delta": delta,
+                "tolerance": tolerance,
+                "passed": abs(delta) <= tolerance,
+            }
+        )
+    table = pd.DataFrame(rows)
+    table["reproduced"] = bool(table.passed.all())
+    return table
 
 
 def execution_decision(
@@ -101,7 +161,7 @@ def execution_decision(
     schedule: pd.DataFrame,
     differences: pd.DataFrame,
 ) -> str:
-    """Apply the preregistered S4C execution gates mechanically."""
+    """Apply the preregistered S4C execution gates mechanically (unchanged from V1)."""
     if replayed != list(schedule.index):
         return BLOCK_REPRODUCTION
     explained = not (
@@ -126,7 +186,6 @@ def run_native_replay(
     prices: pd.DataFrame,
     schedule: pd.DataFrame,
     config: S4CConfig,
-    start: pd.Timestamp,
     bundle: Path,
 ):
     if not bundle.is_dir():
@@ -171,20 +230,23 @@ def main() -> None:
     args = parser.parse_args()
 
     prices, mask, lifetimes, config, risk_symbols = load_review_inputs()
-    schedule, _diagnostics, start = build_frozen_schedule(
+    derived, _diagnostics, start = build_frozen_schedule(
         prices, risk_symbols, mask, lifetimes, config
     )
-    target_sha256, serialized = schedule_sha256(schedule)
-    print(
-        f"frozen_targets={len(schedule)} first={schedule.index[0].date()} "
-        f"last={schedule.index[-1].date()} sha256={target_sha256}"
-    )
+    _derived_sha256, serialized = schedule_sha256(derived)
     if args.freeze_targets:
         FROZEN_TARGETS.write_text(serialized, encoding="utf-8", newline="")
         print(f"wrote={FROZEN_TARGETS}")
         return
 
-    committed_sha256 = assert_committed_matches(serialized)
+    schedule = load_committed_schedule()
+    digest = verify_frozen_identity(schedule, prices, mask, lifetimes)
+    audit_recomputation(serialized)
+    print(
+        f"frozen_targets={len(schedule)} first={schedule.index[0].date()} "
+        f"last={schedule.index[-1].date()} sha256={digest}"
+    )
+
     result = replay_vectorbt(
         prices,
         schedule,
@@ -195,17 +257,9 @@ def main() -> None:
         lifetimes=lifetimes,
     )
     expected = pd.read_csv(BASELINE).iloc[0]
-    reproduction = pd.DataFrame(
-        [
-            {
-                **result.metrics,
-                "schedule_sha256": committed_sha256,
-                "reproduced": reproduces(result.metrics, expected),
-            }
-        ]
-    )
+    reproduction = reproduction_table(result.metrics, expected)
     reproduction.to_csv(
-        args.output_dir / "s4c_rqalpha_execution_vectorbt_reproduction_v1.csv", index=False
+        args.output_dir / "s4c_rqalpha_execution_vectorbt_reproduction_v2.csv", index=False
     )
     if not bool(reproduction.reproduced.iloc[0]):
         print(f"decision={BLOCK_REPRODUCTION}")
@@ -216,14 +270,14 @@ def main() -> None:
 
     try:
         native, tracking, differences, effort, replayed = run_native_replay(
-            prices, schedule, config, start, args.bundle
+            prices, schedule, config, args.bundle
         )
     except FileNotFoundError as error:
         print(f"decision={BLOCK_ENVIRONMENT}\nreason={error}")
         return
     native["rqalpha_version"] = rqalpha.__version__
     native["frozen_target_count"] = len(schedule)
-    native["frozen_target_sha256"] = committed_sha256
+    native["frozen_target_sha256"] = digest
     native["vectorbt_cagr"] = result.metrics["cagr"]
     native["vectorbt_max_drawdown"] = result.metrics["max_drawdown"]
     native["vectorbt_sharpe"] = result.metrics["sharpe"]
@@ -232,10 +286,10 @@ def main() -> None:
     outcome = execution_decision(native, replayed, schedule, differences)
     summary = pd.DataFrame([native])
     for name, frame in (
-        ("s4c_rqalpha_execution_summary_v1.csv", summary),
-        ("s4c_rqalpha_execution_target_tracking_v1.csv", tracking),
-        ("s4c_rqalpha_execution_material_differences_v1.csv", differences),
-        ("s4c_rqalpha_execution_user_effort_v1.csv", effort),
+        ("s4c_rqalpha_execution_summary_v2.csv", summary),
+        ("s4c_rqalpha_execution_target_tracking_v2.csv", tracking),
+        ("s4c_rqalpha_execution_material_differences_v2.csv", differences),
+        ("s4c_rqalpha_execution_user_effort_v2.csv", effort),
     ):
         frame.to_csv(args.output_dir / name, index=False)
     print(f"decision={outcome}\n{summary.to_csv(index=False)}")

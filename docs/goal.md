@@ -98,7 +98,7 @@ Commit C : 独立 RESEARCH_PRIORITY_DECISION + 选定唯一下一 Goal 的授权
 | --- | --- |
 | Starting HEAD | `ea5dc86` |
 | Commit A（初始） | `f04ae0c`（目标文档、协议、实现、测试；无结果产物） |
-| Corrective pre-result commits | `86e711d` 及其后的 correctness 修正 commit（见 git log） |
+| Corrective pre-result commits | `86e711d`（裁决基础/窗口/顺序）、`516d6f7`（identity-based correctness gate、年度报告起点、S30 inception 契约） |
 | 生效预注册协议 | [PROTOCOL_V3](../research/batches/portfolio_objective_10p/PROTOCOL_V3.md)（V1/V2 保留为历史记录） |
 | 无效运行 | V1 阶段被提前执行产生的一次输出已判定为 `INVALID_FOR_RESEARCH_INTERPRETATION`，未提交并已移除 |
 | 冻结候选状态 | S2 R1 `FROZEN / PROSPECTIVE_SHADOW_ACTIVE`；S4C R1 `FROZEN / NOT_ACTIVE`（均未改动） |

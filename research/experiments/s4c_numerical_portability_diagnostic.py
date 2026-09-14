@@ -391,6 +391,15 @@ def economic_materiality(
     }
 
 
+def contract_compliance(committed: pd.DataFrame, derived: pd.DataFrame) -> dict[str, Any]:
+    """把测量结果直接对照预注册契约：clean Linux 的 CI 日志因此自带合规证据。"""
+    from research.experiments.s4c_portable_reproduction import reproduction_evidence
+
+    evidence = reproduction_evidence(committed, derived)
+    evidence["within_contract"] = evidence["elements_exceeding_tolerance"] == 0
+    return evidence
+
+
 def build_report(label: str, repository_head: str | None) -> dict[str, Any]:
     prices, mask, lifetimes, config, risk_symbols = review.load_review_inputs()
     committed = review.load_committed_schedule()
@@ -433,6 +442,7 @@ def build_report(label: str, repository_head: str | None) -> dict[str, Any]:
         },
         "environment": environment_fingerprint(label, repository_head, prices),
         "comparison": comparison_report(committed, derived),
+        "contract_compliance": contract_compliance(committed, derived),
         "inputs": return_window_provenance(prices),
         "structure": {
             "committed": schedule_shape(committed),

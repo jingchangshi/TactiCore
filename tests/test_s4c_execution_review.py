@@ -9,6 +9,7 @@ import pandas as pd
 import pytest
 
 from research.experiments import run_s4c_rqalpha_execution_review as review
+from research.experiments import s4c_portable_reproduction as portability
 
 ROOT = Path(__file__).resolve().parents[1]
 SYMBOLS = ("510300.SS", "510500.SS", "511010.SS")
@@ -218,7 +219,25 @@ def test_frozen_target_artifact_structure_and_hash_are_exact() -> None:
         prices, risk_symbols, mask, lifetimes, config
     )
     assert start == pd.Timestamp("2013-04-01")
-    review.audit_recomputation(review.schedule_sha256(derived)[1])
+    # artifact identity（上面）保持精确；跨环境语义再现由预注册的可移植契约判定，
+    # 不再要求 clean Linux 的求解器重推逐字节复现序列化 CSV。
+    portability.require_portable_reproduction(schedule, derived)
+    assert portability.maximum_absolute_delta(schedule, derived) <= (
+        portability.SCHEDULE_WEIGHT_ABS_TOL
+    )
+
+
+def test_frozen_historical_byte_exact_audit_is_preserved_as_history() -> None:
+    """冻结的历史脚本与其 byte-exact audit 仍然存在，只是不再充当跨平台语义 gate。"""
+    prices, mask, lifetimes, config, risk_symbols = review.load_review_inputs()
+    derived, _diagnostics, _start = review.build_frozen_schedule(
+        prices, risk_symbols, mask, lifetimes, config
+    )
+    _digest, serialized = review.schedule_sha256(derived)
+
+    # 历史函数仍拒绝任何序列化漂移：它作为平台绑定的证据路径继续有效。
+    with pytest.raises(ValueError, match="不一致"):
+        review.audit_recomputation(serialized + "\n")
 
 
 def test_verify_frozen_identity_rejects_a_tampered_artifact(tmp_path: Path) -> None:

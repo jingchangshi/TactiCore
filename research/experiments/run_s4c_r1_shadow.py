@@ -18,7 +18,6 @@ from typing import Any
 
 import pandas as pd
 
-from research.experiments.frozen_target_replay import require_structurally_equivalent_schedule
 from research.experiments.prospective_evidence import (
     REQUIRED_VINTAGE_FILES,
     SHANGHAI_TIMEZONE,
@@ -53,6 +52,7 @@ from research.experiments.run_s4c_erc_skfolio_transfer import (
     aligned_window,
     erc_weights,
 )
+from research.experiments.s4c_portable_reproduction import require_portable_reproduction
 from research.experiments.verify_s4c_r1_candidate import (
     FROZEN_TARGETS_PATH,
     OBSERVATIONS_PATH,
@@ -292,10 +292,10 @@ def verify_semantics_reproduce_frozen_schedule(
     *,
     schedule_path: Path = FROZEN_TARGETS_PATH,
 ) -> None:
-    """以冻结语义重推最后一个冻结 signal，必须与 committed 冻结日程一致。
+    """以冻结语义重推最后一个冻结 signal，必须满足 S4C_PORTABLE_REPRODUCTION_CONTRACT_V1。
 
-    结构不变量（support / 最大权重身份 / 日期集合）与数值比较分离：前者是经济语义边界，
-    任何数值 portability 容差都不得绕过它。
+    结构不变量（support / 最大权重身份 / 日期集合）精确；跨平台求解数值允许契约内的浮点容差。
+    不再把「可重现」表达为序列化字节相等：那会把契约绑死到单一平台的浮点结果。
     """
     prices = load_price_csv(root / "data/canonical/etf_adjusted_close.csv")
     schedule = load_committed_schedule(schedule_path)
@@ -310,13 +310,11 @@ def verify_semantics_reproduce_frozen_schedule(
     expected = schedule.loc[last_execution].astype(float)
     reindexed = derived.reindex(expected.index)
     row_index = pd.DatetimeIndex([last_execution])
-    require_structurally_equivalent_schedule(
+    require_portable_reproduction(
         pd.DataFrame([expected], index=row_index),
         pd.DataFrame([reindexed], index=row_index),
         label="冻结语义重推导的 execution 行",
     )
-    if not reindexed.round(12).equals(expected.round(12)):
-        raise ValueError("冻结语义无法再现 committed 冻结目标日程（candidate 完整性失效）")
 
 
 def require_activation(

@@ -132,6 +132,15 @@
     "support_change_count": 0,
     "support_changes": []
   },
+  "contract_compliance": {
+    "contract": "S4C_PORTABLE_REPRODUCTION_CONTRACT_V1",
+    "elements_compared": 1932,
+    "elements_exceeding_tolerance": 0,
+    "maximum_absolute_delta": 1.1102230246251565e-16,
+    "schedule_weight_abs_tol": 0.0001,
+    "schedule_weight_rel_tol": 0.0,
+    "within_contract": true
+  },
   "derivation": {
     "derived_first_date": "2013-04-01",
     "derived_rows": 161,
@@ -202,7 +211,7 @@
             "tol_gap_abs": "1e-09",
             "tol_gap_rel": "1e-09"
           },
-          "solve_time": 0.0003956,
+          "solve_time": 0.0003622,
           "solver_name": "CLARABEL",
           "status": "optimal"
         }
@@ -232,7 +241,7 @@
     },
     "python_implementation": "CPython",
     "python_version": "3.11.15",
-    "repository_head": "15b9bca5c101148cbce6441e0b38da4d362b8503"
+    "repository_head": "4d53da64e0d2ee49d06dcf30639700e1b3a0205e"
   },
   "frozen_target_artifact": {
     "committed_sha256": "f7bf398d7f8a016933cbe287bfa1cac98b3cccf175d40ef99092b95db1227e47",

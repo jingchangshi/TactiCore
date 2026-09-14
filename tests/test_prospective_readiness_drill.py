@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 from pathlib import Path
 from typing import Any
@@ -13,21 +14,28 @@ from typing import Any
 import pandas as pd
 import pytest
 from conftest import (
+    MockTushareApi,
     build_candidate_repo,
+    injected_runner_clock,
+    rqalpha_analyser_fixture,
+    rqalpha_code,
     write_execution_artifact,
     write_observations_header,
-    write_prospective_vintage,
 )
 
+from research.experiments import freeze_prospective_vintage as freeze
+from research.experiments import prospective_evidence as pe
 from research.experiments import run_s2_r1_shadow as s2
 from research.experiments import run_s4c_r1_shadow as s4c
+from tacticore.data.tushare import SOURCE
 
 AS_OF = pd.Timestamp("2026-09-30")
 SEAL = "2026-09-30T08:00:00+00:00"
+DOWNLOAD_TIMESTAMP = "2026-09-30T07:30:00+00:00"
+EXECUTION_DATE = "2026-10-09"
 EXECUTION_TIMESTAMP = "2026-10-09T07:05:00+00:00"
 ARTIFACT_GENERATED_AT = "2026-10-09T07:30:00+00:00"
 EXECUTION_SEAL = "2026-10-09T08:00:00+00:00"
-EXTRA_CALENDAR_DATES = ("2026-10-09",)
 
 
 @pytest.fixture(autouse=True)
@@ -39,21 +47,29 @@ def _frozen_runner_clocks(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture
 def drill_repo(tmp_path: Path) -> Path:
+    """生产 snapshot 路径：MockTushare → freeze_vintage（两个候选）→ canonical vintage。"""
     root = tmp_path / "repo"
     build_candidate_repo(root, "S2_R1")
     build_candidate_repo(root, "S4C_R1")
     write_observations_header(s2.canonical_observations_path(root), s2.RECORD_FIELDS)
     write_observations_header(s4c.canonical_observations_path(root), s4c.RECORD_FIELDS)
-    write_prospective_vintage(
-        root / s2.VINTAGE_PARENT_RELATIVE_PATH / "2026-09-30",
-        as_of="2026-09-30",
-        extra_calendar_dates=EXTRA_CALENDAR_DATES,
+    api = MockTushareApi()
+    s2_vintage = freeze.freeze_vintage(
+        api,
+        candidate_id="S2_R1",
+        as_of=AS_OF,
+        root=root,
+        downloaded_at=DOWNLOAD_TIMESTAMP,
     )
-    write_prospective_vintage(
-        root / s4c.VINTAGE_PARENT_RELATIVE_PATH / "2026-09-30",
-        as_of="2026-09-30",
-        extra_calendar_dates=EXTRA_CALENDAR_DATES,
+    s4c_vintage = freeze.freeze_vintage(
+        api,
+        candidate_id="S4C_R1",
+        as_of=AS_OF,
+        root=root,
+        downloaded_at=DOWNLOAD_TIMESTAMP,
     )
+    assert s2_vintage == root / s2.VINTAGE_PARENT_RELATIVE_PATH / "2026-09-30"
+    assert s4c_vintage == root / s4c.VINTAGE_PARENT_RELATIVE_PATH / "2026-09-30"
     return root
 
 
@@ -69,6 +85,31 @@ def _fixture_artifact(root: Path, candidate_id: str, decision: dict[str, str]) -
     )
 
 
+def _produce_artifact(root: Path, decision: dict[str, str]) -> tuple[str, dict[str, Any]]:
+    """native-shaped RQAlpha 输出 → 生产 artifact seam → identity + 落盘 payload。"""
+    targets = json.loads(decision["desired_targets"])
+    symbol = next(iter(targets))
+    analyser, events, replayed = rqalpha_analyser_fixture(
+        root,
+        execution_date=EXECUTION_DATE,
+        realized_weights=targets,
+        order_events=((rqalpha_code(root, symbol), "ACTIVE", "fixture native 成交说明"),),
+    )
+    with injected_runner_clock(ARTIFACT_GENERATED_AT):
+        identity = pe.freeze_prospective_execution_artifact(
+            analyser,
+            events,
+            replayed,
+            root=root,
+            decision=decision,
+            framework_version="6.3.0",
+            expected_execution_date=EXECUTION_DATE,
+        )
+    relative = json.loads(identity)["evidence_path"]
+    payload = json.loads((root / relative).read_text(encoding="utf-8"))
+    return identity, payload
+
+
 def _symbols(decision: dict[str, str]) -> tuple[str, ...]:
     return tuple(json.loads(decision["desired_targets"]).keys())
 
@@ -78,7 +119,18 @@ def test_dual_candidate_synthetic_full_cycle_requires_no_code_change(drill_repo:
     s2_observations = s2.canonical_observations_path(root)
     s4c_observations = s4c.canonical_observations_path(root)
 
-    # 1. 两个候选各自从 candidate-specific canonical vintage 生成 decision。
+    # 1. 生产 snapshot 路径产出的 vintage 必须先通过机器验证：source、universe 身份、文件 hash。
+    frozen_universe = pe.load_frozen_universe(root)
+    for candidate in (s2, s4c):
+        vintage = root / candidate.VINTAGE_PARENT_RELATIVE_PATH / "2026-09-30"
+        provenance = json.loads((vintage / "provenance.json").read_text(encoding="utf-8"))
+        assert provenance["source"] == SOURCE
+        assert provenance["end_date"] == "20260930"
+        assert provenance["universe"]["sha256"] == frozen_universe.sha256
+        for name, entry in provenance["files"].items():
+            assert pe.sha256_file(vintage / name) == entry["sha256"]
+
+    # 2. 两个候选各自从 candidate-specific canonical vintage 生成 decision。
     s2_decision = s2.run_decision(AS_OF, root=root, decision_seal_time=SEAL)
     s4c_decision = s4c.run_decision(AS_OF, root=root, decision_seal_time=SEAL)
     assert s2_decision["signal_date"] == s4c_decision["signal_date"] == "2026-09-30"
@@ -95,7 +147,7 @@ def test_dual_candidate_synthetic_full_cycle_requires_no_code_change(drill_repo:
         "s4c": s4c_observations.read_bytes(),
     }
 
-    # 2. 重复 decision 必须被拒绝且不改变 bytes。
+    # 3. 重复 decision 必须被拒绝且不改变 bytes。
     with pytest.raises(ValueError, match="append-only"):
         s2.run_decision(AS_OF, root=root, decision_seal_time=SEAL)
     with pytest.raises(ValueError, match="append-only"):
@@ -103,19 +155,31 @@ def test_dual_candidate_synthetic_full_cycle_requires_no_code_change(drill_repo:
     assert s2_observations.read_bytes() == decisions_before_execution["s2"]
     assert s4c_observations.read_bytes() == decisions_before_execution["s4c"]
 
-    # 3. 用 authoritative-like RQAlpha fixture evidence 构造完整 execution 事件。
+    # 4. 生产 artifact seam 不得暴露时间或目标位置权威；时间只能来自 runner 时钟。
+    for seam in (pe.freeze_prospective_execution_artifact,):
+        parameters = set(inspect.signature(seam).parameters)
+        assert {
+            "artifact_generated_at",
+            "execution_timestamp",
+            "record_generated_at",
+            "artifact_relative_path",
+            "execution_date",
+        }.isdisjoint(parameters)
+
+    # 5. native-shaped RQAlpha 输出 → 生产 artifact → 时间链真实性检查。
+    s2_identity, s2_artifact = _produce_artifact(root, s2_decision)
+    s4c_identity, s4c_artifact = _produce_artifact(root, s4c_decision)
+    observation = pe.execution_observation_instant(EXECUTION_DATE)
+    for payload in (s2_artifact, s4c_artifact):
+        assert payload["execution_status"] == pe.RQALPHA_EXECUTED_STATUS
+        assert pd.Timestamp(payload["execution_timestamp"]) == observation
+        generated_at = pd.Timestamp(payload["artifact_generated_at"])
+        assert generated_at.tzinfo is not None
+        assert generated_at >= observation
+
+    # 6. 由 artifact identity 构造完整 execution 事件。
     s2_symbols = _symbols(s2_decision)
     s4c_symbols = _symbols(s4c_decision)
-    s2_identity = s2.build_rqalpha_evidence_identity(
-        evidence_path=_fixture_artifact(root, "S2_R1", s2_decision),
-        root=root,
-        expected_framework_version="6.3.0",
-    )
-    s4c_identity = s4c.build_rqalpha_evidence_identity(
-        evidence_path=_fixture_artifact(root, "S4C_R1", s4c_decision),
-        root=root,
-        expected_framework_version="6.3.0",
-    )
     s2_execution = s2.build_execution_record(
         s2_decision,
         execution_evidence=s2_identity,
@@ -133,7 +197,7 @@ def test_dual_candidate_synthetic_full_cycle_requires_no_code_change(drill_repo:
     assert s2_execution["execution_date"] == s4c_execution["execution_date"] == "2026-10-09"
     assert s2_execution["execution_status"] == s4c_execution["execution_status"] == "EXECUTED"
 
-    # 4. 不完整 execution 必须被拒绝，且 decision bytes 不变。
+    # 7. 不完整 execution 必须被拒绝，且 decision bytes 不变。
     incomplete = dict(s2_execution)
     incomplete["realized_weights"] = ""
     with pytest.raises(ValueError, match="realized_weights"):
@@ -145,18 +209,18 @@ def test_dual_candidate_synthetic_full_cycle_requires_no_code_change(drill_repo:
     assert s2_observations.read_bytes() == decisions_before_execution["s2"]
     assert s4c_observations.read_bytes() == decisions_before_execution["s4c"]
 
-    # 5. 完整 execution 只能追加在对应 decision 之后。
+    # 8. 完整 execution 只能追加在对应 decision 之后。
     s2.append_execution_record(s2_execution, s2_observations, root=root)
     s4c.append_execution_record(s4c_execution, s4c_observations, root=root)
     assert s2.observation_record_count(s2_observations) == 2
     assert s4c.observation_record_count(s4c_observations) == 2
 
-    # 6. 先前的 decision bytes 逐字节未变。
+    # 9. 先前的 decision bytes 逐字节未变。
     assert s2_observations.read_bytes().startswith(decisions_before_execution["s2"])
     assert s4c_observations.read_bytes().startswith(decisions_before_execution["s4c"])
     assert s2_observations.read_bytes() != decisions_before_execution["s2"]
 
-    # 7. 重复 execution 必须被拒绝。
+    # 10. 重复 execution 必须被拒绝。
     execution_bytes = {
         "s2": s2_observations.read_bytes(),
         "s4c": s4c_observations.read_bytes(),
@@ -210,10 +274,12 @@ def test_drill_is_deterministic_across_runs(drill_repo: Path, tmp_path: Path) ->
     second_repo = tmp_path / "second"
     build_candidate_repo(second_repo, "S2_R1")
     write_observations_header(s2.canonical_observations_path(second_repo), s2.RECORD_FIELDS)
-    write_prospective_vintage(
-        second_repo / s2.VINTAGE_PARENT_RELATIVE_PATH / "2026-09-30",
-        as_of="2026-09-30",
-        extra_calendar_dates=EXTRA_CALENDAR_DATES,
+    freeze.freeze_vintage(
+        MockTushareApi(),
+        candidate_id="S2_R1",
+        as_of=AS_OF,
+        root=second_repo,
+        downloaded_at=DOWNLOAD_TIMESTAMP,
     )
     second = s2.run_decision(AS_OF, root=second_repo, decision_seal_time=SEAL)
 

@@ -208,37 +208,52 @@ def rqalpha_code(root: Path, symbol: str) -> str:
     return str(universe.loc[universe["symbol"].eq(symbol), "rqalpha_symbol"].iloc[0])
 
 
-def native_rqalpha_output(
+def rqalpha_analyser_fixture(
     root: Path,
     *,
+    execution_date: str,
     realized_weights: Mapping[str, float],
     cash_weight: float = 0.0,
     turnover: float = 0.0,
     max_drawdown: float = 0.0,
     total_value: float = 1_000_000.0,
     order_events: tuple[tuple[str, str, str], ...] = (),
-    execution_status: str = "EXECUTED",
-) -> dict[str, Any]:
-    """构造 RQAlpha 原生形状的 analyser/position/order 输出（synthetic，不运行 RQAlpha）。"""
+) -> tuple[dict[str, Any], pd.DataFrame]:
+    """构造 RQAlpha 原生形状的 sys_analyser + order events（synthetic，不运行 RQAlpha）。"""
     universe = pd.read_csv(root / "config/universe.csv")
     code_by_symbol = dict(zip(universe["symbol"], universe["rqalpha_symbol"], strict=True))
-    values = {
+    day = pd.Timestamp(execution_date).normalize()
+    holdings = {
         code_by_symbol[str(symbol)]: float(weight) * total_value
         for symbol, weight in realized_weights.items()
         if float(weight) > 0.0
     }
-    return {
-        "execution_status": execution_status,
-        "order_book_values": values,
-        "total_value": float(total_value),
-        "cash": float(cash_weight) * total_value,
-        "turnover": float(turnover),
-        "max_drawdown": float(max_drawdown),
-        "order_events": [
-            {"order_book_id": str(code), "status": str(status), "message": str(message)}
-            for code, status, message in order_events
-        ],
+    portfolio = pd.DataFrame(
+        {"cash": [float(cash_weight) * total_value], "total_value": [float(total_value)]},
+        index=pd.DatetimeIndex([day], name="date"),
+    )
+    positions = pd.DataFrame(
+        {
+            "order_book_id": list(holdings),
+            "market_value": list(holdings.values()),
+            "quantity": [1] * len(holdings),
+        },
+        index=pd.DatetimeIndex([day] * len(holdings), name="date"),
+    )
+    events = pd.DataFrame(
+        {
+            "rqalpha_symbol": [str(code) for code, _, _ in order_events],
+            "status": [str(status) for _, status, _ in order_events],
+            "message": [str(message) for _, _, message in order_events],
+        },
+        index=pd.DatetimeIndex([day] * len(order_events), name="date"),
+    )
+    analyser = {
+        "portfolio": portfolio,
+        "stock_positions": positions,
+        "summary": {"turnover": float(turnover), "max_drawdown": float(max_drawdown)},
     }
+    return analyser, events
 
 
 def write_execution_artifact(
@@ -256,7 +271,6 @@ def write_execution_artifact(
     max_drawdown: float = 0.0,
     total_value: float = 1_000_000.0,
     order_events: tuple[tuple[str, str, str], ...] = (),
-    execution_status: str = "EXECUTED",
     framework_version: str = "6.3.0",
 ) -> str:
     """由一个 native-shaped RQAlpha 输出写出 authoritative artifact。
@@ -265,31 +279,33 @@ def write_execution_artifact(
     cash、turnover、status 与 native 说明全部由 producer 推导。
     """
     targets = {str(symbol): float(weight) for symbol, weight in desired_targets.items()}
-    native = native_rqalpha_output(
+    analyser, events = rqalpha_analyser_fixture(
         root,
+        execution_date=pd.Timestamp(execution_timestamp)
+        .tz_convert("Asia/Shanghai")
+        .date()
+        .isoformat(),
         realized_weights=targets if realized_weights is None else realized_weights,
         cash_weight=cash_weight,
         turnover=turnover,
         max_drawdown=max_drawdown,
         total_value=total_value,
         order_events=order_events,
-        execution_status=execution_status,
     )
-    payload = pe.build_rqalpha_execution_artifact_payload(
+    decision = {
+        "candidate_id": candidate_id,
+        "signal_date": signal_date,
+        "desired_targets": json.dumps(targets, ensure_ascii=False, sort_keys=True),
+    }
+    pe.freeze_prospective_execution_artifact(
+        analyser,
+        events,
         root=root,
-        candidate_id=candidate_id,
-        signal_date=signal_date,
+        decision=decision,
+        artifact_relative_path=relative_path,
         execution_timestamp=execution_timestamp,
         artifact_generated_at=artifact_generated_at,
         framework_version=framework_version,
-        intended_targets=targets,
-        native=native,
-    )
-    pe.write_rqalpha_execution_artifact(
-        payload,
-        path=root / relative_path,
-        frozen_universe=frozen_universe(root),
-        expected_framework_version=framework_version,
     )
     return relative_path
 

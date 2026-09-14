@@ -68,6 +68,8 @@ NATIVE_FIELDS = (
     "order_events",
 )
 NATIVE_ORDER_EVENT_FIELDS = ("order_book_id", "status", "message")
+NATIVE_ORDER_EVENT_COLUMNS = ("rqalpha_symbol", "status", "message")
+RQALPHA_EXECUTED_STATUS = "EXECUTED"
 
 
 # --------------------------------------------------------------------------------------
@@ -730,6 +732,154 @@ class NativeExecutionFacts:
     drawdown: float
     turnover: float
     native_evidence: dict[str, str]
+
+
+def _require_native_frame(analyser: Mapping[str, Any], name: str) -> pd.DataFrame:
+    frame = analyser.get(name)
+    if not isinstance(frame, pd.DataFrame) or frame.empty:
+        raise ValueError(f"native RQAlpha analyser 缺少非空 {name}")
+    return frame
+
+
+def _native_order_events(order_events: object, day: pd.Timestamp) -> list[dict[str, str]]:
+    """把捕获到的原生 order events 压缩成 native 说明记录。"""
+    if not isinstance(order_events, pd.DataFrame):
+        raise ValueError("native order events 必须是 DataFrame")
+    missing = set(NATIVE_ORDER_EVENT_COLUMNS).difference(order_events.columns)
+    if missing:
+        raise ValueError(f"native order events 缺少字段: {sorted(missing)}")
+    frame = order_events
+    if isinstance(frame.index, pd.DatetimeIndex):
+        frame = frame.loc[frame.index.normalize() == day]
+    records: list[dict[str, str]] = []
+    for row in frame.loc[:, list(NATIVE_ORDER_EVENT_COLUMNS)].itertuples(index=False):
+        code = "" if pd.isna(row.rqalpha_symbol) else str(row.rqalpha_symbol)
+        if not code:
+            raise ValueError("native order event 缺少 rqalpha_symbol")
+        records.append(
+            {
+                "order_book_id": code,
+                "status": "" if pd.isna(row.status) else str(row.status),
+                "message": "" if pd.isna(row.message) else str(row.message),
+            }
+        )
+    return records
+
+
+def extract_native_execution_block(
+    analyser: Mapping[str, Any], order_events: object, *, execution_date: object
+) -> dict[str, Any]:
+    """把 RQAlpha 原生 sys_analyser / order events 抽取成 normalized native facts。
+
+    这是唯一的 native 抽取入口：调用方不能提供 weights、cash、turnover、回撤或状态。
+    """
+    if not isinstance(analyser, Mapping):
+        raise ValueError("native RQAlpha analyser 必须是 mapping")
+    day = pd.Timestamp(execution_date).normalize()
+    portfolio = _require_native_frame(analyser, "portfolio")
+    positions = _require_native_frame(analyser, "stock_positions")
+    summary = analyser.get("summary")
+    if not isinstance(summary, Mapping):
+        raise ValueError("native RQAlpha analyser 缺少 summary")
+    if day not in portfolio.index:
+        raise ValueError(
+            f"native replay 未覆盖请求的 execution 观测日 {day.date().isoformat()}："
+            "无法证明该 execution 观测真实发生"
+        )
+    portfolio_row = portfolio.loc[day]
+    total_value = parse_finite_float(
+        portfolio_row["total_value"], label="native portfolio total_value"
+    )
+    cash = parse_finite_float(portfolio_row["cash"], label="native portfolio cash")
+    day_positions = positions.loc[positions.index.normalize() == day]
+    values: dict[str, float] = {}
+    if not day_positions.empty:
+        for code, group in day_positions.groupby("order_book_id"):
+            values[str(code)] = float(pd.to_numeric(group["market_value"], errors="coerce").sum())
+    return {
+        "execution_status": RQALPHA_EXECUTED_STATUS,
+        "order_book_values": values,
+        "total_value": total_value,
+        "cash": cash,
+        "turnover": parse_finite_float(summary["turnover"], label="native summary turnover"),
+        "max_drawdown": -abs(
+            parse_finite_float(summary["max_drawdown"], label="native summary max_drawdown")
+        ),
+        "order_events": _native_order_events(order_events, day),
+    }
+
+
+def build_rqalpha_execution_artifact_from_analyser(
+    analyser: Mapping[str, Any],
+    order_events: object,
+    *,
+    root: Path,
+    candidate_id: str,
+    signal_date: str,
+    execution_timestamp: str,
+    artifact_generated_at: str,
+    framework_version: str,
+    intended_targets: Mapping[str, float],
+) -> dict[str, Any]:
+    """actual RQAlpha output → normalized native facts → v2 artifact payload。"""
+    execution_day = (
+        require_timezone_aware_instant(execution_timestamp, label="artifact execution_timestamp")
+        .tz_convert(SHANGHAI_TIMEZONE)
+        .tz_localize(None)
+        .normalize()
+    )
+    native = extract_native_execution_block(analyser, order_events, execution_date=execution_day)
+    return build_rqalpha_execution_artifact_payload(
+        root=root,
+        candidate_id=candidate_id,
+        signal_date=signal_date,
+        execution_timestamp=execution_timestamp,
+        artifact_generated_at=artifact_generated_at,
+        framework_version=framework_version,
+        intended_targets=intended_targets,
+        native=native,
+    )
+
+
+def freeze_prospective_execution_artifact(
+    analyser: Mapping[str, Any],
+    order_events: object,
+    *,
+    root: Path,
+    decision: Mapping[str, str],
+    artifact_relative_path: str,
+    execution_timestamp: str,
+    artifact_generated_at: str,
+    framework_version: str,
+) -> str:
+    """生产入口：原生 RQAlpha 输出 → 不可覆盖的 v2 artifact → evidence identity。"""
+    frozen_universe = load_frozen_universe(root)
+    payload = build_rqalpha_execution_artifact_from_analyser(
+        analyser,
+        order_events,
+        root=root,
+        candidate_id=decision["candidate_id"],
+        signal_date=decision["signal_date"],
+        execution_timestamp=execution_timestamp,
+        artifact_generated_at=artifact_generated_at,
+        framework_version=framework_version,
+        intended_targets=parse_weight_vector(
+            decision["desired_targets"],
+            expected_symbols=frozen_universe.symbols,
+            label="decision desired_targets",
+        ),
+    )
+    write_rqalpha_execution_artifact(
+        payload,
+        path=root / artifact_relative_path,
+        frozen_universe=frozen_universe,
+        expected_framework_version=framework_version,
+    )
+    return build_rqalpha_evidence_identity(
+        evidence_path=artifact_relative_path,
+        root=root,
+        expected_framework_version=framework_version,
+    )
 
 
 def derive_native_execution_facts(

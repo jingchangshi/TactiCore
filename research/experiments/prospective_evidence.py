@@ -18,6 +18,7 @@ import json
 import math
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -70,6 +71,9 @@ NATIVE_FIELDS = (
 NATIVE_ORDER_EVENT_FIELDS = ("order_book_id", "status", "message")
 NATIVE_ORDER_EVENT_COLUMNS = ("rqalpha_symbol", "status", "message")
 RQALPHA_EXECUTED_STATUS = "EXECUTED"
+CANONICAL_ARTIFACT_ROOT = "research/shadow"
+EXECUTION_ARTIFACT_SUBDIRECTORY = "execution_artifacts"
+CANDIDATE_MANIFEST_FILENAME = "candidate_manifest.json"
 
 
 # --------------------------------------------------------------------------------------
@@ -721,6 +725,84 @@ def _parse_artifact_instants(record: Mapping[str, Any]) -> tuple[pd.Timestamp, p
     return execution_timestamp, artifact_generated_at
 
 
+def runner_utc_now() -> pd.Timestamp:
+    """生产 artifact 生成时钟的唯一来源。
+
+    生产调用方**不能**提供 `artifact_generated_at` 或 `execution_timestamp`；测试只能通过替换
+    本函数（显式的 test-only seam）复现历史或未来 fixture 时点。生产 API 不含任何时间或目标
+    位置的注入参数。
+    """
+    return pd.Timestamp(datetime.now(timezone.utc))
+
+
+def trusted_generation_instant() -> pd.Timestamp:
+    """读取生产 runner 时钟；naive / 不可解析的时钟返回一律拒绝。"""
+    instant = require_timezone_aware_instant(runner_utc_now(), label="runner artifact clock")
+    return instant.tz_convert("UTC")
+
+
+def execution_observation_instant(execution_date: object) -> pd.Timestamp:
+    """daily-bar 语义：execution 观测在 execution_date 收盘（15:00 Asia/Shanghai）才存在。"""
+    return signal_close_instant(execution_date)
+
+
+def derive_execution_observation_date(
+    analyser: Mapping[str, Any],
+    replayed_dates: object,
+    *,
+    signal_date: object,
+    expected_execution_date: object | None = None,
+) -> pd.Timestamp:
+    """只从 native replay 证据推导 execution 观测日；不接受调用方自述的时间戳。"""
+    signal_day = normalize_signal_date(signal_date)
+    if not isinstance(analyser, Mapping):
+        raise ValueError("native RQAlpha analyser 必须是 mapping")
+    portfolio = _require_native_frame(analyser, "portfolio")
+    portfolio_days = pd.DatetimeIndex(portfolio.index).normalize()
+    if replayed_dates is None:
+        raise ValueError("native replay 缺少 replayed_dates：无法证明 execution 观测真实发生")
+    try:
+        observed = pd.DatetimeIndex(pd.to_datetime(list(replayed_dates))).normalize()
+    except (TypeError, ValueError) as error:
+        raise ValueError("native replay 的 replayed_dates 不可解析") from error
+    if expected_execution_date is not None:
+        expected = normalize_signal_date(expected_execution_date)
+        if expected <= signal_day:
+            raise ValueError("execution_date 必须晚于 signal_date：决策必须先于执行")
+        if expected not in observed:
+            raise ValueError(
+                f"native replay 未在 {expected.date().isoformat()} 观测：不得据此产生 EXECUTED"
+            )
+        if expected not in portfolio_days:
+            raise ValueError(
+                "native analyser portfolio 未覆盖请求的 execution 观测日 "
+                f"{expected.date().isoformat()}"
+            )
+        return expected
+    candidates = [day for day in observed.unique() if day in portfolio_days and day > signal_day]
+    if not candidates:
+        raise ValueError("native replay 未提供 signal_date 之后且被 native 输出覆盖的执行观测日")
+    return pd.Timestamp(max(candidates))
+
+
+def canonical_execution_artifact_relative_path(
+    *, root: Path, candidate_id: str, signal_date: object, execution_date: object
+) -> str:
+    """candidate-specific canonical artifact 位置；生产路径不接受任意 destination。"""
+    candidate = str(candidate_id)
+    if not candidate or not all(character.isalnum() or character == "_" for character in candidate):
+        raise ValueError("candidate_id 必须是字母数字或下划线组成的候选标识")
+    directory = f"{CANONICAL_ARTIFACT_ROOT}/{candidate.lower()}"
+    if not (Path(root) / directory / CANDIDATE_MANIFEST_FILENAME).is_file():
+        raise ValueError(f"candidate shadow 目录缺少冻结 manifest: {directory}")
+    signal_day = normalize_signal_date(signal_date)
+    execution_day = normalize_signal_date(execution_date)
+    return (
+        f"{directory}/{EXECUTION_ARTIFACT_SUBDIRECTORY}/"
+        f"{signal_day.date().isoformat()}_{execution_day.date().isoformat()}.json"
+    )
+
+
 @dataclass(frozen=True)
 class NativeExecutionFacts:
     """由 RQAlpha 原生输出确定性导出的执行事实。"""
@@ -853,18 +935,29 @@ def build_rqalpha_execution_artifact_from_analyser(
     root: Path,
     candidate_id: str,
     signal_date: str,
-    execution_timestamp: str,
-    artifact_generated_at: str,
     framework_version: str,
     intended_targets: Mapping[str, float],
+    expected_execution_date: object | None = None,
 ) -> dict[str, Any]:
-    """actual RQAlpha output → normalized native facts → v2 artifact payload。"""
-    execution_day = (
-        require_timezone_aware_instant(execution_timestamp, label="artifact execution_timestamp")
-        .tz_convert(SHANGHAI_TIMEZONE)
-        .tz_localize(None)
-        .normalize()
+    """actual RQAlpha output → normalized native facts → v2 artifact payload。
+
+    execution 观测日只从 native replay evidence 推导（`expected_execution_date` 只作为断言），
+    `artifact_generated_at` 只来自 runner 时钟。调用方不能提供 execution_timestamp 或
+    artifact_generated_at，也不能把观测日挪到 runner 时钟尚未到达的将来。
+    """
+    execution_day = derive_execution_observation_date(
+        analyser,
+        replayed_dates,
+        signal_date=signal_date,
+        expected_execution_date=expected_execution_date,
     )
+    observation = execution_observation_instant(execution_day)
+    generated_at = trusted_generation_instant()
+    if generated_at < observation:
+        raise ValueError(
+            "runner 时钟早于 execution 观测收盘 "
+            f"({observation.isoformat()})：不得为尚未发生的观测冻结 authoritative artifact"
+        )
     native = extract_native_execution_block(
         analyser, order_events, replayed_dates, execution_date=execution_day
     )
@@ -872,8 +965,8 @@ def build_rqalpha_execution_artifact_from_analyser(
         root=root,
         candidate_id=candidate_id,
         signal_date=signal_date,
-        execution_timestamp=execution_timestamp,
-        artifact_generated_at=artifact_generated_at,
+        execution_timestamp=observation.isoformat(),
+        artifact_generated_at=generated_at.isoformat(),
         framework_version=framework_version,
         intended_targets=intended_targets,
         native=native,
@@ -887,12 +980,19 @@ def freeze_prospective_execution_artifact(
     *,
     root: Path,
     decision: Mapping[str, str],
-    artifact_relative_path: str,
-    execution_timestamp: str,
-    artifact_generated_at: str,
     framework_version: str,
+    expected_execution_date: object | None = None,
 ) -> str:
-    """生产入口：原生 RQAlpha 输出 → 不可覆盖的 v2 artifact → evidence identity。"""
+    """生产入口：原生 RQAlpha 输出 → 不可覆盖的 v2 artifact → evidence identity。
+
+    调用方只能提供 native 输入与 decision。它**不能**提供：
+
+    ```text
+    artifact_generated_at        只来自 runner 时钟
+    execution_timestamp          只来自 native replay 证据 + daily-bar 收盘语义
+    execution_date / record path 只由 candidate_id + signal_date + execution_date 决定
+    ```
+    """
     frozen_universe = load_frozen_universe(root)
     payload = build_rqalpha_execution_artifact_from_analyser(
         analyser,
@@ -901,18 +1001,31 @@ def freeze_prospective_execution_artifact(
         root=root,
         candidate_id=decision["candidate_id"],
         signal_date=decision["signal_date"],
-        execution_timestamp=execution_timestamp,
-        artifact_generated_at=artifact_generated_at,
         framework_version=framework_version,
         intended_targets=parse_weight_vector(
             decision["desired_targets"],
             expected_symbols=frozen_universe.symbols,
             label="decision desired_targets",
         ),
+        expected_execution_date=expected_execution_date,
+    )
+    execution_day = (
+        require_timezone_aware_instant(
+            payload["execution_timestamp"], label="artifact execution_timestamp"
+        )
+        .tz_convert(SHANGHAI_TIMEZONE)
+        .tz_localize(None)
+        .normalize()
+    )
+    artifact_relative_path = canonical_execution_artifact_relative_path(
+        root=root,
+        candidate_id=str(payload["candidate_id"]),
+        signal_date=str(payload["signal_date"]),
+        execution_date=execution_day,
     )
     write_rqalpha_execution_artifact(
         payload,
-        path=root / artifact_relative_path,
+        path=Path(root) / artifact_relative_path,
         frozen_universe=frozen_universe,
         expected_framework_version=framework_version,
     )
@@ -1010,10 +1123,15 @@ def build_rqalpha_execution_artifact_payload(
     intended_targets: Mapping[str, float],
     native: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """把 RQAlpha 原生输出序列化成 authoritative artifact。
+    """把 RQAlpha 原生输出序列化成 authoritative artifact（低层 serializer）。
 
     这是 producer：它只搬运 native facts，所有 execution 结论都由 `native` 推导，
     调用方无法另行提供 realized weights / cash / turnover / status。
+
+    时间权威不在这里：`execution_timestamp` / `artifact_generated_at` 由上游生产 seam
+    （`build_rqalpha_execution_artifact_from_analyser` / `freeze_prospective_execution_artifact`）
+    从 native replay 证据与 runner 时钟推导。本函数是纯 serializer，生产路径不得用它绕过
+    时间与位置权威；它保留显式时间参数只为 test-only fixture 构造。
     """
     frozen_universe = load_frozen_universe(root)
     facts = derive_native_execution_facts(native, frozen_universe=frozen_universe)

@@ -12,6 +12,7 @@ import pytest
 from conftest import (
     build_candidate_repo,
     frozen_universe,
+    injected_runner_clock,
     rqalpha_analyser_fixture,
     rqalpha_code,
     write_execution_artifact,
@@ -24,7 +25,7 @@ SIGNAL_DATE = "2026-09-30"
 EXECUTION_DATE = "2026-10-09"
 EXECUTION_TIMESTAMP = "2026-10-09T07:05:00+00:00"
 ARTIFACT_GENERATED_AT = "2026-10-09T07:30:00+00:00"
-ARTIFACT_RELATIVE_PATH = "research/results/s2_r1_producer_artifact.json"
+ARTIFACT_RELATIVE_PATH = "research/shadow/s2_r1/execution_artifacts/2026-09-30_2026-10-09.json"
 
 
 @pytest.fixture
@@ -47,18 +48,18 @@ def _produce_from_analyser(
     events: pd.DataFrame,
     replayed: list[pd.Timestamp],
 ) -> dict[str, Any]:
-    return pe.build_rqalpha_execution_artifact_from_analyser(
-        analyser,
-        events,
-        replayed,
-        root=root,
-        candidate_id="S2_R1",
-        signal_date=SIGNAL_DATE,
-        execution_timestamp=EXECUTION_TIMESTAMP,
-        artifact_generated_at=ARTIFACT_GENERATED_AT,
-        framework_version="6.3.0",
-        intended_targets=targets,
-    )
+    with injected_runner_clock(ARTIFACT_GENERATED_AT):
+        return pe.build_rqalpha_execution_artifact_from_analyser(
+            analyser,
+            events,
+            replayed,
+            root=root,
+            candidate_id="S2_R1",
+            signal_date=SIGNAL_DATE,
+            framework_version="6.3.0",
+            intended_targets=targets,
+            expected_execution_date=EXECUTION_DATE,
+        )
 
 
 def test_native_positions_and_cash_produce_the_derived_execution_facts(repo: Path) -> None:
@@ -117,6 +118,53 @@ def test_production_seam_exposes_no_execution_metrics() -> None:
         "native_evidence",
         "native",
     }.isdisjoint(parameters)
+
+
+def test_production_seams_expose_no_time_or_destination_authority() -> None:
+    """生产 seam 不接受 artifact_generated_at / execution timestamp / 任意目标位置。"""
+    forbidden = {
+        "artifact_generated_at",
+        "execution_timestamp",
+        "record_generated_at",
+        "artifact_relative_path",
+        "execution_date",
+    }
+    assert forbidden.isdisjoint(
+        set(inspect.signature(pe.freeze_prospective_execution_artifact).parameters)
+    )
+    assert forbidden.isdisjoint(
+        set(inspect.signature(pe.build_rqalpha_execution_artifact_from_analyser).parameters)
+    )
+    # 观测日只能作为断言传入，不能作为时间权威。
+    assert (
+        "expected_execution_date"
+        in inspect.signature(pe.freeze_prospective_execution_artifact).parameters
+    )
+
+
+def test_canonical_artifact_path_is_derived_from_candidate_and_dates(repo: Path) -> None:
+    relative = pe.canonical_execution_artifact_relative_path(
+        root=repo,
+        candidate_id="S2_R1",
+        signal_date=SIGNAL_DATE,
+        execution_date=EXECUTION_DATE,
+    )
+
+    assert relative == ARTIFACT_RELATIVE_PATH
+    with pytest.raises(ValueError, match="candidate_id"):
+        pe.canonical_execution_artifact_relative_path(
+            root=repo,
+            candidate_id="../../etc",
+            signal_date=SIGNAL_DATE,
+            execution_date=EXECUTION_DATE,
+        )
+    with pytest.raises(ValueError, match="manifest"):
+        pe.canonical_execution_artifact_relative_path(
+            root=repo,
+            candidate_id="UNKNOWN_R9",
+            signal_date=SIGNAL_DATE,
+            execution_date=EXECUTION_DATE,
+        )
 
 
 def test_producer_rejects_native_facts_that_do_not_add_up(repo: Path) -> None:
@@ -238,17 +286,16 @@ def test_production_seam_writes_the_artifact_and_returns_an_identity(repo: Path)
         repo, execution_date=EXECUTION_DATE, realized_weights={list(targets)[0]: 1.0}
     )
 
-    identity = pe.freeze_prospective_execution_artifact(
-        analyser,
-        events,
-        replayed,
-        root=repo,
-        decision=decision,
-        artifact_relative_path=ARTIFACT_RELATIVE_PATH,
-        execution_timestamp=EXECUTION_TIMESTAMP,
-        artifact_generated_at=ARTIFACT_GENERATED_AT,
-        framework_version="6.3.0",
-    )
+    with injected_runner_clock(ARTIFACT_GENERATED_AT):
+        identity = pe.freeze_prospective_execution_artifact(
+            analyser,
+            events,
+            replayed,
+            root=repo,
+            decision=decision,
+            framework_version="6.3.0",
+            expected_execution_date=EXECUTION_DATE,
+        )
 
     payload = pe.verify_rqalpha_evidence_identity(
         identity, root=repo, expected_framework_version="6.3.0"
@@ -257,13 +304,90 @@ def test_production_seam_writes_the_artifact_and_returns_an_identity(repo: Path)
     written = json.loads((repo / ARTIFACT_RELATIVE_PATH).read_text(encoding="utf-8"))
     assert written["schema"] == pe.RQALPHA_ARTIFACT_SCHEMA
     assert written["intended_targets"] == targets
+    generated_at = pd.Timestamp(written["artifact_generated_at"])
+    execution_timestamp = pd.Timestamp(written["execution_timestamp"])
+    assert generated_at.tzinfo is not None
+    assert generated_at >= execution_timestamp
+    assert execution_timestamp == pe.execution_observation_instant(EXECUTION_DATE)
+
+
+def test_production_seam_rejects_a_future_execution_observation(repo: Path) -> None:
+    """未注入的 runner 时钟不能为尚未发生的观测冻结 authoritative artifact。"""
+    targets = _targets(repo)
+    decision = {
+        "candidate_id": "S2_R1",
+        "signal_date": SIGNAL_DATE,
+        "desired_targets": json.dumps(targets, ensure_ascii=False, sort_keys=True),
+    }
+    future_day = "2035-01-02"
+    analyser, events, replayed = rqalpha_analyser_fixture(
+        repo, execution_date=future_day, realized_weights={list(targets)[0]: 1.0}
+    )
+
+    with pytest.raises(ValueError, match="尚未发生"):
+        pe.freeze_prospective_execution_artifact(
+            analyser,
+            events,
+            replayed,
+            root=repo,
+            decision=decision,
+            framework_version="6.3.0",
+        )
+    assert not (repo / "research/shadow/s2_r1/execution_artifacts").exists()
+
+
+def test_naive_runner_clock_is_rejected(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """naive / 无时区的时钟返回一律拒绝，不得静默当作 UTC。"""
+    targets = _targets(repo)
+    decision = {
+        "candidate_id": "S2_R1",
+        "signal_date": SIGNAL_DATE,
+        "desired_targets": json.dumps(targets, ensure_ascii=False, sort_keys=True),
+    }
+    analyser, events, replayed = rqalpha_analyser_fixture(
+        repo, execution_date=EXECUTION_DATE, realized_weights={list(targets)[0]: 1.0}
+    )
+    monkeypatch.setattr(pe, "runner_utc_now", lambda: pd.Timestamp("2026-10-09 07:30:00"))
+
+    with pytest.raises(ValueError, match="时区"):
+        pe.freeze_prospective_execution_artifact(
+            analyser,
+            events,
+            replayed,
+            root=repo,
+            decision=decision,
+            framework_version="6.3.0",
+        )
+
+
+def test_expected_execution_date_is_only_an_assertion(repo: Path) -> None:
+    """expected_execution_date 与 native replay 证据不符时必须拒绝。"""
+    targets = _targets(repo)
+    decision = {
+        "candidate_id": "S2_R1",
+        "signal_date": SIGNAL_DATE,
+        "desired_targets": json.dumps(targets, ensure_ascii=False, sort_keys=True),
+    }
+    analyser, events, replayed = rqalpha_analyser_fixture(
+        repo, execution_date=EXECUTION_DATE, realized_weights={list(targets)[0]: 1.0}
+    )
+    with injected_runner_clock(ARTIFACT_GENERATED_AT):
+        with pytest.raises(ValueError, match="未在 2026-10-12 观测"):
+            pe.freeze_prospective_execution_artifact(
+                analyser,
+                events,
+                replayed,
+                root=repo,
+                decision=decision,
+                framework_version="6.3.0",
+                expected_execution_date="2026-10-12",
+            )
 
 
 def test_artifact_overwrite_is_rejected(repo: Path) -> None:
     targets = _targets(repo)
     relative = write_execution_artifact(
         repo,
-        relative_path=ARTIFACT_RELATIVE_PATH,
         candidate_id="S2_R1",
         signal_date=SIGNAL_DATE,
         desired_targets=targets,
@@ -304,10 +428,8 @@ def test_internally_inconsistent_artifact_is_rejected_even_with_a_valid_sha(
     repo: Path, mutate: Any, match: str
 ) -> None:
     """artifact 的派生指标必须能被 native facts 复算；重新算过 SHA 也不能通过。"""
-    relative = "research/results/s2_r1_inconsistent_artifact.json"
-    write_execution_artifact(
+    relative = write_execution_artifact(
         repo,
-        relative_path=relative,
         candidate_id="S2_R1",
         signal_date=SIGNAL_DATE,
         desired_targets=_targets(repo),

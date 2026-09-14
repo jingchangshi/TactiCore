@@ -17,6 +17,7 @@ from conftest import (
     write_execution_artifact,
     write_observations_header,
     write_prospective_vintage,
+    write_raw_execution_artifact,
 )
 
 from research.experiments import run_s2_r1_shadow as shadow
@@ -28,7 +29,7 @@ EXECUTION_DATE = "2026-10-09"
 EXECUTION_TIMESTAMP = "2026-10-09T07:05:00+00:00"
 ARTIFACT_GENERATED_AT = "2026-10-09T07:30:00+00:00"
 EXECUTION_SEAL = "2026-10-09T08:00:00+00:00"
-ARTIFACT_RELATIVE_PATH = "research/results/s2_r1_fixture_rqalpha_artifact.json"
+ARTIFACT_RELATIVE_PATH = "research/shadow/s2_r1/execution_artifacts/2026-09-30_2026-10-09.json"
 
 
 @pytest.fixture(autouse=True)
@@ -448,7 +449,6 @@ def _execution_fixture(
     symbols = _decision_symbols(decision)
     relative_evidence = write_execution_artifact(
         root,
-        relative_path=ARTIFACT_RELATIVE_PATH,
         candidate_id="S2_R1",
         signal_date=decision["signal_date"],
         desired_targets=json.loads(decision["desired_targets"]),
@@ -538,7 +538,8 @@ def test_rqalpha_evidence_hash_mismatch_is_rejected(tmp_path: Path) -> None:
 
 def test_rqalpha_evidence_missing_file_is_rejected(tmp_path: Path) -> None:
     root, complete, observations = _execution_fixture(tmp_path)
-    (root / ARTIFACT_RELATIVE_PATH).unlink()
+    evidence_path = json.loads(complete["execution_evidence"])["evidence_path"]
+    (root / evidence_path).unlink()
 
     with pytest.raises(ValueError, match="不存在"):
         shadow.append_execution_record(complete, observations, root=root)
@@ -589,17 +590,21 @@ def _pending_decision(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
 def test_illegal_execution_instants_are_rejected(
     tmp_path: Path, execution_timestamp: str, match: str
 ) -> None:
-    """同日 15:00 Asia/Shanghai 之前没有 execution 观测；decision seal 之后才能执行。"""
+    """parse-level 防御：同日 15:00 Asia/Shanghai 之前没有观测；decision seal 之后才能执行。
+
+    生产 seam 已经不可能写出这种 artifact（观测时刻只由 native 证据与收盘语义推导），
+    因此这里用 test-only 低层 serializer 构造非法时间链，证明 row 层仍会独立拒绝。
+    """
     root, decision, observations = _pending_decision(tmp_path)
     before = observations.read_bytes()
-    write_execution_artifact(
+    write_raw_execution_artifact(
         root,
         relative_path=ARTIFACT_RELATIVE_PATH,
         candidate_id="S2_R1",
         signal_date=decision["signal_date"],
         desired_targets=json.loads(decision["desired_targets"]),
         execution_timestamp=execution_timestamp,
-        artifact_generated_at=ARTIFACT_GENERATED_AT,
+        artifact_generated_at=EXECUTION_SEAL,
     )
     identity = shadow.build_rqalpha_evidence_identity(
         evidence_path=ARTIFACT_RELATIVE_PATH, root=root, expected_framework_version="6.3.0"
@@ -649,17 +654,22 @@ def test_artifact_candidate_or_signal_mismatch_is_rejected(tmp_path: Path) -> No
     shadow.append_decision_record(decision, observations)
     symbols = _decision_symbols(decision)
     targets = json.loads(decision["desired_targets"])
-    write_execution_artifact(
+    relative = write_execution_artifact(
         root,
-        relative_path=ARTIFACT_RELATIVE_PATH,
-        candidate_id="S4C_R1",
+        candidate_id="S2_R1",
         signal_date=decision["signal_date"],
         desired_targets=targets,
         execution_timestamp=EXECUTION_TIMESTAMP,
         artifact_generated_at=ARTIFACT_GENERATED_AT,
     )
+    artifact_path = root / relative
+    payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+    payload["candidate_id"] = "S4C_R1"
+    artifact_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     identity = shadow.build_rqalpha_evidence_identity(
-        evidence_path=ARTIFACT_RELATIVE_PATH, root=root, expected_framework_version="6.3.0"
+        evidence_path=relative, root=root, expected_framework_version="6.3.0"
     )
 
     with pytest.raises(ValueError, match="candidate_id"):
@@ -678,9 +688,8 @@ def test_artifact_signal_date_mismatch_is_rejected(tmp_path: Path) -> None:
     decision = _decision(tmp_path)
     shadow.append_decision_record(decision, observations)
     symbols = _decision_symbols(decision)
-    write_execution_artifact(
+    relative = write_execution_artifact(
         root,
-        relative_path=ARTIFACT_RELATIVE_PATH,
         candidate_id="S2_R1",
         signal_date="2026-08-31",
         desired_targets=json.loads(decision["desired_targets"]),
@@ -688,7 +697,7 @@ def test_artifact_signal_date_mismatch_is_rejected(tmp_path: Path) -> None:
         artifact_generated_at=ARTIFACT_GENERATED_AT,
     )
     identity = shadow.build_rqalpha_evidence_identity(
-        evidence_path=ARTIFACT_RELATIVE_PATH, root=root, expected_framework_version="6.3.0"
+        evidence_path=relative, root=root, expected_framework_version="6.3.0"
     )
 
     with pytest.raises(ValueError, match="signal_date"):
@@ -721,9 +730,8 @@ def test_current_clock_cannot_seal_a_future_execution_observation(
 ) -> None:
     """fixture 时钟可以复现未来时点，但未注入的 production clock 不能为未来观测封存 evidence。"""
     root, decision, observations = _pending_decision(tmp_path)
-    write_execution_artifact(
+    relative = write_execution_artifact(
         root,
-        relative_path=ARTIFACT_RELATIVE_PATH,
         candidate_id="S2_R1",
         signal_date=decision["signal_date"],
         desired_targets=json.loads(decision["desired_targets"]),
@@ -731,7 +739,7 @@ def test_current_clock_cannot_seal_a_future_execution_observation(
         artifact_generated_at="2035-01-02T07:30:00+00:00",
     )
     identity = shadow.build_rqalpha_evidence_identity(
-        evidence_path=ARTIFACT_RELATIVE_PATH, root=root, expected_framework_version="6.3.0"
+        evidence_path=relative, root=root, expected_framework_version="6.3.0"
     )
     before = observations.read_bytes()
     monkeypatch.undo()

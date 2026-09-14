@@ -9,7 +9,8 @@ from __future__ import annotations
 import csv
 import json
 import shutil
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -268,7 +269,82 @@ def rqalpha_analyser_fixture(
     return analyser, events, replayed
 
 
+@contextmanager
+def injected_runner_clock(instant: str) -> Iterator[None]:
+    """显式 test-only 时钟 seam：只在 fixture 构造期替换生产 runner 时钟。
+
+    生产 API 本身不可注入时间；测试要复现历史或未来 fixture 时点，只能替换这个 seam。
+    """
+    original = pe.runner_utc_now
+    pe.runner_utc_now = lambda: pd.Timestamp(instant)
+    try:
+        yield
+    finally:
+        pe.runner_utc_now = original
+
+
+def _artifact_execution_day(execution_timestamp: str) -> str:
+    return pd.Timestamp(execution_timestamp).tz_convert("Asia/Shanghai").date().isoformat()
+
+
 def write_execution_artifact(
+    root: Path,
+    *,
+    candidate_id: str,
+    signal_date: str,
+    desired_targets: Mapping[str, float],
+    execution_timestamp: str,
+    artifact_generated_at: str,
+    realized_weights: Mapping[str, float] | None = None,
+    cash_weight: float = 0.0,
+    turnover: float = 0.0,
+    max_drawdown: float = 0.0,
+    total_value: float = 1_000_000.0,
+    order_events: tuple[tuple[str, str, str], ...] = (),
+    framework_version: str = "6.3.0",
+) -> str:
+    """由 native-shaped RQAlpha 输出走生产 seam 冻结 artifact，返回 canonical relative path。
+
+    调用方只能提供 native facts（持仓市值/现金/换手/回撤/order events）与 fixture 时点；
+    realized weights、cash、turnover、status、native 说明、execution 观测日与 artifact 位置
+    全部由生产路径推导。`artifact_generated_at` 只通过 test-only 时钟 seam 生效。
+    """
+    targets = {str(symbol): float(weight) for symbol, weight in desired_targets.items()}
+    execution_day = _artifact_execution_day(execution_timestamp)
+    analyser, events, replayed = rqalpha_analyser_fixture(
+        root,
+        execution_date=execution_day,
+        realized_weights=targets if realized_weights is None else realized_weights,
+        cash_weight=cash_weight,
+        turnover=turnover,
+        max_drawdown=max_drawdown,
+        total_value=total_value,
+        order_events=order_events,
+    )
+    decision = {
+        "candidate_id": candidate_id,
+        "signal_date": signal_date,
+        "desired_targets": json.dumps(targets, ensure_ascii=False, sort_keys=True),
+    }
+    with injected_runner_clock(artifact_generated_at):
+        pe.freeze_prospective_execution_artifact(
+            analyser,
+            events,
+            replayed,
+            root=root,
+            decision=decision,
+            framework_version=framework_version,
+            expected_execution_date=execution_day,
+        )
+    return pe.canonical_execution_artifact_relative_path(
+        root=root,
+        candidate_id=candidate_id,
+        signal_date=signal_date,
+        execution_date=execution_day,
+    )
+
+
+def write_raw_execution_artifact(
     root: Path,
     *,
     relative_path: str,
@@ -285,18 +361,16 @@ def write_execution_artifact(
     order_events: tuple[tuple[str, str, str], ...] = (),
     framework_version: str = "6.3.0",
 ) -> str:
-    """由一个 native-shaped RQAlpha 输出写出 authoritative artifact。
+    """test-only 低层 serializer：可构造非法时间链，只供 parse-level 契约测试使用。
 
-    调用方只能提供 native facts（持仓市值/现金/换手/回撤/order events）；realized weights、
-    cash、turnover、status 与 native 说明全部由 producer 推导。
+    生产路径不得使用它：它绕过 runner 时钟与 canonical 位置权威，因此这里的 time/location
+    参数都只是 fixture 输入。
     """
     targets = {str(symbol): float(weight) for symbol, weight in desired_targets.items()}
+    execution_day = _artifact_execution_day(execution_timestamp)
     analyser, events, replayed = rqalpha_analyser_fixture(
         root,
-        execution_date=pd.Timestamp(execution_timestamp)
-        .tz_convert("Asia/Shanghai")
-        .date()
-        .isoformat(),
+        execution_date=execution_day,
         realized_weights=targets if realized_weights is None else realized_weights,
         cash_weight=cash_weight,
         turnover=turnover,
@@ -304,21 +378,24 @@ def write_execution_artifact(
         total_value=total_value,
         order_events=order_events,
     )
-    decision = {
-        "candidate_id": candidate_id,
-        "signal_date": signal_date,
-        "desired_targets": json.dumps(targets, ensure_ascii=False, sort_keys=True),
-    }
-    pe.freeze_prospective_execution_artifact(
-        analyser,
-        events,
-        replayed,
+    native = pe.extract_native_execution_block(
+        analyser, events, replayed, execution_date=execution_day
+    )
+    payload = pe.build_rqalpha_execution_artifact_payload(
         root=root,
-        decision=decision,
-        artifact_relative_path=relative_path,
+        candidate_id=candidate_id,
+        signal_date=signal_date,
         execution_timestamp=execution_timestamp,
         artifact_generated_at=artifact_generated_at,
         framework_version=framework_version,
+        intended_targets=targets,
+        native=native,
+    )
+    pe.write_rqalpha_execution_artifact(
+        payload,
+        path=root / relative_path,
+        frozen_universe=load_frozen_universe(root),
+        expected_framework_version=framework_version,
     )
     return relative_path
 

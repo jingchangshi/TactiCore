@@ -57,13 +57,10 @@ def drill_repo(tmp_path: Path) -> Path:
     return root
 
 
-def _fixture_artifact(
-    root: Path, candidate_id: str, relative_path: str, decision: dict[str, str]
-) -> str:
-    """用 decision 的冻结目标写出一份 structured synthetic RQAlpha execution artifact。"""
+def _fixture_artifact(root: Path, candidate_id: str, decision: dict[str, str]) -> str:
+    """用 decision 的冻结目标走生产 seam 写出一份 synthetic RQAlpha execution artifact。"""
     return write_execution_artifact(
         root,
-        relative_path=relative_path,
         candidate_id=candidate_id,
         signal_date=decision["signal_date"],
         desired_targets=json.loads(decision["desired_targets"]),
@@ -110,22 +107,12 @@ def test_dual_candidate_synthetic_full_cycle_requires_no_code_change(drill_repo:
     s2_symbols = _symbols(s2_decision)
     s4c_symbols = _symbols(s4c_decision)
     s2_identity = s2.build_rqalpha_evidence_identity(
-        evidence_path=_fixture_artifact(
-            root,
-            "S2_R1",
-            "research/results/s2_r1_fixture_rqalpha_artifact.json",
-            s2_decision,
-        ),
+        evidence_path=_fixture_artifact(root, "S2_R1", s2_decision),
         root=root,
         expected_framework_version="6.3.0",
     )
     s4c_identity = s4c.build_rqalpha_evidence_identity(
-        evidence_path=_fixture_artifact(
-            root,
-            "S4C_R1",
-            "research/results/s4c_r1_fixture_rqalpha_artifact.json",
-            s4c_decision,
-        ),
+        evidence_path=_fixture_artifact(root, "S4C_R1", s4c_decision),
         root=root,
         expected_framework_version="6.3.0",
     )
@@ -197,9 +184,7 @@ def test_drill_rejects_execution_without_its_decision(drill_repo: Path, tmp_path
     s2_decision = s2.run_decision(AS_OF, root=drill_repo, decision_seal_time=SEAL)
     symbols = _symbols(s2_decision)
     identity = s2.build_rqalpha_evidence_identity(
-        evidence_path=_fixture_artifact(
-            drill_repo, "S2_R1", "research/results/s2_r1_other_artifact.json", s2_decision
-        ),
+        evidence_path=_fixture_artifact(drill_repo, "S2_R1", s2_decision),
         root=drill_repo,
         expected_framework_version="6.3.0",
     )

@@ -478,7 +478,7 @@ def test_decision_sealed_after_the_signal_day_is_rejected(tmp_path: Path) -> Non
 # --- execution record completeness ---------------------------------------------------------
 
 
-_EVIDENCE_RELATIVE_PATH = "research/results/s4c_r1_fixture_rqalpha_artifact.json"
+_EVIDENCE_RELATIVE_PATH = "research/shadow/s4c_r1/execution_artifacts/2026-09-30_2026-10-09.json"
 
 
 def _execution_fixture(
@@ -491,7 +491,6 @@ def _execution_fixture(
     symbols = tuple(json.loads(decision["desired_targets"]).keys())
     write_execution_artifact(
         root,
-        relative_path=_EVIDENCE_RELATIVE_PATH,
         candidate_id="S4C_R1",
         signal_date=decision["signal_date"],
         desired_targets=json.loads(decision["desired_targets"]),
@@ -619,10 +618,8 @@ def test_material_asset_difference_above_5pp_requires_artifact_native_evidence(
     targets = json.loads(decision["desired_targets"])
     realized, extra = _shift_one_asset(targets, delta=0.06)
     symbol = max(targets, key=lambda name: targets[name])
-    without_evidence = "research/results/s4c_r1_fixture_without_native_evidence.json"
-    write_execution_artifact(
+    without_evidence = write_execution_artifact(
         root,
-        relative_path=without_evidence,
         candidate_id="S4C_R1",
         signal_date=decision["signal_date"],
         desired_targets=targets,
@@ -647,9 +644,9 @@ def test_material_asset_difference_above_5pp_requires_artifact_native_evidence(
 
     assert observations.read_bytes() == before
 
-    write_execution_artifact(
+    (root / without_evidence).unlink()
+    relative = write_execution_artifact(
         root,
-        relative_path=_EVIDENCE_RELATIVE_PATH,
         candidate_id="S4C_R1",
         signal_date=decision["signal_date"],
         desired_targets=targets,
@@ -660,7 +657,7 @@ def test_material_asset_difference_above_5pp_requires_artifact_native_evidence(
         **extra,
     )
     identity = shadow.build_rqalpha_evidence_identity(
-        evidence_path=_EVIDENCE_RELATIVE_PATH, root=root, expected_framework_version="6.3.0"
+        evidence_path=relative, root=root, expected_framework_version="6.3.0"
     )
     complete = shadow.build_execution_record(
         decision,

@@ -32,7 +32,8 @@ f41423b  bind execution artifacts to replayed rqalpha observation
 
 ## C2C gates
 
-独立 C2C review 结论（`docs/protocol.md` 协议状态 + 只读 MCP 复核）：
+独立 C2C review 结论（C2C 协议状态 + 只读 MCP 复核；本仓库冻结的 Foundation 契约见
+[`research/batches/prospective_evidence_foundation/PROTOCOL.md`](../batches/prospective_evidence_foundation/PROTOCOL.md)）：
 
 ```text
 SNAPSHOT_IDENTITY_GATE                  = PASS
@@ -202,7 +203,7 @@ S2_VERIFY         = PASS（--verify-candidate --verify-no-observations，0 recor
 S4C_VERIFY        = PASS（verify_s4c_r1_candidate.py，0 observations）
 S4C_SHADOW_VERIFY = PASS（activation_status = ACTIVE，0 observation rows）
 FOUNDATION_VERIFY = 无独立 verifier；共享只读校验由上述三个入口覆盖
-CI                = 本 commit 不含 CI；见下方 limitations
+CI                = readiness closeout commit 不含 CI；CI 由后续独立 commit 3f8f50f 加入
 ```
 
 ## Nonblocking limitations
@@ -218,7 +219,8 @@ CI                = 本 commit 不含 CI；见下方 limitations
    未覆盖下一开放日时，回退为 signal_date 次日 00:00（更严格的上界）。
 4. execution_date 只强制“晚于 signal_date”，不强制等于下一 canonical 开放日：冻结语义本身是
    下界（"不得早于"），延迟执行合法；该判定经独立 review 明确裁定。
-5. 尚未建立 credential-free CI；见下方"后续可选工作"。
+5. credential-free CI 未包含在 readiness closeout commit `7252d75` 中（当时作为独立可选项保留）；
+   它随后以单独 commit `3f8f50f` 加入，该 CI 的首次 GitHub Actions 运行在本地无法验证。
 ```
 
 ## Future operation
@@ -227,7 +229,11 @@ CI                = 本 commit 不含 CI；见下方 limitations
 
 ### EXACT_2026_09_30_DECISION_RUNBOOK
 
-在真实 `2026-09-30`（且仅在该日收盘后）执行：
+在真实 `2026-09-30`（且仅在该日收盘后，即该 as-of 数据已合法可得）执行：
+
+每个候选**只有一次写操作**：candidate CLI 在同一次调用中完成 derive + seal + append。
+不得在 CLI 之外再手工 append 同一条 record —— append-only 契约会拒绝重复，
+而"先 derive 再单独 append"的描述会让运行者重复写入。
 
 ```text
 1.  验证 repository HEAD 与 working tree clean。
@@ -238,18 +244,17 @@ CI                = 本 commit 不含 CI；见下方 limitations
 5.  验证 provenance：source / symbol→tushare 映射 / 两端点 ts_code / 价格与日历 hash /
     timestamp / historical overlap / price_as_of / calendar_as_of。
 6.  确认实际运行时刻仍落在合法 decision seal 区间内。
-7.  生成 S2_R1 冻结语义 decision：uv run python research/experiments/run_s2_r1_shadow.py --as-of 2026-09-30
-8.  生成 S4C_R1 冻结语义 decision：
+7.  生成**并 append** S2_R1 冻结语义 DECISION（唯一一次写操作）：
+      uv run python research/experiments/run_s2_r1_shadow.py --as-of 2026-09-30
+8.  同法生成并 append S4C_R1 DECISION：
       uv run python research/experiments/run_s4c_r1_shadow.py --as-of 2026-09-30
-9.  append S2 DECISION。
-10. append S4C DECISION。
-11. 运行只读 candidate / evidence verifier。
-12. 运行与该 cycle 相关的 deterministic tests。
-13. git diff 检查。
-14. git add 仅 candidate vintage 与 decision evidence。
-15. commit。
-16. push。
-17. STOP：不得等待 execution 结果再一起提交 decision。
+9.  运行只读 candidate / evidence verifier。
+10. 运行与该 cycle 相关的 deterministic tests。
+11. git diff 检查。
+12. git add 仅 candidate vintage 与 decision evidence。
+13. commit。
+14. push。
+15. STOP：不得等待 execution 结果再一起提交 decision。
 ```
 
 ### EXACT_NEXT_EXECUTION_RUNBOOK
@@ -279,9 +284,10 @@ CI                = 本 commit 不含 CI；见下方 limitations
 ### Future options
 
 ```text
-可选：credential-free GitHub Actions（pytest + ruff check + ruff format --check + mypy +
-       只读 candidate verifier）。若加入，必须不调用 Tushare、不需要 TUSHARE_TOKEN、
-       不运行真实 RQAlpha research experiment、不产生任何 observation。
+已加入（commit 3f8f50f，post-closeout）：credential-free GitHub Actions 运行 pytest、
+       ruff check、ruff format --check、mypy 与三个只读 candidate verifier。它不调用
+       Tushare、不需要 TUSHARE_TOKEN、不运行真实 RQAlpha research experiment、
+       不产生任何 observation，并使用与未来 observation 兼容的 verifier 模式。
 ```
 
 ## Current frontier

@@ -35,9 +35,12 @@ snapshot 身份、`P1-B` execution temporal seal、`P1-C` artifact→metrics 绑
 `PROSPECTIVE_FOUNDATION_READY_WITH_NONBLOCKING_LIMITATIONS`，完整记录见
 [`research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1.md`](../research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1.md)。
 
-下一项唯一实验因此是**等待真实前瞻时间**：只在真实 `2026-09-30` 及之后、且已有该 as-of 的
-candidate-specific vintage 时，启动 `AWAIT_2026_09_30_DUAL_CANDIDATE_PROSPECTIVE_DECISION_CYCLE`，
-流程为 `freeze vintage → verify → derive decision → seal → append DECISION → commit/push → STOP`；
+下一项唯一实验因此是**等待真实前瞻时间**：只在真实 `2026-09-30` 收盘后（即该 as-of 数据已合法
+可得）启动 `AWAIT_2026_09_30_DUAL_CANDIDATE_PROSPECTIVE_DECISION_CYCLE`；该 as-of 的
+candidate-specific vintage 正是该 cycle 的第一阶段，尚不存在。流程为
+`freeze vintage → verify → derive decision → seal → append DECISION → commit/push → STOP`；
+每个候选只有一次写操作（candidate CLI 在一次调用中完成 derive + seal + append），
+不得再手工重复 append。
 execution 证据在下一 canonical 观测日由独立 Goal 追加。无论何时启动，都不得以集中度、历史收益或
 时间压力为由改参数、加 cap、重跑窗口、回填 `2026-09-01..candidate freeze` 已可观察的数据，或用
 历史结果制造前瞻证据。

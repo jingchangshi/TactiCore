@@ -143,6 +143,47 @@
     "serialized_line_differences": 0
   },
   "diagnostic": "S4C_NUMERICAL_PORTABILITY_DIAGNOSTIC_V1",
+  "economic_materiality": {
+    "all_within_frozen_v2_metric_tolerance": true,
+    "note": "Protocol V2 \u7684\u6307\u6807\u7ea7\u5bb9\u5dee\u53ea\u4f5c\u4e3a\u53c2\u7167\u5c3a\u5ea6\u5f15\u7528\uff1b\u5b83\u4e0d\u6784\u6210\u672c\u6b21 schedule \u7ea7 portability \u5206\u7c7b\u88c1\u51b3\uff0c\u4e5f\u4e0d\u66ff\u4ee3\u72ec\u7acb\u5206\u7c7b\u3002",
+    "per_metric": {
+      "cagr": {
+        "absolute_delta": 0.0,
+        "committed": 0.11637515674509435,
+        "derived": 0.11637515674509435,
+        "frozen_v2_metric_tolerance": 0.0001,
+        "within_frozen_v2_metric_tolerance": true
+      },
+      "calmar": {
+        "absolute_delta": 4.440892098500626e-16,
+        "committed": 0.6341543146669736,
+        "derived": 0.634154314666974,
+        "frozen_v2_metric_tolerance": 0.0001,
+        "within_frozen_v2_metric_tolerance": true
+      },
+      "max_drawdown": {
+        "absolute_delta": 1.1102230246251565e-16,
+        "committed": -0.18351236292732442,
+        "derived": -0.1835123629273243,
+        "frozen_v2_metric_tolerance": 0.0001,
+        "within_frozen_v2_metric_tolerance": true
+      },
+      "sharpe": {
+        "absolute_delta": 2.220446049250313e-16,
+        "committed": 1.091119082443939,
+        "derived": 1.0911190824439392,
+        "frozen_v2_metric_tolerance": 0.0001091119082443939,
+        "within_frozen_v2_metric_tolerance": true
+      },
+      "turnover": {
+        "absolute_delta": -1.7763568394002505e-15,
+        "committed": 11.790377273598702,
+        "derived": 11.7903772735987,
+        "frozen_v2_metric_tolerance": 0.0011790377273598702,
+        "within_frozen_v2_metric_tolerance": true
+      }
+    }
+  },
   "environment": {
     "architecture": "AMD64",
     "blas_lapack": {
@@ -161,7 +202,7 @@
             "tol_gap_abs": "1e-09",
             "tol_gap_rel": "1e-09"
           },
-          "solve_time": 0.0003522,
+          "solve_time": 0.0004084,
           "solver_name": "CLARABEL",
           "status": "optimal"
         }
@@ -191,7 +232,7 @@
     },
     "python_implementation": "CPython",
     "python_version": "3.11.15",
-    "repository_head": "31833879a2fd5ed76834abe64e8d7addeeec17f1"
+    "repository_head": "35cc57c4be3cd6a8f222e48b4310b54c0746b059"
   },
   "frozen_target_artifact": {
     "committed_sha256": "f7bf398d7f8a016933cbe287bfa1cac98b3cccf175d40ef99092b95db1227e47",
@@ -202,5 +243,29 @@
     "path": "research/results/s4c_pit_corrected_frozen_targets_v1.csv"
   },
   "purpose": "measure committed vs re-derived frozen S4C targets across environments",
-  "read_only": true
+  "read_only": true,
+  "structure": {
+    "committed": {
+      "effective_number_assets_minimum": 1.0,
+      "first_execution_date": "2013-04-01",
+      "last_execution_date": "2026-08-03",
+      "maximum_weight_maximum": 1.0,
+      "maximum_weight_median": 0.2778246106900802,
+      "maximum_weight_p95": 1.0,
+      "multi_asset_rows": 148,
+      "rows": 161,
+      "single_asset_rows": 13
+    },
+    "derived": {
+      "effective_number_assets_minimum": 1.0,
+      "first_execution_date": "2013-04-01",
+      "last_execution_date": "2026-08-03",
+      "maximum_weight_maximum": 1.0,
+      "maximum_weight_median": 0.27782461069008024,
+      "maximum_weight_p95": 1.0,
+      "multi_asset_rows": 148,
+      "rows": 161,
+      "single_asset_rows": 13
+    }
+  }
 }

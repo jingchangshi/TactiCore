@@ -291,6 +291,74 @@ def comparison_report(committed: pd.DataFrame, derived: pd.DataFrame) -> dict[st
     return report
 
 
+def schedule_shape(schedule: pd.DataFrame) -> dict[str, Any]:
+    """冻结日程的结构形状：support 宽度、集中度与有效资产数，用于结构一致性比对。"""
+    nonzero = (schedule > 0.0).sum(axis=1)
+    maximum_weight = schedule.max(axis=1)
+    effective = 1.0 / (schedule**2).sum(axis=1)
+    return {
+        "rows": int(len(schedule)),
+        "first_execution_date": str(pd.Timestamp(schedule.index[0]).date()),
+        "last_execution_date": str(pd.Timestamp(schedule.index[-1]).date()),
+        "single_asset_rows": int(nonzero.eq(1).sum()),
+        "multi_asset_rows": int(nonzero.gt(1).sum()),
+        "maximum_weight_median": float(maximum_weight.median()),
+        "maximum_weight_p95": float(maximum_weight.quantile(0.95)),
+        "maximum_weight_maximum": float(maximum_weight.max()),
+        "effective_number_assets_minimum": float(effective.min()),
+    }
+
+
+def economic_materiality(
+    committed: pd.DataFrame,
+    derived: pd.DataFrame,
+    prices: pd.DataFrame,
+    mask: pd.DataFrame,
+    lifetimes: dict,
+    config: Any,
+) -> dict[str, Any]:
+    """用同一 VectorBT 路径重放两份日程，比较冻结的 V2 指标是否出现经济实质差异。"""
+    from research.experiments.frozen_target_replay import replay_vectorbt
+
+    def metrics(schedule: pd.DataFrame) -> dict[str, float]:
+        return dict(
+            replay_vectorbt(
+                prices,
+                schedule,
+                fees=config.fees,
+                slippage=config.slippage,
+                initial_cash=config.initial_cash,
+                tradability_mask=mask,
+                lifetimes=lifetimes,
+            ).metrics
+        )
+
+    expected = metrics(committed)
+    observed = metrics(derived)
+    per_metric: dict[str, Any] = {}
+    for key in review.REPRODUCED_METRICS:
+        baseline = float(expected[key])
+        delta = float(observed[key]) - baseline
+        tolerance = review.metric_tolerance(baseline)
+        per_metric[key] = {
+            "committed": baseline,
+            "derived": float(observed[key]),
+            "absolute_delta": delta,
+            "frozen_v2_metric_tolerance": tolerance,
+            "within_frozen_v2_metric_tolerance": abs(delta) <= tolerance,
+        }
+    return {
+        "per_metric": per_metric,
+        "all_within_frozen_v2_metric_tolerance": all(
+            entry["within_frozen_v2_metric_tolerance"] for entry in per_metric.values()
+        ),
+        "note": (
+            "Protocol V2 的指标级容差只作为参照尺度引用；它不构成本次 schedule 级 "
+            "portability 分类裁决，也不替代独立分类。"
+        ),
+    }
+
+
 def build_report(label: str, repository_head: str | None) -> dict[str, Any]:
     prices, mask, lifetimes, config, risk_symbols = review.load_review_inputs()
     committed = review.load_committed_schedule()
@@ -333,6 +401,13 @@ def build_report(label: str, repository_head: str | None) -> dict[str, Any]:
         },
         "environment": environment_fingerprint(label, repository_head, prices),
         "comparison": comparison_report(committed, derived),
+        "structure": {
+            "committed": schedule_shape(committed),
+            "derived": schedule_shape(derived),
+        },
+        "economic_materiality": economic_materiality(
+            committed, derived, prices, mask, lifetimes, config
+        ),
     }
 
 

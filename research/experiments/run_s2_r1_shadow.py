@@ -24,6 +24,7 @@ from research.experiments.prospective_evidence import (
     ProspectiveVintage,
     append_event_row,
     load_calendar,
+    load_frozen_universe,
     load_prospective_vintage,
     parse_finite_float,
     parse_iso_date,
@@ -198,6 +199,7 @@ def load_prospective_inputs(
         historical_calendar=load_calendar(root / "data/canonical/trading_calendar.csv"),
         expected_source=SOURCE,
         expected_adjustment_type=ADJUSTMENT_TYPE,
+        frozen_universe=load_frozen_universe(root),
     )
 
 

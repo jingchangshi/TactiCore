@@ -2,8 +2,8 @@
 """S2_R1 / S4C_R1 前瞻证据共享的纯验证原语。
 
 本模块只承担两个活动候选**完全相同**的 evidence-control mechanics：canonical vintage 位置、
-provenance 解析与文件身份、`price_as_of` / `calendar_as_of` 语义、signal-day temporal seal、
-append-only 事件表校验与 RQAlpha evidence 身份绑定。
+冻结 universe 身份、provenance 解析与文件身份、`price_as_of` / `calendar_as_of` 语义、
+signal-day temporal seal、append-only 事件表校验与 RQAlpha evidence 身份绑定。
 
 它**不**包含策略语义、target derivation、候选状态机、候选注册表、scheduler、database、
 provider abstraction、组合编排或通用研究框架。只服务单一候选的逻辑留在该候选的 runner 中；
@@ -24,6 +24,7 @@ from typing import Any
 import pandas as pd
 
 from tacticore.data.prices import load_price_csv
+from tacticore.data.universe import load_universe
 
 SHANGHAI_TIMEZONE = "Asia/Shanghai"
 SIGNAL_CLOSE_HOUR = 15
@@ -32,6 +33,9 @@ CALENDAR_VINTAGE_FILE = "trading_calendar.csv"
 PROVENANCE_VINTAGE_FILE = "provenance.json"
 REQUIRED_VINTAGE_FILES = (PRICE_VINTAGE_FILE, CALENDAR_VINTAGE_FILE, PROVENANCE_VINTAGE_FILE)
 PRICE_ENDPOINTS = ("fund_daily", "fund_adj")
+UNIVERSE_RELATIVE_PATH = "config/universe.csv"
+CANONICAL_PROVENANCE_RELATIVE_PATH = "data/canonical/provenance.json"
+UNIVERSE_FIELDS = ("symbol", "tushare_symbol", "list_date")
 HASH_HEX_LENGTH = 64
 RQALPHA_EVIDENCE_FRAMEWORK = "rqalpha"
 RQALPHA_EVIDENCE_FIELDS = ("framework", "framework_version", "evidence_path", "evidence_sha256")
@@ -180,6 +184,109 @@ def verify_canonical_vintage_location(
 
 
 # --------------------------------------------------------------------------------------
+# Frozen universe identity
+# --------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class FrozenUniverse:
+    """`config/universe.csv` 的机器可验证冻结映射：symbol → tushare_symbol → list date。
+
+    逻辑列名正确并不等于底层标的正确，因此 prospective provenance 必须绑定这份映射，
+    而不是只绑定可见的 symbol 集合。
+    """
+
+    path: str
+    sha256: str
+    start_date: str
+    symbols: tuple[str, ...]
+    tushare_symbols: Mapping[str, str]
+    list_dates: Mapping[str, str]
+
+    def identity(self) -> dict[str, Any]:
+        return {
+            "path": self.path,
+            "sha256": self.sha256,
+            "start_date": self.start_date,
+            "symbols": [
+                {
+                    "symbol": symbol,
+                    "tushare_symbol": self.tushare_symbols[symbol],
+                    "list_date": self.list_dates[symbol],
+                }
+                for symbol in self.symbols
+            ],
+        }
+
+
+def load_frozen_universe(
+    root: Path, *, path: str = UNIVERSE_RELATIVE_PATH, universe: pd.DataFrame | None = None
+) -> FrozenUniverse:
+    """读取冻结 repository universe 映射及其 normalized SHA-256 与 canonical 起点。"""
+    universe_path = Path(root) / path
+    frame = load_universe(universe_path) if universe is None else universe
+    if frame["symbol"].duplicated().any():
+        raise ValueError("frozen universe 的 symbol 必须唯一")
+    if frame["tushare_symbol"].duplicated().any():
+        raise ValueError("frozen universe 的 tushare_symbol 必须唯一")
+    canonical = json.loads(
+        (Path(root) / CANONICAL_PROVENANCE_RELATIVE_PATH).read_text(encoding="utf-8")
+    )
+    start_date = canonical.get("start_date")
+    if not isinstance(start_date, str) or not start_date:
+        raise ValueError("canonical provenance 缺少冻结 start_date")
+    return FrozenUniverse(
+        path=path,
+        sha256=sha256_frozen_repository_text(universe_path),
+        start_date=start_date,
+        symbols=tuple(str(value) for value in frame["symbol"]),
+        tushare_symbols={
+            str(row.symbol): str(row.tushare_symbol) for row in frame.itertuples(index=False)
+        },
+        list_dates={
+            str(row.symbol): pd.Timestamp(row.start_date).strftime("%Y%m%d")
+            for row in frame.itertuples(index=False)
+        },
+    )
+
+
+def verify_frozen_universe_identity(declared: object, *, frozen: FrozenUniverse) -> None:
+    """provenance 里的 universe 身份必须与冻结 repository universe 逐项一致。"""
+    entry = _require_mapping(declared, label="provenance universe 身份声明")
+    if set(entry) != {"path", "sha256", "start_date", "symbols"}:
+        raise ValueError("provenance universe 字段集合与冻结 universe 身份 schema 不一致")
+    if entry["path"] != frozen.path:
+        raise ValueError(f"provenance universe path 必须是冻结的 {frozen.path}")
+    if verify_hex_digest(entry["sha256"], label="provenance universe sha256") != frozen.sha256:
+        raise ValueError("provenance universe SHA-256 与冻结 repository universe 不一致")
+    if entry["start_date"] != frozen.start_date:
+        raise ValueError("provenance universe start_date 与冻结 canonical 起点不一致")
+    raw_symbols = entry["symbols"]
+    if not isinstance(raw_symbols, list) or not raw_symbols:
+        raise ValueError("provenance universe 缺少逐标的映射记录")
+    declared_mapping: dict[str, tuple[str, str]] = {}
+    for raw_record in raw_symbols:
+        record = _require_mapping(raw_record, label="provenance universe 标的映射")
+        if tuple(sorted(record)) != tuple(sorted(UNIVERSE_FIELDS)):
+            raise ValueError("provenance universe 标的映射字段集合与冻结 schema 不一致")
+        symbol = record["symbol"]
+        if not isinstance(symbol, str) or not symbol:
+            raise ValueError("provenance universe 标的映射缺少 symbol")
+        if symbol in declared_mapping:
+            raise ValueError(f"provenance universe 标的映射重复: {symbol}")
+        declared_mapping[symbol] = (str(record["tushare_symbol"]), str(record["list_date"]))
+    if set(declared_mapping) != set(frozen.symbols):
+        raise ValueError("provenance universe symbol 集合与冻结 universe 不一致")
+    for symbol, (tushare_symbol, list_date) in declared_mapping.items():
+        if tushare_symbol != frozen.tushare_symbols[symbol]:
+            raise ValueError(
+                f"provenance universe 的 {symbol} tushare_symbol 与冻结 universe 不一致"
+            )
+        if list_date != frozen.list_dates[symbol]:
+            raise ValueError(f"provenance universe 的 {symbol} list_date 与配置起点不一致")
+
+
+# --------------------------------------------------------------------------------------
 # Vintage provenance authenticity
 # --------------------------------------------------------------------------------------
 
@@ -236,11 +343,11 @@ def validate_vintage_provenance(
     as_of: object,
     expected_source: str,
     expected_adjustment_type: str,
-    expected_symbols: Iterable[str],
+    frozen_universe: FrozenUniverse,
     prices: pd.DataFrame,
     calendar: pd.DataFrame,
 ) -> VintageProvenance:
-    """真正解析 provenance.json，并把它绑定到实际数据文件与 as-of 语义。"""
+    """真正解析 provenance.json，并把它绑定到冻结 universe 身份、实际文件与 as-of 语义。"""
     if not isinstance(provenance, Mapping):
         raise ValueError("provenance.json 必须是 JSON object")
     as_of_day = normalize_signal_date(as_of)
@@ -249,11 +356,14 @@ def validate_vintage_provenance(
         raise ValueError("provenance source 与冻结数据契约不一致")
     if provenance.get("end_date") != as_of_token:
         raise ValueError("provenance end_date 必须等于 --as-of")
+    if provenance.get("start_date") != frozen_universe.start_date:
+        raise ValueError("provenance start_date 必须是冻结 canonical 起点，不得由 CLI 覆盖")
     if provenance.get("adjustment_type") != expected_adjustment_type:
         raise ValueError("provenance adjustment 语义与冻结候选数据契约不一致")
     download_timestamp = require_timezone_aware_instant(
         provenance.get("download_timestamp"), label="provenance download_timestamp"
     )
+    verify_frozen_universe_identity(provenance.get("universe"), frozen=frozen_universe)
 
     raw_symbols = provenance.get("symbols")
     if not isinstance(raw_symbols, list) or not raw_symbols:
@@ -267,7 +377,12 @@ def validate_vintage_provenance(
             raise ValueError("provenance symbol 记录缺少 symbol")
         if symbol in observed_symbols:
             raise ValueError(f"provenance symbol 记录重复: {symbol}")
+        if symbol not in frozen_universe.tushare_symbols:
+            raise ValueError(f"provenance 记录了冻结 universe 之外的 symbol: {symbol}")
+        frozen_tushare_symbol = frozen_universe.tushare_symbols[symbol]
         observed_symbols.add(symbol)
+        if record.get("tushare_symbol") != frozen_tushare_symbol:
+            raise ValueError(f"provenance {symbol} 的 tushare_symbol 与冻结 universe 不一致")
         requests = _require_mapping(
             record.get("request_parameters"), label=f"provenance {symbol} request_parameters"
         )
@@ -275,10 +390,23 @@ def validate_vintage_provenance(
             request = _require_mapping(
                 requests.get(endpoint), label=f"provenance {symbol} {endpoint} 请求记录"
             )
+            if request.get("ts_code") != frozen_tushare_symbol:
+                raise ValueError(
+                    f"provenance {symbol} 的 {endpoint} request ts_code 与冻结 universe 的 "
+                    "tushare_symbol 不一致"
+                )
             if request.get("end_date") != as_of_token:
                 raise ValueError(
                     f"provenance {symbol} 的 {endpoint} request end_date 必须等于 --as-of"
                 )
+            if request.get("start_date") != frozen_universe.start_date:
+                raise ValueError(
+                    f"provenance {symbol} 的 {endpoint} request start_date 必须是冻结 "
+                    "canonical 起点"
+                )
+        metadata = _require_mapping(record.get("metadata"), label=f"provenance {symbol} metadata")
+        if metadata.get("list_date") != frozen_universe.list_dates[symbol]:
+            raise ValueError(f"provenance {symbol} 的 list_date 与冻结 universe 配置起点不一致")
         try:
             data_timestamp = pd.Timestamp(record.get("data_timestamp")).normalize()
         except (TypeError, ValueError) as error:
@@ -288,8 +416,8 @@ def validate_vintage_provenance(
         if data_timestamp > as_of_day:
             raise ValueError(f"provenance {symbol} 的 data_timestamp 晚于 --as-of")
         data_timestamps.append(data_timestamp)
-    if observed_symbols != set(expected_symbols):
-        raise ValueError("provenance symbol 集合与冻结候选 universe 不一致")
+    if observed_symbols != set(frozen_universe.symbols):
+        raise ValueError("provenance symbol 集合与冻结 universe 不一致")
 
     price_as_of = max(data_timestamps)
     if price_as_of != as_of_day:
@@ -349,6 +477,7 @@ def load_prospective_vintage(
     historical_calendar: pd.DataFrame,
     expected_source: str,
     expected_adjustment_type: str,
+    frozen_universe: FrozenUniverse,
 ) -> ProspectiveVintage:
     """读取并机器验证 candidate-specific vintage，返回截至 as-of 的组合输入。"""
     vintage_path = Path(vintage_dir)
@@ -359,13 +488,15 @@ def load_prospective_vintage(
     calendar = load_calendar(vintage_path / CALENDAR_VINTAGE_FILE)
     if list(prices.columns) != list(historical_prices.columns):
         raise ValueError("prospective vintage 的价格资产列必须与冻结 historical 基线一致")
+    if list(prices.columns) != list(frozen_universe.symbols):
+        raise ValueError("prospective vintage 的价格资产列必须等于冻结 universe")
     provenance = validate_vintage_provenance(
         load_provenance(vintage_path / PROVENANCE_VINTAGE_FILE),
         vintage_dir=vintage_path,
         as_of=as_of,
         expected_source=expected_source,
         expected_adjustment_type=expected_adjustment_type,
-        expected_symbols=list(historical_prices.columns),
+        frozen_universe=frozen_universe,
         prices=prices,
         calendar=calendar,
     )

@@ -48,7 +48,7 @@ end_date == as-of
 相关价格端点的 request end_date == as-of
 每个 symbol 的 data_timestamp <= as-of
 download_timestamp 存在且时区感知
-download_timestamp 与 prospective seal 时间上相容
+download_timestamp 时区感知，且不早于 signal_close（满足 §4 的 instant 顺序）
 price 文件 SHA-256 与 provenance 声明一致
 calendar 文件 SHA-256 与 provenance 声明一致
 行数与 provenance 声明一致
@@ -70,18 +70,33 @@ calendar_as_of  已知交易日历的覆盖上界（可以晚于 as-of）
 
 ## 4. Temporal decision seal
 
-采用更严格也更简单的 signal-day seal：
+采用更严格也更简单的 signal-day seal。所有比较都在**时区感知的 instant** 上完成；
+`signal_close` 固定为所述 `signal_date` 的 `15:00 Asia/Shanghai`：
+
+```text
+signal_close
+  <= provenance download_timestamp
+  <= decision_seal_time
+  < next_canonical_execution_boundary
+```
+
+逐条冻结语义：
 
 ```text
 signal_close = 15:00 Asia/Shanghai on signal_date
+provenance download_timestamp 必须时区感知
+provenance download_timestamp >= signal_close
 decision_seal_time 必须时区感知
 decision_seal_time 的本地日历日 == signal_date
 decision_seal_time >= signal_close
+decision_seal_time >= provenance download_timestamp
 decision_seal_time < 下一个 canonical 交易日起点
-provenance download_timestamp <= decision_seal_time
 ```
 
-下一个 canonical 交易日只由 decision 时点已经合法可知的交易所日历推导。
+`next_canonical_execution_boundary` 只由 decision 时点已经合法可知的交易所日历推导。
+
+生产 `decision_seal_time` 必须来自 runner 的**实际运行时钟**，不得由 production CLI 提供或覆盖。
+否则"decision 先于 execution 可观察性"会退化为可编辑的元数据，而不是机器保证。
 
 该契约的唯一目的是让"先看 execution 结果，再回填 signal-date decision"在机制上不可能。
 它比必要更严格，但不引入 scheduler、daemon 或 database。
@@ -178,9 +193,11 @@ uv run python research/experiments/run_s4c_r1_shadow.py --verify-candidate --ver
 
 测试必须覆盖：manifest/activation 不变、candidate-specific vintage 路径、外部 vintage 在读取前被拒绝、
 provenance source 与 end_date 校验、文件 hash 与行数校验、错误 data timestamp 与未来价格拒绝、
-historical overlap drift 拒绝、显式 as-of 必需、pre-eligible 日期拒绝、temporal seal 双向强制、
-decision 不含 execution evidence、duplicate decision/execution 拒绝、失败写入字节不变、
-不完整 execution 拒绝、无 decision 的 execution 拒绝、完整 execution 接受、S2/S4C schema 保持不同。
+historical overlap drift 拒绝、显式 as-of 必需、pre-eligible 日期拒绝、temporal seal 双向强制
+（含 provenance `download_timestamp` 早于 `signal_close` 被拒绝，以及晚于
+`next_canonical_execution_boundary` 的运行时 decision 被拒绝）、decision 不含 execution evidence、
+duplicate decision/execution 拒绝、失败写入字节不变、不完整 execution 拒绝、无 decision 的 execution
+拒绝、完整 execution 接受、S2/S4C schema 保持不同。
 
 所有测试使用 fixture / `tmp_path` / synthetic 数据；**不得**依赖真实 2026-09 市场数据。
 

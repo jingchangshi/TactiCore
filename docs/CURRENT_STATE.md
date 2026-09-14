@@ -8,6 +8,12 @@ S2 Research Candidate R1 保持 **`FROZEN / PROSPECTIVE_SHADOW_ACTIVE`**，且 P
 
 对两个活动候选的前瞻证据路径已完成一次跨候选结构审计（RL-046，见 [双候选前瞻审计 V1](../research/results/DUAL_CANDIDATE_PROSPECTIVE_AUDIT_V1.md)），并据此作出研究优先级决策 V3（RL-047，见 [研究优先级决策 V3](../research/results/RESEARCH_PRIORITY_DECISION_V3.md)），选定 `PROSPECTIVE_EVIDENCE_FOUNDATION_V1_FOR_S2_AND_S4C`。该审计只读、未实现任何修复、未下载任何数据。
 
+该 Foundation V1 已实现闭环（RL-048）：冻结 snapshot 身份、execution temporal seal、SHA-bound
+RQAlpha artifact 到 execution 行的派生绑定、以及 native RQAlpha → artifact 生产链全部完成，独立
+C2C review 判定 `SNAPSHOT_IDENTITY_GATE = PASS`、`EXECUTION_EVIDENCE_GATE = PASS`、
+`PROSPECTIVE_FOUNDATION_IMPLEMENTATION_GATE = PASS`，readiness 结论为
+`PROSPECTIVE_FOUNDATION_READY_WITH_NONBLOCKING_LIMITATIONS`（见 [Foundation V1 完成与 readiness 判定](../research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1.md)）。Foundation READY 只表示前瞻证据机制可信，**不**表示任一候选已具备生产资格。
+
 ## 最新决定性证据
 
 S2 R1 的 [manifest](../research/shadow/s2_r1/candidate_manifest.json) 与冻结输入仍通过严格校验，`observations.csv` 仍无 decision record。S4C 的 committed 161 个冻结 ERC 目标在 Protocol V2 下完成 RQAlpha 6.3.0 原生回放：CAGR 12.0929%、signed MaxDD -18.3512%、Sharpe 0.7758、cash rejection 0、平均 execution-date deviation 0.3246%、material dates 3/161（两个 >5pp 单资产差异都有具体 native 原因；第三个是最大单资产偏差 3.84pp、现金残差 3.80% 的组合层偏离）、平均现金 0.1399%。P95 maximum weight 51.84% 仍是未消除的集中度特征。完整结论见 [S4C execution review V2](../research/results/S4C_RQALPHA_EXECUTION_REVIEW_V2.md) 与 [Batch 05 principal architect review](../research/results/BATCH_05_PRINCIPAL_ARCHITECT_REVIEW_V1.md)。
@@ -22,32 +28,35 @@ S2 仍缺少足够前瞻 observation：中期完整性复核不早于 12 个日�
 
 ## 下一项唯一实验
 
-下一项唯一工作是**双候选前瞻证据 foundation 的实现与 readiness 判定**：
-`PROSPECTIVE_EVIDENCE_FOUNDATION_V1_FOR_S2_AND_S4C`，预注册协议见
-[`research/batches/prospective_evidence_foundation/PROTOCOL.md`](../research/batches/prospective_evidence_foundation/PROTOCOL.md)。
-它把两个活动候选的 prospective path 收紧到同一正确性标准：机器验证的 vintage provenance、
-`price_as_of` 与 `calendar_as_of` 分离、signal-day temporal seal、decision 与 execution 作为两类
-append-only 事件、append 前完整的 execution 行、RQAlpha evidence 绑定与候选 CLI 授权收紧。
+没有可立即执行的实验。双候选前瞻证据 foundation 已完成并通过独立 C2C review：`P1-A` 冻结
+snapshot 身份、`P1-B` execution temporal seal、`P1-C` artifact→metrics 绑定、`P1-D` native RQAlpha
+→ artifact 生产链全部关闭，`SNAPSHOT_IDENTITY_GATE`、`EXECUTION_EVIDENCE_GATE`、
+`PROSPECTIVE_FOUNDATION_IMPLEMENTATION_GATE` 均为 `PASS`，readiness 判定为
+`PROSPECTIVE_FOUNDATION_READY_WITH_NONBLOCKING_LIMITATIONS`，完整记录见
+[`research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1.md`](../research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1.md)。
 
-该工作**不**产生 observation、不创建 vintage、不接触真实 2026-09 市场数据，也不得修改任一候选
-身份、activation 语义、策略经济语义或 historical canonical 数据。只有 Foundation 判定为
-`PROSPECTIVE_FOUNDATION_READY`（或带非阻塞限制）之后，两个候选的第一条真实前瞻 decision 才成为
-下一项唯一实验；它只能在真实 `2026-09-30` 及之后、且已有该 as-of 的 candidate-specific vintage
-时启动，流程为 `freeze vintage → verify → derive decision → seal → append DECISION → commit/push → STOP`
-（execution 证据在下一 canonical 观测日由独立 Goal 另行追加）。无论何时启动，都不得以集中度、
-历史收益或时间压力为由改参数、加 cap、重跑窗口、回填 `2026-09-01..candidate freeze` 已可观察的
-数据，或用历史结果制造前瞻证据。
+下一项唯一实验因此是**等待真实前瞻时间**：只在真实 `2026-09-30` 及之后、且已有该 as-of 的
+candidate-specific vintage 时，启动 `AWAIT_2026_09_30_DUAL_CANDIDATE_PROSPECTIVE_DECISION_CYCLE`，
+流程为 `freeze vintage → verify → derive decision → seal → append DECISION → commit/push → STOP`；
+execution 证据在下一 canonical 观测日由独立 Goal 追加。无论何时启动，都不得以集中度、历史收益或
+时间压力为由改参数、加 cap、重跑窗口、回填 `2026-09-01..candidate freeze` 已可观察的数据，或用
+历史结果制造前瞻证据。
+
+在真实前瞻信号出现前，禁止新策略开发、portfolio candidate、S27A、Theme Rotation 或任何
+"再研究一次"的替代工作。系统现在需要的是时间，不是更多代码。
 
 ## External Evidence Foundation
 
 `BATCH_00_EXTERNAL_EVIDENCE_FOUNDATION_COMPLETE` 保持有效；Batch 02 的三条有界 gap 已按外部证据、冻结协议和本地证据完成。外部 tier 未因本地结果改变，Theme Rotation 未开始。
 
-当前唯一前沿为 `PROSPECTIVE_EVIDENCE_FOUNDATION_V1_IMPLEMENTATION`：10% portfolio objective 的
-可行性历史诊断已完成并记录（`FEASIBLE_WITH_EXISTING_COMPONENTS`），S4C R1 前瞻影子已按
-`ACTIVATE_S4C_R1_PROSPECTIVE_SHADOW` 激活；其后的双候选前瞻审计（RL-046）与研究优先级决策 V3
-（RL-047）选定 Foundation V1，作为产生可信前瞻证据的唯一前置工作。S4C R1 与 S2 R1 现均为
+当前唯一前沿为 `AWAIT_2026_09_30_DUAL_CANDIDATE_PROSPECTIVE_DECISION_CYCLE`：10% portfolio
+objective 的可行性历史诊断已完成并记录（`FEASIBLE_WITH_EXISTING_COMPONENTS`），S4C R1 前瞻影子已按
+`ACTIVATE_S4C_R1_PROSPECTIVE_SHADOW` 激活；其后的双候选前瞻审计（RL-046）、研究优先级决策 V3
+（RL-047）与 Foundation V1 实现闭环（RL-048）已完成，prospective evidence 机制经独立 C2C review
+判定 `PROSPECTIVE_FOUNDATION_READY_WITH_NONBLOCKING_LIMITATIONS`。S4C R1 与 S2 R1 现均为
 `FROZEN / PROSPECTIVE_SHADOW_ACTIVE` 且 `observation_count = 0`，
-`first_eligible_prospective_signal` 仍为 `2026-09-30`；S27A 资格保留但继续推迟；D 类本地缺口需先
-通过 External Evidence Gate 与 PIT Tradability Gate。在 Foundation 判定 ready 之前，不得声称
-current frontier 已是"等待真实前瞻信号"，也不得启动任何前瞻 decision cycle。未来选择仍必须从本地
-remaining gap 而非历史收益或叙事开始。
+`first_eligible_prospective_signal` 为 `2026-09-30`；S27A 资格保留但继续推迟；D 类本地缺口需先
+通过 External Evidence Gate 与 PIT Tradability Gate。Foundation 已 ready，因此当前 frontier 是
+"等待真实前瞻信号"，且**不得**在 2026-09-30 之前启动任何前瞻 decision cycle；开发在此冻结，直到
+真实前瞻 evidence 出现或发现具体 correctness blocker。未来选择仍必须从本地 remaining gap 而非
+历史收益或叙事开始。

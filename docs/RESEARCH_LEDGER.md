@@ -530,3 +530,31 @@
 - 数据快照：canonical 同 RL-001；两个候选 `prospective observations = 0`。
 - 重开条件：仅当 Foundation 被判为 `BLOCKED_BY_PROSPECTIVE_CORRECTNESS`，或出现新的独立
   correctness/优先级证据时；不得以历史收益、叙事或 2026-09-30 的时间压力重开本次排序。
+
+## RL-048 Prospective Evidence Foundation V1 实现闭环与 readiness 判定
+
+- 策略：N/A（前瞻证据机制，不涉及策略经济语义）
+- 状态：CLOSED
+- 问题/范围：在两个活动候选产生第一条真实前瞻 observation 之前，把 prospective path 收紧到
+  machine-verified 正确性标准：冻结 universe 身份、vintage provenance 真实性、decision 与
+  execution 的 temporal seal、append 前完整的 execution 行，以及 authoritative RQAlpha
+  evidence 到 execution 行的派生绑定。不产生 observation、不创建 vintage、不接触 2026-09 数据。
+- 结论：`PROSPECTIVE_FOUNDATION_DECISION = PROSPECTIVE_FOUNDATION_READY_WITH_NONBLOCKING_LIMITATIONS`。
+  独立 C2C review 对 `a3c01c1` 判定的三处 P1 与后续审计发现的 native 生产链缺口均已关闭：
+  P1-A 生产 snapshot 只能使用 `config/universe.csv` 与 canonical provenance，且下载前必须与候选
+  manifest 冻结 hash 一致，provenance 逐项绑定 symbol → tushare_symbol → 两端点 ts_code；
+  P1-B execution_date 由 artifact execution_timestamp 的上海本地日历日派生，并强制
+  `decision seal < execution_timestamp <= artifact_generated_at <= execution record_generated_at`
+  与 `execution_close <= execution_timestamp`，生产时钟不可注入；
+  P1-C/P1-D execution 行只由 SHA-bound artifact 派生，artifact 内嵌 RQAlpha native facts 且解析时
+  重新推导校验，native 生产链直接消费 callback 形状的 analyser / order events / replayed_dates。
+- 结论边界：Foundation READY 只表示机制足以开始收集真实 forward evidence，**不**表示 S2_R1、S4C_R1
+  或任何组合具备生产资格；portfolio promotion 继续禁止，且不得据此重开新 alpha、Theme Rotation、
+  S27A 或组合候选工作。
+- 证据：[Foundation V1 完成与 readiness 判定](../research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1.md)、
+  [Foundation 预注册协议](../research/batches/prospective_evidence_foundation/PROTOCOL.md)、
+  [双候选前瞻审计 V1](../research/results/DUAL_CANDIDATE_PROSPECTIVE_AUDIT_V1.md)。
+- 数据快照：canonical 同 RL-001；两个候选 `observations.csv` 均仅表头（`0` 行）；不存在任何
+  candidate vintage 目录；未下载、未冻结、未查看任何真实 2026-09 市场数据。
+- 重开条件：仅当出现新的候选级 contradiction、canonical 数据契约/框架语义变化，或真实前瞻 cycle
+  暴露具体 correctness 缺陷时；不得以"再审计一次"、历史收益或时间压力重做本次闭环。

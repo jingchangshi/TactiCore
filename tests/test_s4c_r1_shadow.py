@@ -12,15 +12,29 @@ from typing import Any
 
 import pandas as pd
 import pytest
-from conftest import build_candidate_repo, write_observations_header, write_prospective_vintage
+from conftest import (
+    build_candidate_repo,
+    write_execution_artifact,
+    write_observations_header,
+    write_prospective_vintage,
+)
 
 from research.experiments import run_s4c_r1_shadow as shadow
 from research.experiments import verify_s4c_r1_candidate as candidate
 
 AS_OF = pd.Timestamp("2026-09-30")
 SEAL = "2026-09-30T08:00:00+00:00"
+EXECUTION_TIMESTAMP = "2026-10-09T07:05:00+00:00"
+ARTIFACT_GENERATED_AT = "2026-10-09T07:30:00+00:00"
+EXECUTION_SEAL = "2026-10-09T08:00:00+00:00"
 # COMMIT A 之前冻结的 candidate_manifest.json（CRLF 归一化）SHA-256。
 FROZEN_MANIFEST_SHA256 = "09469df0ec06d741bee2f176fd1f8334154edafe84afef5b01d889222f6cd908"
+
+
+@pytest.fixture(autouse=True)
+def _frozen_runner_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    """execution 行的时间只能来自 runner 时钟；测试用注入时钟复现 fixture 时点。"""
+    monkeypatch.setattr(shadow, "_now_utc_iso", lambda: EXECUTION_SEAL)
 
 
 def _fake_repo(tmp_path: Path) -> Path:
@@ -463,30 +477,32 @@ def test_decision_sealed_after_the_signal_day_is_rejected(tmp_path: Path) -> Non
 # --- execution record completeness ---------------------------------------------------------
 
 
-_EVIDENCE_RELATIVE_PATH = "research/results/s4c_r1_fixture_rqalpha_evidence.json"
+_EVIDENCE_RELATIVE_PATH = "research/results/s4c_r1_fixture_rqalpha_artifact.json"
 
 
-def _execution_fixture(tmp_path: Path) -> tuple[Path, dict[str, str], dict[str, str], Path]:
+def _execution_fixture(
+    tmp_path: Path, **artifact_kwargs: Any
+) -> tuple[Path, dict[str, str], dict[str, str], Path]:
     root = _repo_with_vintage(tmp_path)
     observations = shadow.canonical_observations_path(root)
     decision = _decision_record(root)
     shadow.append_decision_record(decision, observations)
-    evidence = root / _EVIDENCE_RELATIVE_PATH
-    evidence.parent.mkdir(parents=True, exist_ok=True)
-    evidence.write_text(json.dumps({"fixture": "rqalpha native output"}), encoding="utf-8")
     symbols = tuple(json.loads(decision["desired_targets"]).keys())
+    write_execution_artifact(
+        root,
+        relative_path=_EVIDENCE_RELATIVE_PATH,
+        candidate_id="S4C_R1",
+        signal_date=decision["signal_date"],
+        desired_targets=json.loads(decision["desired_targets"]),
+        execution_timestamp=EXECUTION_TIMESTAMP,
+        artifact_generated_at=ARTIFACT_GENERATED_AT,
+        **artifact_kwargs,
+    )
     identity = shadow.build_rqalpha_evidence_identity(
         evidence_path=_EVIDENCE_RELATIVE_PATH, root=root, expected_framework_version="6.3.0"
     )
     complete = shadow.build_execution_record(
         decision,
-        execution_date="2026-10-09",
-        execution_status="EXECUTED",
-        realized_weights=dict.fromkeys(symbols, 0.0),
-        cash_weight=1.0,
-        portfolio_total_absolute_weight_deviation=0.0,
-        material_asset_differences=[],
-        turnover=0.0,
         execution_evidence=identity,
         expected_symbols=symbols,
         expected_framework_version="6.3.0",
@@ -557,32 +573,134 @@ def test_incomplete_execution_row_is_rejected(
 
 def test_material_portfolio_flag_must_match_the_5pp_rule(tmp_path: Path) -> None:
     root, _decision_row, complete, observations = _execution_fixture(tmp_path)
-    complete["portfolio_total_absolute_weight_deviation"] = "0.2"
+    complete["material_portfolio_tracking_date"] = "true"
 
     with pytest.raises(ValueError, match="material_portfolio_tracking_date"):
         shadow.append_execution_record(complete, observations, root=root)
 
 
-def test_material_asset_difference_below_5pp_is_rejected(tmp_path: Path) -> None:
+def _shift_one_asset(
+    targets: dict[str, float], *, delta: float
+) -> tuple[dict[str, float], dict[str, float]]:
+    """把最大权重标的降 delta、现金升 delta，保持组合完整。"""
+    symbol = max(targets, key=lambda name: targets[name])
+    assert targets[symbol] > delta
+    realized = dict(targets)
+    realized[symbol] = targets[symbol] - delta
+    return realized, {"cash_weight": delta}
+
+
+def test_material_asset_difference_below_5pp_is_not_reported(tmp_path: Path) -> None:
     root, _decision_row, complete, observations = _execution_fixture(tmp_path)
-    symbol = next(iter(json.loads(complete["realized_weights"])))
+    assert complete["material_asset_differences"] == "[]"
+    assert complete["material_portfolio_tracking_date"] == "false"
+    symbol = max(
+        json.loads(complete["desired_targets"]), key=json.loads(complete["desired_targets"]).get
+    )
+    before = observations.read_bytes()
     complete["material_asset_differences"] = json.dumps(
-        [{"symbol": symbol, "intended": 0.2, "realized": 0.16, "native_evidence": "fixture"}]
+        [{"symbol": symbol, "intended": 0.2, "realized": 0.17, "native_evidence": "fixture"}]
     )
 
     with pytest.raises(ValueError, match="超过 5pp"):
         shadow.append_execution_record(complete, observations, root=root)
 
+    assert observations.read_bytes() == before
 
-def test_material_asset_difference_above_5pp_is_accepted(tmp_path: Path) -> None:
-    root, _decision_row, complete, observations = _execution_fixture(tmp_path)
-    symbol = next(iter(json.loads(complete["realized_weights"])))
-    complete["material_asset_differences"] = json.dumps(
-        [{"symbol": symbol, "intended": 0.2, "realized": 0.1, "native_evidence": "fixture"}]
+
+def test_material_asset_difference_above_5pp_requires_artifact_native_evidence(
+    tmp_path: Path,
+) -> None:
+    root = _repo_with_vintage(tmp_path)
+    decision = _decision_record(root)
+    observations = shadow.canonical_observations_path(root)
+    shadow.append_decision_record(decision, observations)
+    targets = json.loads(decision["desired_targets"])
+    realized, extra = _shift_one_asset(targets, delta=0.06)
+    symbol = max(targets, key=lambda name: targets[name])
+    without_evidence = "research/results/s4c_r1_fixture_without_native_evidence.json"
+    write_execution_artifact(
+        root,
+        relative_path=without_evidence,
+        candidate_id="S4C_R1",
+        signal_date=decision["signal_date"],
+        desired_targets=targets,
+        realized_weights=realized,
+        execution_timestamp=EXECUTION_TIMESTAMP,
+        artifact_generated_at=ARTIFACT_GENERATED_AT,
+        **extra,
+    )
+    identity_without_evidence = shadow.build_rqalpha_evidence_identity(
+        evidence_path=without_evidence, root=root, expected_framework_version="6.3.0"
+    )
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="native_evidence"):
+        shadow.build_execution_record(
+            decision,
+            execution_evidence=identity_without_evidence,
+            expected_symbols=tuple(targets),
+            expected_framework_version="6.3.0",
+            root=root,
+        )
+
+    assert observations.read_bytes() == before
+
+    write_execution_artifact(
+        root,
+        relative_path=_EVIDENCE_RELATIVE_PATH,
+        candidate_id="S4C_R1",
+        signal_date=decision["signal_date"],
+        desired_targets=targets,
+        realized_weights=realized,
+        execution_timestamp=EXECUTION_TIMESTAMP,
+        artifact_generated_at=ARTIFACT_GENERATED_AT,
+        native_evidence={symbol: "sys_analyser native 成交说明"},
+        **extra,
+    )
+    identity = shadow.build_rqalpha_evidence_identity(
+        evidence_path=_EVIDENCE_RELATIVE_PATH, root=root, expected_framework_version="6.3.0"
+    )
+    complete = shadow.build_execution_record(
+        decision,
+        execution_evidence=identity,
+        expected_symbols=tuple(targets),
+        expected_framework_version="6.3.0",
+        root=root,
     )
 
-    shadow.append_execution_record(complete, observations, root=root)
+    assert complete["material_portfolio_tracking_date"] == "true"
+    differences = json.loads(complete["material_asset_differences"])
+    assert [entry["symbol"] for entry in differences] == [symbol]
+    assert differences[0]["native_evidence"] == "sys_analyser native 成交说明"
 
+    mutations = [
+        ("material_asset_differences", json.dumps([], ensure_ascii=False)),
+        (
+            "material_asset_differences",
+            json.dumps(
+                [
+                    {
+                        "symbol": entry["symbol"],
+                        "intended": entry["intended"],
+                        "realized": entry["realized"],
+                        "native_evidence": "调用方自述",
+                    }
+                    for entry in differences
+                ],
+                ensure_ascii=False,
+            ),
+        ),
+    ]
+    for field, value in mutations:
+        mutated = dict(complete)
+        mutated[field] = value
+        before = observations.read_bytes()
+        with pytest.raises(ValueError, match="material_asset_differences"):
+            shadow.append_execution_record(mutated, observations, root=root)
+        assert observations.read_bytes() == before
+
+    shadow.append_execution_record(complete, observations, root=root)
     assert shadow.observation_record_count(observations) == 2
 
 

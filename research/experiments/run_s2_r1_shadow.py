@@ -9,6 +9,7 @@ seal time；这些只能来自 candidate canonical 位置与 runner 的实际运
 from __future__ import annotations
 
 import json
+import math
 from argparse import ArgumentParser
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import datetime, timezone
@@ -30,6 +31,7 @@ from research.experiments.prospective_evidence import (
     parse_iso_date,
     parse_json_list,
     parse_json_object,
+    parse_rqalpha_execution_artifact,
     parse_weight_vector,
     read_event_rows,
     require_timezone_aware_instant,
@@ -38,7 +40,6 @@ from research.experiments.prospective_evidence import (
     signal_close_instant,
     verify_canonical_vintage_location,
     verify_hex_digest,
-    verify_rqalpha_evidence_identity,
     verify_signal_day_seal,
 )
 from research.experiments.prospective_evidence import (
@@ -401,6 +402,11 @@ def append_decision_record(record: Mapping[str, str], path: Path = OBSERVATIONS_
     append_event_row(record, path=path, fields=RECORD_FIELDS)
 
 
+def _require_artifact_value(actual: float, expected: float, *, label: str) -> None:
+    if not math.isclose(actual, expected, rel_tol=0.0, abs_tol=1e-12):
+        raise ValueError(f"{label} 必须等于 RQAlpha execution artifact 的确定性解析结果")
+
+
 def verify_execution_row(
     record: Mapping[str, str],
     *,
@@ -409,7 +415,7 @@ def verify_execution_row(
     expected_framework_version: str,
     root: Path = ROOT,
 ) -> None:
-    """execution 行必须**完整**才能 append：不允许空壳，不允许事后补字段。"""
+    """execution 行必须**完整**且逐值等于 SHA-bound artifact 的确定性解析结果。"""
     if record["record_type"] != "execution":
         raise ValueError("只有 execution 行适用 execution completeness 契约")
     if record["candidate_id"] != decision["candidate_id"]:
@@ -418,62 +424,93 @@ def verify_execution_row(
         raise ValueError("execution 行的 protocol_version 与对应 decision 不一致")
     if record["signal_date"] != decision["signal_date"]:
         raise ValueError("execution 行的 signal_date 必须匹配对应 decision")
+    if record["execution_status"] not in ALLOWED_EXECUTION_STATUSES:
+        raise ValueError("execution_status 必须是 RQAlpha 原生执行完成状态")
     signal_date = parse_iso_date(record["signal_date"], label="signal_date")
     execution_date = parse_iso_date(record["execution_date"], label="execution_date")
     if execution_date <= signal_date:
         raise ValueError("execution 日期必须晚于 signal date：决策必须先于执行")
-    if record["execution_status"] not in ALLOWED_EXECUTION_STATUSES:
-        raise ValueError("execution_status 必须是 RQAlpha 原生执行完成状态")
+    artifact = parse_rqalpha_execution_artifact(
+        record["execution_evidence"],
+        root=root,
+        decision=decision,
+        expected_symbols=expected_symbols,
+        expected_framework_version=expected_framework_version,
+        record_generated_at=record["record_generated_at"],
+    )
+    if record["execution_status"] != artifact.execution_status:
+        raise ValueError("execution_status 必须等于 RQAlpha execution artifact 的 native 状态")
+    if execution_date != artifact.execution_date:
+        raise ValueError("execution_date 必须等于 artifact execution_timestamp 的上海本地日历日")
     realized = parse_weight_vector(
         record["realized_weights"],
         expected_symbols=expected_symbols,
         label="realized_weights",
         require_total_one=False,
     )
+    if realized != artifact.realized_weights:
+        raise ValueError("realized_weights 必须等于 RQAlpha execution artifact 的 native 权重")
     cash = parse_finite_float(record["cash_weight"], label="cash_weight")
     if cash < 0.0:
         raise ValueError("cash_weight 不得为负")
     if abs(sum(realized.values()) + cash - 1.0) > 1e-3:
         raise ValueError("realized_weights 与 cash_weight 合计必须覆盖组合")
-    if parse_finite_float(record["target_deviation"], label="target_deviation") < 0.0:
-        raise ValueError("target_deviation 不得为负")
-    if parse_finite_float(record["portfolio_value"], label="portfolio_value") <= 0.0:
-        raise ValueError("portfolio_value 必须为正")
-    if parse_finite_float(record["drawdown"], label="drawdown") > 0.0:
-        raise ValueError("drawdown 必须为非正值")
-    if parse_finite_float(record["turnover"], label="turnover") < 0.0:
-        raise ValueError("turnover 不得为负")
-    verify_rqalpha_evidence_identity(
-        record["execution_evidence"],
-        root=root,
-        expected_framework_version=expected_framework_version,
+    _require_artifact_value(
+        parse_finite_float(record["cash_weight"], label="cash_weight"),
+        artifact.cash_weight,
+        label="cash_weight",
+    )
+    _require_artifact_value(
+        parse_finite_float(record["target_deviation"], label="target_deviation"),
+        artifact.total_absolute_weight_deviation,
+        label="target_deviation",
+    )
+    _require_artifact_value(
+        parse_finite_float(record["portfolio_value"], label="portfolio_value"),
+        artifact.portfolio_value,
+        label="portfolio_value",
+    )
+    _require_artifact_value(
+        parse_finite_float(record["drawdown"], label="drawdown"),
+        artifact.drawdown,
+        label="drawdown",
+    )
+    _require_artifact_value(
+        parse_finite_float(record["turnover"], label="turnover"),
+        artifact.turnover,
+        label="turnover",
     )
 
 
 def build_execution_record(
     decision: Mapping[str, str],
     *,
-    execution_date: object,
-    execution_status: str,
-    realized_weights: Mapping[str, float],
-    cash_weight: float,
-    target_deviation: float,
-    portfolio_value: float,
-    drawdown: float,
-    turnover: float,
     execution_evidence: str,
     expected_symbols: Iterable[str],
     expected_framework_version: str,
     root: Path = ROOT,
 ) -> dict[str, str]:
-    """由权威执行输出构造一条完整 execution 行；不完整即拒绝。"""
+    """由 SHA-bound 权威 artifact 派生 execution 行；调用方不得再单独提供指标。
+
+    `record_generated_at` 只能来自 runner 的实际运行时钟；测试通过 monkeypatch 该时钟
+    复现历史/未来 fixture，生产不存在时间参数。
+    """
+    record_generated_at = _now_utc_iso()
+    artifact = parse_rqalpha_execution_artifact(
+        execution_evidence,
+        root=root,
+        decision=decision,
+        expected_symbols=expected_symbols,
+        expected_framework_version=expected_framework_version,
+        record_generated_at=record_generated_at,
+    )
     record = {field: "" for field in RECORD_FIELDS}
     record.update(
         {
             "record_type": "execution",
             "candidate_id": decision["candidate_id"],
             "protocol_version": decision["protocol_version"],
-            "record_generated_at": _now_utc_iso(),
+            "record_generated_at": record_generated_at,
             "data_as_of": decision["data_as_of"],
             "vintage_identifier": decision["vintage_identifier"],
             "historical_manifest_hash": decision["historical_manifest_hash"],
@@ -484,18 +521,16 @@ def build_execution_record(
             "target_changed": decision["target_changed"],
             "desired_targets": decision["desired_targets"],
             "action_required": decision["action_required"],
-            "execution_date": pd.Timestamp(execution_date).date().isoformat(),
-            "execution_status": execution_status,
+            "execution_date": artifact.execution_date.date().isoformat(),
+            "execution_status": artifact.execution_status,
             "realized_weights": json.dumps(
-                {symbol: float(weight) for symbol, weight in realized_weights.items()},
-                ensure_ascii=False,
-                sort_keys=True,
+                artifact.realized_weights, ensure_ascii=False, sort_keys=True
             ),
-            "cash_weight": repr(float(cash_weight)),
-            "target_deviation": repr(float(target_deviation)),
-            "portfolio_value": repr(float(portfolio_value)),
-            "drawdown": repr(float(drawdown)),
-            "turnover": repr(float(turnover)),
+            "cash_weight": repr(artifact.cash_weight),
+            "target_deviation": repr(artifact.total_absolute_weight_deviation),
+            "portfolio_value": repr(artifact.portfolio_value),
+            "drawdown": repr(artifact.drawdown),
+            "turnover": repr(artifact.turnover),
             "execution_evidence": execution_evidence,
         }
     )

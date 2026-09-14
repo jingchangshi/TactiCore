@@ -39,6 +39,24 @@ UNIVERSE_FIELDS = ("symbol", "tushare_symbol", "list_date")
 HASH_HEX_LENGTH = 64
 RQALPHA_EVIDENCE_FRAMEWORK = "rqalpha"
 RQALPHA_EVIDENCE_FIELDS = ("framework", "framework_version", "evidence_path", "evidence_sha256")
+RQALPHA_ARTIFACT_SCHEMA = "tacticore.rqalpha.execution_artifact.v1"
+RQALPHA_ARTIFACT_FIELDS = (
+    "schema",
+    "candidate_id",
+    "signal_date",
+    "framework",
+    "framework_version",
+    "execution_status",
+    "execution_timestamp",
+    "artifact_generated_at",
+    "intended_targets",
+    "realized_weights",
+    "cash_weight",
+    "turnover",
+    "portfolio",
+    "native_evidence",
+)
+PORTFOLIO_FIELDS = ("portfolio_value", "drawdown")
 
 
 # --------------------------------------------------------------------------------------
@@ -643,6 +661,235 @@ def build_rqalpha_evidence_identity(
         json.dumps(payload), root=root, expected_framework_version=expected_framework_version
     )
     return json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
+
+# --------------------------------------------------------------------------------------
+# Authoritative RQAlpha execution artifact
+# --------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class RqalphaExecutionArtifact:
+    """权威 RQAlpha execution artifact 的确定性解析结果。
+
+    它只保存 native facts 与由 facts 推导出的执行结论；TactiCore 不重新实现撮合、整手、
+    现金或成本语义，只把 execution row 变成 `artifact` 的确定性函数。
+    """
+
+    candidate_id: str
+    signal_date: pd.Timestamp
+    execution_date: pd.Timestamp
+    execution_timestamp: pd.Timestamp
+    artifact_generated_at: pd.Timestamp
+    execution_status: str
+    intended_targets: dict[str, float]
+    realized_weights: dict[str, float]
+    cash_weight: float
+    turnover: float
+    portfolio_value: float
+    drawdown: float
+    total_absolute_weight_deviation: float
+    native_evidence: Mapping[str, str]
+
+
+def _parse_artifact_instants(record: Mapping[str, Any]) -> tuple[pd.Timestamp, pd.Timestamp]:
+    execution_timestamp = require_timezone_aware_instant(
+        record.get("execution_timestamp"), label="artifact execution_timestamp"
+    )
+    artifact_generated_at = require_timezone_aware_instant(
+        record.get("artifact_generated_at"), label="artifact artifact_generated_at"
+    )
+    return execution_timestamp, artifact_generated_at
+
+
+def _parse_artifact_native_evidence(
+    raw: object, *, expected_symbols: Iterable[str]
+) -> dict[str, str]:
+    payload = _require_mapping(raw, label="artifact native_evidence")
+    universe = set(expected_symbols)
+    evidence: dict[str, str] = {}
+    for symbol, text in payload.items():
+        if symbol not in universe:
+            raise ValueError(f"artifact native_evidence 引用了冻结 universe 之外的标的: {symbol}")
+        if not isinstance(text, str) or not text:
+            raise ValueError(f"artifact native_evidence.{symbol} 必须是非空 native 说明")
+        evidence[str(symbol)] = text
+    return evidence
+
+
+def verify_rqalpha_artifact_payload(
+    payload: object,
+    *,
+    expected_symbols: Iterable[str],
+    expected_framework_version: str,
+) -> None:
+    """artifact 自身必须自洽：schema、身份、时间、权重、现金与 native 说明都可校验。"""
+    record = _require_mapping(payload, label="RQAlpha execution artifact")
+    if set(record) != set(RQALPHA_ARTIFACT_FIELDS):
+        raise ValueError("RQAlpha execution artifact 字段集合与冻结 schema 不一致")
+    if record["schema"] != RQALPHA_ARTIFACT_SCHEMA:
+        raise ValueError("RQAlpha execution artifact schema 版本与冻结契约不一致")
+    if record["framework"] != RQALPHA_EVIDENCE_FRAMEWORK:
+        raise ValueError("RQAlpha execution artifact 的 framework 必须是 RQAlpha 原生执行")
+    if record["framework_version"] != expected_framework_version:
+        raise ValueError("RQAlpha execution artifact 的 framework_version 与冻结 manifest 不一致")
+    if not isinstance(record["candidate_id"], str) or not record["candidate_id"]:
+        raise ValueError("RQAlpha execution artifact 缺少 candidate_id")
+    if not isinstance(record["execution_status"], str) or not record["execution_status"]:
+        raise ValueError("RQAlpha execution artifact 缺少 execution_status")
+    parse_iso_date(record["signal_date"], label="artifact signal_date")
+    _parse_artifact_instants(record)
+    parse_weight_vector(
+        json.dumps(record["intended_targets"], ensure_ascii=False),
+        expected_symbols=expected_symbols,
+        label="artifact intended_targets",
+    )
+    realized = parse_weight_vector(
+        json.dumps(record["realized_weights"], ensure_ascii=False),
+        expected_symbols=expected_symbols,
+        label="artifact realized_weights",
+        require_total_one=False,
+    )
+    cash_weight = parse_finite_float(record["cash_weight"], label="artifact cash_weight")
+    if cash_weight < 0.0:
+        raise ValueError("artifact cash_weight 不得为负")
+    if abs(sum(realized.values()) + cash_weight - 1.0) > 1e-3:
+        raise ValueError("artifact realized_weights 与 cash_weight 合计必须覆盖组合")
+    if parse_finite_float(record["turnover"], label="artifact turnover") < 0.0:
+        raise ValueError("artifact turnover 不得为负")
+    portfolio = _require_mapping(record["portfolio"], label="artifact portfolio")
+    if set(portfolio) != set(PORTFOLIO_FIELDS):
+        raise ValueError("artifact portfolio 字段集合与冻结 schema 不一致")
+    if parse_finite_float(portfolio["portfolio_value"], label="artifact portfolio_value") <= 0.0:
+        raise ValueError("artifact portfolio_value 必须为正")
+    if parse_finite_float(portfolio["drawdown"], label="artifact drawdown") > 0.0:
+        raise ValueError("artifact drawdown 必须为非正值")
+    _parse_artifact_native_evidence(record["native_evidence"], expected_symbols=expected_symbols)
+
+
+def write_rqalpha_execution_artifact(
+    payload: Mapping[str, Any],
+    *,
+    path: Path,
+    expected_symbols: Iterable[str],
+    expected_framework_version: str,
+) -> Path:
+    """冻结一份 authoritative execution artifact；既有 evidence 不可覆盖。"""
+    destination = Path(path)
+    verify_rqalpha_artifact_payload(
+        payload,
+        expected_symbols=expected_symbols,
+        expected_framework_version=expected_framework_version,
+    )
+    if destination.exists():
+        raise ValueError("RQAlpha execution artifact 已存在，拒绝覆盖既有 evidence")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(
+        json.dumps(dict(payload), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return destination
+
+
+def parse_rqalpha_execution_artifact(
+    execution_evidence: object,
+    *,
+    root: Path,
+    decision: Mapping[str, str],
+    expected_symbols: Iterable[str],
+    expected_framework_version: str,
+    record_generated_at: object,
+) -> RqalphaExecutionArtifact:
+    """把 SHA-bound execution artifact 解析成 deterministic execution 结论。
+
+    时间链必须成立：decision seal < execution_timestamp <= artifact_generated_at
+    <= execution record_generated_at，且 execution_timestamp 不得早于 execution_close。
+    """
+    identity = verify_rqalpha_evidence_identity(
+        execution_evidence, root=root, expected_framework_version=expected_framework_version
+    )
+    artifact_path = Path(root).resolve() / PurePosixPath(identity["evidence_path"])
+    record = _require_mapping(
+        json.loads(artifact_path.read_text(encoding="utf-8")), label="RQAlpha execution artifact"
+    )
+    verify_rqalpha_artifact_payload(
+        record,
+        expected_symbols=expected_symbols,
+        expected_framework_version=expected_framework_version,
+    )
+    if record["candidate_id"] != decision["candidate_id"]:
+        raise ValueError("RQAlpha execution artifact 的 candidate_id 与对应 decision 不一致")
+    if record["signal_date"] != decision["signal_date"]:
+        raise ValueError("RQAlpha execution artifact 的 signal_date 与对应 decision 不一致")
+    execution_timestamp, artifact_generated_at = _parse_artifact_instants(record)
+    decision_seal = require_timezone_aware_instant(
+        decision["record_generated_at"], label="decision record_generated_at"
+    )
+    record_seal = require_timezone_aware_instant(
+        record_generated_at, label="execution record_generated_at"
+    )
+    execution_date = execution_timestamp.tz_convert(SHANGHAI_TIMEZONE).tz_localize(None).normalize()
+    execution_close = signal_close_instant(execution_date)
+    if execution_timestamp < execution_close:
+        raise ValueError(
+            "artifact execution_timestamp 不得早于 execution_close："
+            "execution 观测在该日收盘前并不存在"
+        )
+    if artifact_generated_at < execution_timestamp:
+        raise ValueError("artifact artifact_generated_at 不得早于 execution_timestamp")
+    if artifact_generated_at > record_seal:
+        raise ValueError(
+            "artifact artifact_generated_at 晚于 execution record_generated_at："
+            "不得用尚未产生的观测构造 execution 行"
+        )
+    if execution_timestamp <= decision_seal:
+        raise ValueError("execution_timestamp 必须严格晚于 decision seal：决策必须先于执行")
+    signal_date = parse_iso_date(decision["signal_date"], label="signal_date")
+    if execution_date <= signal_date:
+        raise ValueError("execution_date 必须晚于 signal_date：决策必须先于执行")
+    intended = parse_weight_vector(
+        json.dumps(record["intended_targets"], ensure_ascii=False),
+        expected_symbols=expected_symbols,
+        label="artifact intended_targets",
+    )
+    decision_targets = parse_weight_vector(
+        decision["desired_targets"], expected_symbols=expected_symbols, label="desired_targets"
+    )
+    if set(intended) != set(decision_targets) or any(
+        abs(intended[symbol] - decision_targets[symbol]) > 1e-9 for symbol in intended
+    ):
+        raise ValueError("artifact intended_targets 必须等于 decision 冻结的 desired_targets")
+    realized = parse_weight_vector(
+        json.dumps(record["realized_weights"], ensure_ascii=False),
+        expected_symbols=expected_symbols,
+        label="artifact realized_weights",
+        require_total_one=False,
+    )
+    cash_weight = parse_finite_float(record["cash_weight"], label="artifact cash_weight")
+    portfolio = _require_mapping(record["portfolio"], label="artifact portfolio")
+    return RqalphaExecutionArtifact(
+        candidate_id=str(record["candidate_id"]),
+        signal_date=signal_date,
+        execution_date=execution_date,
+        execution_timestamp=execution_timestamp,
+        artifact_generated_at=artifact_generated_at,
+        execution_status=str(record["execution_status"]),
+        intended_targets=intended,
+        realized_weights=realized,
+        cash_weight=cash_weight,
+        turnover=parse_finite_float(record["turnover"], label="artifact turnover"),
+        portfolio_value=parse_finite_float(
+            portfolio["portfolio_value"], label="artifact portfolio_value"
+        ),
+        drawdown=parse_finite_float(portfolio["drawdown"], label="artifact drawdown"),
+        total_absolute_weight_deviation=sum(
+            abs(intended[symbol] - realized[symbol]) for symbol in intended
+        )
+        + abs(cash_weight),
+        native_evidence=_parse_artifact_native_evidence(
+            record["native_evidence"], expected_symbols=expected_symbols
+        ),
+    )
 
 
 # --------------------------------------------------------------------------------------

@@ -12,14 +12,29 @@ from typing import Any
 
 import pandas as pd
 import pytest
-from conftest import build_candidate_repo, write_observations_header, write_prospective_vintage
+from conftest import (
+    build_candidate_repo,
+    write_execution_artifact,
+    write_observations_header,
+    write_prospective_vintage,
+)
 
 from research.experiments import run_s2_r1_shadow as s2
 from research.experiments import run_s4c_r1_shadow as s4c
 
 AS_OF = pd.Timestamp("2026-09-30")
 SEAL = "2026-09-30T08:00:00+00:00"
+EXECUTION_TIMESTAMP = "2026-10-09T07:05:00+00:00"
+ARTIFACT_GENERATED_AT = "2026-10-09T07:30:00+00:00"
+EXECUTION_SEAL = "2026-10-09T08:00:00+00:00"
 EXTRA_CALENDAR_DATES = ("2026-10-09",)
+
+
+@pytest.fixture(autouse=True)
+def _frozen_runner_clocks(monkeypatch: pytest.MonkeyPatch) -> None:
+    """未来 synthetic execution 时点由注入的 runner 时钟复现，不修改系统时间。"""
+    monkeypatch.setattr(s2, "_now_utc_iso", lambda: EXECUTION_SEAL)
+    monkeypatch.setattr(s4c, "_now_utc_iso", lambda: EXECUTION_SEAL)
 
 
 @pytest.fixture
@@ -42,13 +57,19 @@ def drill_repo(tmp_path: Path) -> Path:
     return root
 
 
-def _fixture_evidence(root: Path, relative_path: str) -> str:
-    path = root / relative_path
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps({"fixture": "RQAlpha 6.3.0 native execution output"}), encoding="utf-8"
+def _fixture_artifact(
+    root: Path, candidate_id: str, relative_path: str, decision: dict[str, str]
+) -> str:
+    """用 decision 的冻结目标写出一份 structured synthetic RQAlpha execution artifact。"""
+    return write_execution_artifact(
+        root,
+        relative_path=relative_path,
+        candidate_id=candidate_id,
+        signal_date=decision["signal_date"],
+        desired_targets=json.loads(decision["desired_targets"]),
+        execution_timestamp=EXECUTION_TIMESTAMP,
+        artifact_generated_at=ARTIFACT_GENERATED_AT,
     )
-    return relative_path
 
 
 def _symbols(decision: dict[str, str]) -> tuple[str, ...]:
@@ -89,29 +110,27 @@ def test_dual_candidate_synthetic_full_cycle_requires_no_code_change(drill_repo:
     s2_symbols = _symbols(s2_decision)
     s4c_symbols = _symbols(s4c_decision)
     s2_identity = s2.build_rqalpha_evidence_identity(
-        evidence_path=_fixture_evidence(
-            root, "research/results/s2_r1_fixture_rqalpha_evidence.json"
+        evidence_path=_fixture_artifact(
+            root,
+            "S2_R1",
+            "research/results/s2_r1_fixture_rqalpha_artifact.json",
+            s2_decision,
         ),
         root=root,
         expected_framework_version="6.3.0",
     )
     s4c_identity = s4c.build_rqalpha_evidence_identity(
-        evidence_path=_fixture_evidence(
-            root, "research/results/s4c_r1_fixture_rqalpha_evidence.json"
+        evidence_path=_fixture_artifact(
+            root,
+            "S4C_R1",
+            "research/results/s4c_r1_fixture_rqalpha_artifact.json",
+            s4c_decision,
         ),
         root=root,
         expected_framework_version="6.3.0",
     )
     s2_execution = s2.build_execution_record(
         s2_decision,
-        execution_date="2026-10-09",
-        execution_status="EXECUTED",
-        realized_weights=dict.fromkeys(s2_symbols, 0.0),
-        cash_weight=1.0,
-        target_deviation=0.0,
-        portfolio_value=1_000_000.0,
-        drawdown=0.0,
-        turnover=0.0,
         execution_evidence=s2_identity,
         expected_symbols=s2_symbols,
         expected_framework_version="6.3.0",
@@ -119,18 +138,13 @@ def test_dual_candidate_synthetic_full_cycle_requires_no_code_change(drill_repo:
     )
     s4c_execution = s4c.build_execution_record(
         s4c_decision,
-        execution_date="2026-10-09",
-        execution_status="EXECUTED",
-        realized_weights=dict.fromkeys(s4c_symbols, 0.0),
-        cash_weight=1.0,
-        portfolio_total_absolute_weight_deviation=0.0,
-        material_asset_differences=[],
-        turnover=0.0,
         execution_evidence=s4c_identity,
         expected_symbols=s4c_symbols,
         expected_framework_version="6.3.0",
         root=root,
     )
+    assert s2_execution["execution_date"] == s4c_execution["execution_date"] == "2026-10-09"
+    assert s2_execution["execution_status"] == s4c_execution["execution_status"] == "EXECUTED"
 
     # 4. 不完整 execution 必须被拒绝，且 decision bytes 不变。
     incomplete = dict(s2_execution)
@@ -183,20 +197,14 @@ def test_drill_rejects_execution_without_its_decision(drill_repo: Path, tmp_path
     s2_decision = s2.run_decision(AS_OF, root=drill_repo, decision_seal_time=SEAL)
     symbols = _symbols(s2_decision)
     identity = s2.build_rqalpha_evidence_identity(
-        evidence_path=_fixture_evidence(drill_repo, "research/results/other_evidence.json"),
+        evidence_path=_fixture_artifact(
+            drill_repo, "S2_R1", "research/results/s2_r1_other_artifact.json", s2_decision
+        ),
         root=drill_repo,
         expected_framework_version="6.3.0",
     )
     execution = s2.build_execution_record(
         s2_decision,
-        execution_date="2026-10-09",
-        execution_status="EXECUTED",
-        realized_weights=dict.fromkeys(symbols, 0.0),
-        cash_weight=1.0,
-        target_deviation=0.0,
-        portfolio_value=1_000_000.0,
-        drawdown=0.0,
-        turnover=0.0,
         execution_evidence=identity,
         expected_symbols=symbols,
         expected_framework_version="6.3.0",

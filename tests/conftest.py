@@ -9,6 +9,7 @@ from __future__ import annotations
 import csv
 import json
 import shutil
+from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from research.experiments import prospective_evidence as pe
 from research.experiments.prospective_evidence import FrozenUniverse, load_frozen_universe
 from tacticore.data.prices import load_price_csv
 from tacticore.data.tushare import ADJUSTMENT_TYPE, SOURCE, TushareDataset, write_tushare_dataset
@@ -199,6 +201,55 @@ def write_observations_header(path: Path, fields: tuple[str, ...]) -> Path:
     with path.open("w", encoding="utf-8", newline="") as handle:
         csv.DictWriter(handle, fieldnames=list(fields)).writeheader()
     return path
+
+
+def write_execution_artifact(
+    root: Path,
+    *,
+    relative_path: str,
+    candidate_id: str,
+    signal_date: str,
+    desired_targets: Mapping[str, float],
+    execution_timestamp: str,
+    artifact_generated_at: str,
+    realized_weights: Mapping[str, float] | None = None,
+    cash_weight: float = 0.0,
+    turnover: float = 0.0,
+    portfolio_value: float = 1_000_000.0,
+    drawdown: float = 0.0,
+    native_evidence: Mapping[str, str] | None = None,
+    framework_version: str = "6.3.0",
+    execution_status: str = "EXECUTED",
+) -> str:
+    """写出一个 structured synthetic RQAlpha execution artifact（不联网、不需要 RQAlpha）。"""
+    targets = {str(symbol): float(weight) for symbol, weight in desired_targets.items()}
+    payload = {
+        "schema": pe.RQALPHA_ARTIFACT_SCHEMA,
+        "candidate_id": candidate_id,
+        "signal_date": signal_date,
+        "framework": pe.RQALPHA_EVIDENCE_FRAMEWORK,
+        "framework_version": framework_version,
+        "execution_status": execution_status,
+        "execution_timestamp": execution_timestamp,
+        "artifact_generated_at": artifact_generated_at,
+        "intended_targets": targets,
+        "realized_weights": (
+            targets
+            if realized_weights is None
+            else {str(symbol): float(weight) for symbol, weight in realized_weights.items()}
+        ),
+        "cash_weight": float(cash_weight),
+        "turnover": float(turnover),
+        "portfolio": {"portfolio_value": float(portfolio_value), "drawdown": float(drawdown)},
+        "native_evidence": {str(k): str(v) for k, v in (native_evidence or {}).items()},
+    }
+    pe.write_rqalpha_execution_artifact(
+        payload,
+        path=root / relative_path,
+        expected_symbols=list(targets),
+        expected_framework_version=framework_version,
+    )
+    return relative_path
 
 
 class MockTushareApi:

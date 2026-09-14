@@ -9,6 +9,7 @@ canonical vintage 位置与 record 目的地均不可由生产 CLI 覆盖。
 from __future__ import annotations
 
 import json
+import math
 from argparse import ArgumentParser
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import datetime, timezone
@@ -21,6 +22,7 @@ from research.experiments.prospective_evidence import (
     REQUIRED_VINTAGE_FILES,
     SHANGHAI_TIMEZONE,
     ProspectiveVintage,
+    RqalphaExecutionArtifact,
     append_event_row,
     load_calendar,
     load_frozen_universe,
@@ -28,6 +30,7 @@ from research.experiments.prospective_evidence import (
     parse_finite_float,
     parse_iso_date,
     parse_json_list,
+    parse_rqalpha_execution_artifact,
     parse_weight_vector,
     read_event_rows,
     require_timezone_aware_instant,
@@ -36,7 +39,6 @@ from research.experiments.prospective_evidence import (
     signal_close_instant,
     verify_canonical_vintage_location,
     verify_hex_digest,
-    verify_rqalpha_evidence_identity,
     verify_signal_day_seal,
 )
 from research.experiments.prospective_evidence import (
@@ -618,6 +620,33 @@ def verify_material_asset_differences(
     return list(differences)
 
 
+def _material_asset_differences(artifact: RqalphaExecutionArtifact) -> list[dict[str, Any]]:
+    """由 artifact 的 intended vs realized weights 推导 5pp 单资产差异，不接受调用方清单。"""
+    differences: list[dict[str, Any]] = []
+    for symbol in sorted(artifact.intended_targets):
+        intended = float(artifact.intended_targets[symbol])
+        realized = float(artifact.realized_weights[symbol])
+        if abs(intended - realized) <= MATERIAL_DEVIATION_THRESHOLD:
+            continue
+        evidence = artifact.native_evidence.get(symbol)
+        if not isinstance(evidence, str) or not evidence:
+            raise ValueError(f"material_asset_differences.{symbol} 缺少 artifact native_evidence")
+        differences.append(
+            {
+                "symbol": symbol,
+                "intended": intended,
+                "realized": realized,
+                "native_evidence": evidence,
+            }
+        )
+    return differences
+
+
+def _require_artifact_value(actual: float, expected: float, *, label: str) -> None:
+    if not math.isclose(actual, expected, rel_tol=0.0, abs_tol=1e-12):
+        raise ValueError(f"{label} 必须等于 RQAlpha execution artifact 的确定性解析结果")
+
+
 def verify_execution_row(
     record: Mapping[str, str],
     *,
@@ -626,7 +655,7 @@ def verify_execution_row(
     expected_framework_version: str,
     root: Path = ROOT,
 ) -> None:
-    """execution 行必须**完整**才能 append：不允许空壳，不允许事后补字段。"""
+    """execution 行必须**完整**且逐值等于 SHA-bound artifact 的确定性解析结果。"""
     if record["record_type"] != "execution":
         raise ValueError("只有 execution 行适用 execution completeness 契约")
     if record["candidate_id"] != decision["candidate_id"]:
@@ -635,70 +664,116 @@ def verify_execution_row(
         raise ValueError("execution 行的 protocol_version 与对应 decision 不一致")
     if record["signal_date"] != decision["signal_date"]:
         raise ValueError("execution 行的 signal_date 必须匹配对应 decision")
+    if record["execution_status"] not in ALLOWED_EXECUTION_STATUSES:
+        raise ValueError("execution_status 必须是 RQAlpha 原生执行完成状态")
     signal_date = parse_iso_date(record["signal_date"], label="signal_date")
     execution_date = parse_iso_date(record["execution_date"], label="execution_date")
     if execution_date <= signal_date:
         raise ValueError("execution 日期必须晚于 signal date：决策必须先于执行")
-    if record["execution_status"] not in ALLOWED_EXECUTION_STATUSES:
-        raise ValueError("execution_status 必须是 RQAlpha 原生执行完成状态")
+    artifact = parse_rqalpha_execution_artifact(
+        record["execution_evidence"],
+        root=root,
+        decision=decision,
+        expected_symbols=expected_symbols,
+        expected_framework_version=expected_framework_version,
+        record_generated_at=record["record_generated_at"],
+    )
+    if record["execution_status"] != artifact.execution_status:
+        raise ValueError("execution_status 必须等于 RQAlpha execution artifact 的 native 状态")
+    if execution_date != artifact.execution_date:
+        raise ValueError("execution_date 必须等于 artifact execution_timestamp 的上海本地日历日")
     realized = parse_weight_vector(
         record["realized_weights"],
         expected_symbols=expected_symbols,
         label="realized_weights",
         require_total_one=False,
     )
+    if realized != artifact.realized_weights:
+        raise ValueError("realized_weights 必须等于 RQAlpha execution artifact 的 native 权重")
     cash = parse_finite_float(record["cash_weight"], label="cash_weight")
     if cash < 0.0:
         raise ValueError("cash_weight 不得为负")
     if abs(sum(realized.values()) + cash - 1.0) > 1e-3:
         raise ValueError("realized_weights 与 cash_weight 合计必须覆盖组合")
+    _require_artifact_value(
+        parse_finite_float(record["cash_weight"], label="cash_weight"),
+        artifact.cash_weight,
+        label="cash_weight",
+    )
     deviation = parse_finite_float(
         record["portfolio_total_absolute_weight_deviation"],
         label="portfolio_total_absolute_weight_deviation",
     )
     if deviation < 0.0:
         raise ValueError("portfolio_total_absolute_weight_deviation 不得为负")
+    _require_artifact_value(
+        deviation,
+        artifact.total_absolute_weight_deviation,
+        label="portfolio_total_absolute_weight_deviation",
+    )
     if record["material_portfolio_tracking_date"] not in {"true", "false"}:
         raise ValueError("material_portfolio_tracking_date 必须是 true/false")
     expected_material = str(deviation > MATERIAL_DEVIATION_THRESHOLD).lower()
     if record["material_portfolio_tracking_date"] != expected_material:
         raise ValueError("material_portfolio_tracking_date 必须与 5pp 组合层判据一致")
-    verify_material_asset_differences(
+    declared_differences = verify_material_asset_differences(
         record["material_asset_differences"], realized_symbols=realized
     )
-    if parse_finite_float(record["turnover"], label="turnover") < 0.0:
-        raise ValueError("turnover 不得为负")
-    verify_rqalpha_evidence_identity(
-        record["execution_evidence"],
-        root=root,
-        expected_framework_version=expected_framework_version,
+    expected_differences = _material_asset_differences(artifact)
+    if len(declared_differences) != len(expected_differences):
+        raise ValueError("material_asset_differences 必须等于 artifact 推导出的 5pp 差异清单")
+    for declared, expected in zip(declared_differences, expected_differences, strict=True):
+        if declared.get("symbol") != expected["symbol"]:
+            raise ValueError("material_asset_differences 必须等于 artifact 推导出的 5pp 差异清单")
+        if declared.get("native_evidence") != expected["native_evidence"]:
+            raise ValueError("material_asset_differences 必须携带 artifact 的 native 说明")
+        _require_artifact_value(
+            parse_finite_float(
+                declared.get("intended"), label="material_asset_differences.intended"
+            ),
+            float(expected["intended"]),
+            label="material_asset_differences.intended",
+        )
+        _require_artifact_value(
+            parse_finite_float(
+                declared.get("realized"), label="material_asset_differences.realized"
+            ),
+            float(expected["realized"]),
+            label="material_asset_differences.realized",
+        )
+    _require_artifact_value(
+        parse_finite_float(record["turnover"], label="turnover"),
+        artifact.turnover,
+        label="turnover",
     )
 
 
 def build_execution_record(
     decision: Mapping[str, str],
     *,
-    execution_date: object,
-    execution_status: str,
-    realized_weights: Mapping[str, float],
-    cash_weight: float,
-    portfolio_total_absolute_weight_deviation: float,
-    material_asset_differences: Sequence[Mapping[str, Any]],
-    turnover: float,
     execution_evidence: str,
     expected_symbols: Iterable[str],
     expected_framework_version: str,
     root: Path = ROOT,
 ) -> dict[str, str]:
-    """由权威执行输出构造一条完整 execution 行；不完整即拒绝。"""
-    material = float(portfolio_total_absolute_weight_deviation) > MATERIAL_DEVIATION_THRESHOLD
+    """由 SHA-bound 权威 artifact 派生 execution 行；调用方不得再单独提供指标。"""
+    record_generated_at = _now_utc_iso()
+    artifact = parse_rqalpha_execution_artifact(
+        execution_evidence,
+        root=root,
+        decision=decision,
+        expected_symbols=expected_symbols,
+        expected_framework_version=expected_framework_version,
+        record_generated_at=record_generated_at,
+    )
+    material = artifact.total_absolute_weight_deviation > MATERIAL_DEVIATION_THRESHOLD
     record = {field: "" for field in RECORD_FIELDS}
     record.update(
         {
             "record_type": "execution",
             "candidate_id": decision["candidate_id"],
             "protocol_version": decision["protocol_version"],
-            "record_generated_at": _now_utc_iso(),
+            "record_generated_at": record_generated_at,
             "data_as_of": decision["data_as_of"],
             "vintage_identifier": decision["vintage_identifier"],
             "historical_manifest_hash": decision["historical_manifest_hash"],
@@ -711,24 +786,20 @@ def build_execution_record(
             "target_changed": decision["target_changed"],
             "desired_targets": decision["desired_targets"],
             "action_required": decision["action_required"],
-            "execution_date": pd.Timestamp(execution_date).date().isoformat(),
-            "execution_status": execution_status,
+            "execution_date": artifact.execution_date.date().isoformat(),
+            "execution_status": artifact.execution_status,
             "realized_weights": json.dumps(
-                {symbol: float(weight) for symbol, weight in realized_weights.items()},
-                ensure_ascii=False,
-                sort_keys=True,
+                artifact.realized_weights, ensure_ascii=False, sort_keys=True
             ),
-            "cash_weight": repr(float(cash_weight)),
+            "cash_weight": repr(artifact.cash_weight),
             "portfolio_total_absolute_weight_deviation": repr(
-                float(portfolio_total_absolute_weight_deviation)
+                artifact.total_absolute_weight_deviation
             ),
             "material_portfolio_tracking_date": str(material).lower(),
             "material_asset_differences": json.dumps(
-                [dict(entry) for entry in material_asset_differences],
-                ensure_ascii=False,
-                sort_keys=True,
+                _material_asset_differences(artifact), ensure_ascii=False, sort_keys=True
             ),
-            "turnover": repr(float(turnover)),
+            "turnover": repr(artifact.turnover),
             "execution_evidence": execution_evidence,
         }
     )

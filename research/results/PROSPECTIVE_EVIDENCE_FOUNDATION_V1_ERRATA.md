@@ -166,7 +166,9 @@ REAL_2026_09_DATA_USED   = NO
 
 本 commit 只做事实纠正：撤销过早的 readiness，把 frontier 改回更正闭包。
 
-## 7. 更正范围（后续 commit，均需独立复核）
+## 7. 更正范围与已执行的 commit
+
+计划范围（均需独立复核）：
 
 ```text
 Commit B1  S4C clean-environment 数值可移植性诊断（只读，本地 + Linux 证据）
@@ -177,6 +179,20 @@ Commit D   一条真正集成的 dual-candidate production-path readiness drill
 Commit E   仅在 CI 仍要求时做 bounded 纠正
 Commit F   Foundation V1 revalidation 结果与 authority docs 同步
 ```
+
+已在 `74613246` 之后实际推送的 commit：
+
+```text
+3183387  revoke premature foundation readiness after clean-ci failure        (Commit A)
+2550f10  add s4c numerical portability diagnostics                            (Commit B1)
+677e1d9  extend s4c portability diagnostic with structure and economic materiality (B1.1)
+b07299a  remove caller time authority from prospective execution artifact production (Commit C)
+35cc57c  add integrated dual-candidate production-path readiness drill        (Commit D)
+f135f29  add structural reproduction guard and record frozen-module correction constraint
+```
+
+未执行的唯一原因是缺少独立分类：`Commit B2` 与 `Commit E/F` 都以
+`S4C_PORTABILITY_DIAGNOSIS = NUMERICALLY_EQUIVALENT`（独立 review）为前提。Codex 不得自行授权。
 
 ## 8. 更正范围的实现约束（已核实）
 

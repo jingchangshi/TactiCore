@@ -18,6 +18,7 @@ from typing import Any
 
 import pandas as pd
 
+from research.experiments.frozen_target_replay import require_structurally_equivalent_schedule
 from research.experiments.prospective_evidence import (
     REQUIRED_VINTAGE_FILES,
     SHANGHAI_TIMEZONE,
@@ -291,7 +292,11 @@ def verify_semantics_reproduce_frozen_schedule(
     *,
     schedule_path: Path = FROZEN_TARGETS_PATH,
 ) -> None:
-    """以冻结语义重推最后一个冻结 signal，必须与 committed 冻结日程逐值一致。"""
+    """以冻结语义重推最后一个冻结 signal，必须与 committed 冻结日程一致。
+
+    结构不变量（support / 最大权重身份 / 日期集合）与数值比较分离：前者是经济语义边界，
+    任何数值 portability 容差都不得绕过它。
+    """
     prices = load_price_csv(root / "data/canonical/etf_adjusted_close.csv")
     schedule = load_committed_schedule(schedule_path)
     last_execution = pd.Timestamp(schedule.index[-1])
@@ -303,7 +308,14 @@ def verify_semantics_reproduce_frozen_schedule(
     signal_date = pd.Timestamp(prior_signals[-1])
     derived, _ = derive_target(prices, manifest, signal_date)
     expected = schedule.loc[last_execution].astype(float)
-    if not derived.reindex(expected.index).round(12).equals(expected.round(12)):
+    reindexed = derived.reindex(expected.index)
+    row_index = pd.DatetimeIndex([last_execution])
+    require_structurally_equivalent_schedule(
+        pd.DataFrame([expected], index=row_index),
+        pd.DataFrame([reindexed], index=row_index),
+        label="冻结语义重推导的 execution 行",
+    )
+    if not reindexed.round(12).equals(expected.round(12)):
         raise ValueError("冻结语义无法再现 committed 冻结目标日程（candidate 完整性失效）")
 
 

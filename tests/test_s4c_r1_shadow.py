@@ -20,6 +20,7 @@ from conftest import (
     write_prospective_vintage,
 )
 
+from research.experiments import frozen_target_replay
 from research.experiments import run_s4c_r1_shadow as shadow
 from research.experiments import verify_s4c_r1_candidate as candidate
 
@@ -87,6 +88,94 @@ def test_candidate_manifest_is_unchanged_by_activation_work() -> None:
 
 def test_frozen_semantics_still_reproduce_the_committed_schedule() -> None:
     shadow.verify_semantics_reproduce_frozen_schedule(shadow.load_manifest())
+
+
+def _verify_reproduction_with_drift(monkeypatch: pytest.MonkeyPatch, drift: Any) -> None:
+    manifest = shadow.load_manifest()
+    original = shadow.derive_target
+
+    def drifted(prices: pd.DataFrame, manifest_arg: Any, signal_date: Any) -> Any:
+        derived, diagnostics = original(prices, manifest_arg, signal_date)
+        drift(derived)
+        return derived, diagnostics
+
+    monkeypatch.setattr(shadow, "derive_target", drifted)
+    shadow.verify_semantics_reproduce_frozen_schedule(manifest)
+
+
+def test_semantic_reproduction_rejects_support_drift(monkeypatch: pytest.MonkeyPatch) -> None:
+    """511260.SS 在 S4C 中恒为 0；给它正权重就是 support 变化，不是数值噪声。"""
+
+    def drift(derived: pd.Series) -> None:
+        donor = derived[derived > 0.0].idxmax()
+        derived[donor] = derived[donor] - 0.05
+        derived["511260.SS"] = 0.05
+
+    with pytest.raises(ValueError, match="support"):
+        _verify_reproduction_with_drift(monkeypatch, drift)
+
+
+def test_semantic_reproduction_rejects_maximum_weight_identity_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """support 不变但最大权重标的互换：仍是经济语义变化。"""
+
+    def drift(derived: pd.Series) -> None:
+        positive = derived[derived > 0.0].sort_values(ascending=False)
+        assert len(positive) >= 2
+        largest, runner_up = positive.index[0], positive.index[1]
+        largest_value, runner_up_value = derived[largest], derived[runner_up]
+        derived[largest] = runner_up_value
+        derived[runner_up] = largest_value
+
+    with pytest.raises(ValueError, match="最大权重标的"):
+        _verify_reproduction_with_drift(monkeypatch, drift)
+
+
+def test_structural_guard_separates_noise_from_semantic_change() -> None:
+    """同一 support / 最大权重下的微小数值差异不是结构漂移，必须由数值契约单独裁决。"""
+    committed = pd.DataFrame(
+        {"A": [0.6, 0.3], "B": [0.4, 0.7]},
+        index=pd.DatetimeIndex(["2026-01-05", "2026-02-02"], name="execution_date"),
+    )
+    drifted = committed.copy()
+    drifted.loc["2026-01-05", "A"] = 0.6 + 1e-9
+    drifted.loc["2026-01-05", "B"] = 0.4 - 1e-9
+
+    frozen_target_replay.require_structurally_equivalent_schedule(committed, drifted)
+
+
+def _drop_last_execution_row(frame: pd.DataFrame) -> None:
+    frame.drop(index=frame.index[-1], inplace=True)
+
+
+def _rename_one_asset_column(frame: pd.DataFrame) -> None:
+    frame.rename(columns={"B": "C"}, inplace=True)
+
+
+def _make_one_asset_negative(frame: pd.DataFrame) -> None:
+    frame["A"] = -0.01
+    frame["B"] = 1.01
+
+
+@pytest.mark.parametrize(
+    ("mutate", "match"),
+    [
+        (_drop_last_execution_row, "日期集合"),
+        (_rename_one_asset_column, "资产集合"),
+        (_make_one_asset_negative, "负权重"),
+    ],
+)
+def test_structural_guard_rejects_frame_level_drift(mutate: Any, match: str) -> None:
+    committed = pd.DataFrame(
+        {"A": [0.6, 0.3], "B": [0.4, 0.7]},
+        index=pd.DatetimeIndex(["2026-01-05", "2026-02-02"], name="execution_date"),
+    )
+    derived = committed.copy()
+    mutate(derived)
+
+    with pytest.raises(ValueError, match=match):
+        frozen_target_replay.require_structurally_equivalent_schedule(committed, derived)
 
 
 def test_framework_version_mismatch_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -178,7 +178,44 @@ Commit E   仅在 CI 仍要求时做 bounded 纠正
 Commit F   Foundation V1 revalidation 结果与 authority docs 同步
 ```
 
-## 8. 关联
+## 8. 更正范围的实现约束（已核实）
+
+S4C candidate manifest 的 `frozen_identity_artifacts` 把 13 个文件按 CRLF→LF 归一化 SHA-256 冻结，
+其中三个是**研究实现文件**，不是数据或配置：
+
+```text
+research/experiments/run_s4c_rqalpha_execution_review.py   (00da9343…)
+research/experiments/run_s4c_erc_skfolio_transfer.py       (34224359…)
+research/experiments/run_s2_rqalpha_validation.py          (446faeba…)
+```
+
+逐项复核（`sha256_frozen_repository_text` 与 manifest 逐条比对）：13/13 全部一致（`OK`）。
+
+由此得到一条硬约束：
+
+```text
+跨环境 semantic reproduction gate 不能实现在 run_s4c_rqalpha_execution_review.py 内：
+  该文件是冻结候选身份的一部分，修改它会使 S4C candidate 完整性校验失败，
+  而 manifest 本身在本 Goal 内不得修改。
+```
+
+因此 Commit B2（若要实施）必须：
+
+```text
+1. 保持 frozen 脚本与其 byte-exact audit 原样（它是与 Windows 数值栈绑定的历史证据路径）；
+2. 在**非冻结**的前瞻 verifier（research/experiments/run_s4c_r1_shadow.py）与新 portable
+   reproduction helper 中实现可移植 contract；
+3. 让 CI 中的 semantic gate 走新 contract，而不是已证明不可移植的「重推导序列化字节相等」；
+4. 不删除任何 artifact identity 检查（SHA / 行数 / 起始日期 / 列 / 非负 / 逐行和保持精确）。
+```
+
+本轮已先行加入与容差无关的**结构不变量护栏**（`frozen_target_replay.require_structurally_
+equivalent_schedule`），它是纯加强：日期集合、资产集合、逐行 support、每行最大权重标的身份与
+逐行权重和必须与 committed 日程完全一致，任一不一致即判为经济语义变化。任何 future 数值容差
+都不得绕过该护栏；Linux 与 Windows 上该护栏均通过（support change = 0、maximum-weight identity
+change = 0）。
+
+## 9. 关联
 
 - 原始结果：[PROSPECTIVE_EVIDENCE_FOUNDATION_V1.md](PROSPECTIVE_EVIDENCE_FOUNDATION_V1.md)（历史，不修改）
 - 预注册协议：[PROTOCOL.md](../batches/prospective_evidence_foundation/PROTOCOL.md)（历史，不修改）

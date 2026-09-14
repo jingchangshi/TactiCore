@@ -164,3 +164,33 @@ P05 effective assets            3.24
 ```bash
 uv run python research/experiments/verify_s4c_r1_candidate.py --verify-candidate
 ```
+
+## 13. Foundation V1 证据契约（实现更新，不改写候选历史）
+
+本节只记录在预注册
+[Foundation 协议](../../batches/prospective_evidence_foundation/PROTOCOL.md) 之后新增的
+evidence-control 实现事实；第 1–12 节描述的候选身份、语义与生命周期保持不变。
+
+```text
+canonical vintage 位置   research/shadow/s4c_r1/vintages/<as-of>/；外部目录在读取任何文件之前被拒绝
+provenance              source == Tushare Pro、end_date == as-of、fund_daily/fund_adj request end_date
+                        == as-of、symbol 集合 == 冻结 universe、provenance 声明的 price/calendar
+                        SHA-256 与行数 == 实际文件、adjustment 语义 == 冻结数据契约
+price_as_of             逐标的最晚 data_timestamp 的最大值；必须 == as-of，且不得存在 as-of 之后行情
+calendar_as_of          已公布交易日历覆盖上界；可以晚于 as-of，但只用于确认月末与下一个
+                        canonical 日期，绝不作为价格证据
+signal_close            signal_date 15:00 Asia/Shanghai
+temporal seal           signal_close <= provenance download_timestamp <= decision_seal_time
+                        < next_canonical_execution_boundary；decision_seal_time 的上海本地日历日
+                        必须等于 signal_date，且只能来自 runner 的实际运行时钟
+decision 行             不含任何执行结果字段；同一 signal_date 只允许一条，重复写入失败且不改 bytes
+execution 行            append 前必须完整（执行日、状态、realized weights、cash、组合层与单资产
+                        deviation、turnover、RQAlpha evidence path + SHA-256）；无 decision 不得追加
+CLI 授权                 不暴露 --vintage-dir / --record-path / --activation-path / --generated-at；
+                        vintage 位置由 --as-of 推导，record 目的地固定
+```
+
+只读校验分两级：`--verify-candidate`（候选身份，合法前瞻 observation 产生后仍然有效）与
+`--verify-no-observations`（首个真实 cycle 之前的阶段性状态）。快照冻结由
+`research/experiments/freeze_prospective_vintage.py --candidate S4C_R1 --as-of <date>` 负责，
+它复用既有 Tushare downloader、拒绝覆盖既有 evidence，并在落盘前完成 provenance 校验。

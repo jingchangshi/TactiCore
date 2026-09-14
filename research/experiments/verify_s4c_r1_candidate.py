@@ -224,22 +224,39 @@ def verify_candidate(
     verify_frozen_targets(manifest, root)
 
 
+def verify_no_observations(path: Path = OBSERVATIONS_PATH) -> int:
+    """stage-specific：只在首个真实前瞻 cycle 之前成立的“尚无 observation”状态。"""
+    rows = observation_row_count(path)
+    if rows != 0:
+        raise ValueError("首个真实前瞻 cycle 之前 observations.csv 不得含任何记录")
+    return rows
+
+
 def main() -> None:
     parser = ArgumentParser(description=__doc__)
     parser.add_argument("--verify-candidate", action="store_true")
+    parser.add_argument(
+        "--verify-no-observations",
+        action="store_true",
+        help="stage-specific：确认 observations.csv 仍为 0 行（首个真实 cycle 之前）",
+    )
     args = parser.parse_args()
-    if not args.verify_candidate:
-        parser.error("本 Goal 只提供 --verify-candidate；前瞻决策协议尚未激活")
+    if not args.verify_candidate and not args.verify_no_observations:
+        parser.error("本 verifier 只提供 --verify-candidate 与 --verify-no-observations")
     manifest = load_manifest()
+    # candidate identity 校验与“零 observation”状态分离：前者在合法前瞻 observation 产生后
+    # 仍然有效，后者只在首个真实 cycle 之前是当前阶段约束。
     verify_candidate(manifest)
     rows = observation_row_count()
-    if rows != 0:
-        raise ValueError("S4C R1 尚未激活前瞻影子，observations.csv 不得含任何记录")
-    print(
-        "S4C_R1 candidate manifest、冻结历史输入、PIT 契约与 append-only 契约校验通过；"
+    lines = [
+        "S4C_R1 candidate manifest、冻结历史输入、PIT 契约与 append-only 契约校验通过；",
         f"当前前瞻 observation 行数为 {rows}；prospective_activation="
-        f"{manifest['prospective_activation']}。"
-    )
+        f"{manifest['prospective_activation']}。",
+    ]
+    if args.verify_no_observations:
+        verify_no_observations()
+        lines.append("observations.csv 仍为表头（首个真实前瞻 cycle 之前）。")
+    print("\n".join(lines))
 
 
 if __name__ == "__main__":

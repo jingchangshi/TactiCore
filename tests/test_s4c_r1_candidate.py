@@ -216,6 +216,40 @@ def test_verifier_refuses_to_emit_prospective_records(
     assert candidate.observation_row_count() == 0
 
 
+def test_candidate_identity_verification_survives_legitimate_observations(
+    tmp_path: Path,
+) -> None:
+    """candidate identity 校验与“尚无 observation”阶段状态分离，不因合法前瞻记录失效。"""
+    path = tmp_path / "observations.csv"
+    header = ",".join(candidate.RECORD_FIELDS)
+    row = ",".join(["decision", "S4C_R1", *[""] * (len(candidate.RECORD_FIELDS) - 2)])
+    path.write_text(f"{header}\n{row}\n", encoding="utf-8", newline="")
+
+    manifest = candidate.load_manifest()
+    candidate.verify_candidate(manifest, verify_framework=False)
+
+    assert candidate.observation_row_count(path) == 1
+    with pytest.raises(ValueError, match="不得含任何记录"):
+        candidate.verify_no_observations(path)
+
+
+def test_verify_no_observations_is_stage_specific(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(sys, "argv", ["verify", "--verify-candidate", "--verify-no-observations"])
+
+    candidate.main()
+
+    assert "仍为表头" in capsys.readouterr().out
+
+
+def test_verifier_requires_an_explicit_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["verify"])
+
+    with pytest.raises(SystemExit):
+        candidate.main()
+
+
 def test_framework_versions_match_the_frozen_manifest() -> None:
     manifest = candidate.load_manifest()
 

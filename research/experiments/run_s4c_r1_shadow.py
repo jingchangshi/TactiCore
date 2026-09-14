@@ -2,21 +2,46 @@
 """用冻结的 S4C R1 身份生成一条可审计的月末前瞻影子决策。
 
 本模块是**最小 candidate-specific runner**：它只服务 `S4C_R1`，不实现调度器、daemon、
-通知、券商或通用候选框架。前瞻决策必须显式提供 `--as-of`，禁止 wall-clock 默认值。
+通知、券商或通用候选框架。前瞻决策必须显式提供 `--as-of`，禁止 wall-clock 默认值；
+canonical vintage 位置与 record 目的地均不可由生产 CLI 覆盖。
 """
 
 from __future__ import annotations
 
-import csv
-import hashlib
 import json
 from argparse import ArgumentParser
+from collections.abc import Iterable, Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
+from research.experiments.prospective_evidence import (
+    REQUIRED_VINTAGE_FILES,
+    SHANGHAI_TIMEZONE,
+    ProspectiveVintage,
+    append_event_row,
+    load_calendar,
+    load_prospective_vintage,
+    parse_finite_float,
+    parse_iso_date,
+    parse_json_list,
+    parse_weight_vector,
+    read_event_rows,
+    require_timezone_aware_instant,
+    resolve_canonical_vintage_dir,
+    sha256_frozen_repository_text,
+    signal_close_instant,
+    verify_canonical_vintage_location,
+    verify_hex_digest,
+    verify_rqalpha_evidence_identity,
+    verify_signal_day_seal,
+)
+from research.experiments.prospective_evidence import (
+    build_rqalpha_evidence_identity as build_rqalpha_evidence_identity,
+)
+from research.experiments.prospective_evidence import sha256_file as sha256_file
 from research.experiments.run_s4c_erc_skfolio_transfer import (
     MIN_ELIGIBLE,
     WINDOW,
@@ -31,21 +56,22 @@ from research.experiments.verify_s4c_r1_candidate import (
     ROOT,
     load_committed_schedule,
     load_manifest,
-    sha256_frozen_repository_text,
 )
 from research.experiments.verify_s4c_r1_candidate import (
     verify_candidate as verify_frozen_candidate,
 )
 from tacticore.data.prices import load_price_csv
 from tacticore.data.tradability import load_tradability_inputs, validate_execution_targets
+from tacticore.data.tushare import ADJUSTMENT_TYPE, SOURCE
 
 SHADOW_DIR = ROOT / "research/shadow/s4c_r1"
 MANIFEST_PATH = SHADOW_DIR / "candidate_manifest.json"
 ACTIVATION_PATH = SHADOW_DIR / "activation.json"
-VINTAGE_FILES = ("etf_adjusted_close.csv", "trading_calendar.csv", "provenance.json")
+VINTAGE_FILES = REQUIRED_VINTAGE_FILES
 
 MANIFEST_RELATIVE_PATH = "research/shadow/s4c_r1/candidate_manifest.json"
 ACTIVATION_RELATIVE_PATH = "research/shadow/s4c_r1/activation.json"
+OBSERVATIONS_RELATIVE_PATH = "research/shadow/s4c_r1/observations.csv"
 VINTAGE_PARENT_RELATIVE_PATH = "research/shadow/s4c_r1/vintages"
 ACTIVATION_PROTOCOL_RELATIVE_PATH = "research/batches/s4c_activation/PROTOCOL.md"
 ACTIVATION_DECISION_RECORD_RELATIVE_PATH = (
@@ -56,6 +82,8 @@ PROTOCOL_VERSION = "V1"
 ACTIVATION_PROTOCOL_VERSION = "V1"
 OBSERVATION_SCHEMA_VERSION = "S4C_R1_OBSERVATIONS_V1"
 PENDING_EXECUTION_STATUS = "PENDING_NEXT_CANONICAL_OBSERVATION"
+ALLOWED_EXECUTION_STATUSES = ("EXECUTED",)
+MATERIAL_DEVIATION_THRESHOLD = 0.05
 ACTIVE_STATUS = "ACTIVE"
 ACTIVATION_DECISION_TOKEN = "ACTIVATE_S4C_R1_PROSPECTIVE_SHADOW"
 ACTIVATION_DECISION_LINE_PREFIX = "ACTIVATION_DECISION:"
@@ -67,6 +95,7 @@ ALLOWED_ACTIVATION_DECISIONS = (
 )
 DECISION_RECORD_POLICY = "APPEND_ONLY_ONE_DECISION_PER_SIGNAL_DATE_BEFORE_EXECUTION"
 EXECUTION_RECORD_POLICY = "APPEND_ONLY_ONE_EXECUTION_PER_DECISION_AFTER_SIGNAL_DATE"
+REGIMES = ("RISK", "FALLBACK")
 
 ACTIVATION_FIELDS = (
     "candidate_id",
@@ -101,22 +130,30 @@ EXECUTION_ONLY_FIELDS = (
 )
 
 
-def sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
 def _now_utc_iso() -> str:
-    """record 生成时间；只用于记录真实写入时刻，绝不用来推断 research as-of。"""
+    """decision_seal_time 的唯一生产来源：runner 的实际运行时钟。"""
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def manifest_hash(path: Path = MANIFEST_PATH) -> str:
+    return sha256_frozen_repository_text(path)
+
+
+def canonical_observations_path(root: Path = ROOT) -> Path:
+    return root / OBSERVATIONS_RELATIVE_PATH
+
+
+def canonical_activation_path(root: Path = ROOT) -> Path:
+    return root / ACTIVATION_RELATIVE_PATH
+
+
+def canonical_vintage_dir(root: Path, as_of: object) -> Path:
+    return resolve_canonical_vintage_dir(root / VINTAGE_PARENT_RELATIVE_PATH, as_of)
 
 
 # --------------------------------------------------------------------------------------
 # Candidate / activation integrity
 # --------------------------------------------------------------------------------------
-
-
-def manifest_hash(path: Path = MANIFEST_PATH) -> str:
-    return sha256_frozen_repository_text(path)
 
 
 def load_activation(path: Path = ACTIVATION_PATH) -> dict[str, Any] | None:
@@ -274,7 +311,7 @@ def require_activation(
     root: Path = ROOT,
 ) -> dict[str, Any]:
     """前瞻写入前的硬门：NOT_ACTIVE 一律拒绝，不得降级继续。"""
-    manifest_path = root / "research/shadow/s4c_r1/candidate_manifest.json"
+    manifest_path = root / MANIFEST_RELATIVE_PATH
     candidate = manifest if manifest is not None else load_manifest(manifest_path)
     activation = load_activation(path)
     if activation is None:
@@ -296,104 +333,49 @@ def activation_status(path: Path = ACTIVATION_PATH) -> str:
 # --------------------------------------------------------------------------------------
 
 
-def load_calendar(path: Path) -> pd.DataFrame:
-    calendar = pd.read_csv(path, index_col="date", parse_dates=["date"])
-    if (
-        calendar.empty
-        or calendar.index.has_duplicates
-        or not calendar.index.is_monotonic_increasing
-    ):
-        raise ValueError("交易日历必须非空、唯一且递增")
-    if set(calendar.columns) != {"sse_open", "szse_open"}:
-        raise ValueError("交易日历必须只包含 sse_open 与 szse_open")
-    if not calendar.isin([0, 1]).all().all():
-        raise ValueError("交易日历只能包含 0/1")
-    return calendar.astype(int)
-
-
-def _assert_overlaps_identical(historical: pd.DataFrame, vintage: pd.DataFrame, kind: str) -> None:
-    overlap = historical.index.intersection(vintage.index)
-    if overlap.empty:
-        return
-    try:
-        pd.testing.assert_frame_equal(historical.loc[overlap], vintage.loc[overlap])
-    except AssertionError as error:
-        raise ValueError(f"prospective vintage 与 historical {kind} 重叠但内容不同") from error
+def load_prospective_inputs(
+    vintage_dir: Path,
+    manifest: Mapping[str, Any],
+    *,
+    as_of: object,
+    root: Path = ROOT,
+) -> ProspectiveVintage:
+    """读取并经机器验证的 candidate-specific vintage；只使用冻结 historical + 该 vintage。"""
+    return load_prospective_vintage(
+        vintage_dir,
+        as_of=as_of,
+        historical_cutoff=pd.Timestamp(manifest["historical_cutoff"]),
+        historical_prices=load_price_csv(root / "data/canonical/etf_adjusted_close.csv"),
+        historical_calendar=load_calendar(root / "data/canonical/trading_calendar.csv"),
+        expected_source=SOURCE,
+        expected_adjustment_type=ADJUSTMENT_TYPE,
+    )
 
 
 def validate_month_end(
     vintage_calendar: pd.DataFrame,
-    as_of: pd.Timestamp,
-    manifest: dict[str, Any],
+    as_of: object,
+    manifest: Mapping[str, Any],
 ) -> None:
     """月末确认只使用已公布的交易日历，不使用未来价格。"""
-    cutoff = pd.Timestamp(manifest["historical_cutoff"])
-    first_signal = pd.Timestamp(manifest["first_eligible_prospective_signal"])
-    if as_of <= cutoff:
+    as_of_day = pd.Timestamp(as_of).normalize()
+    cutoff = pd.Timestamp(manifest["historical_cutoff"]).normalize()
+    first_signal = pd.Timestamp(manifest["first_eligible_prospective_signal"]).normalize()
+    if as_of_day <= cutoff:
         raise ValueError("prospective --as-of 必须严格晚于 historical_data_cutoff")
-    if as_of < first_signal:
+    if as_of_day < first_signal:
         raise ValueError(
             "prospective --as-of 早于 first_eligible_prospective_signal；该时点不可形成前瞻证据"
         )
     month_calendar = vintage_calendar.loc[
-        vintage_calendar.index.to_period("M") == as_of.to_period("M")
+        vintage_calendar.index.to_period("M") == as_of_day.to_period("M")
     ]
-    natural_month_end = as_of + pd.offsets.MonthEnd(0)
+    natural_month_end = as_of_day + pd.offsets.MonthEnd(0)
     if month_calendar.empty or month_calendar.index.max() < natural_month_end:
         raise ValueError("vintage 日历未覆盖完整 signal 月，不能生成月末前瞻 decision")
     open_dates = month_calendar.index[month_calendar.any(axis=1)]
-    if open_dates.empty or open_dates.max() != as_of:
+    if open_dates.empty or open_dates.max() != as_of_day:
         raise ValueError("--as-of 必须是该月最后一个 canonical 交易日")
-
-
-def verify_canonical_vintage_location(
-    vintage_dir: Path, as_of: pd.Timestamp, root: Path = ROOT
-) -> None:
-    """真实前瞻 vintage 只能位于 candidate-specific 目录，且目录名等于 as-of 日期。"""
-    expected_parent = (root / VINTAGE_PARENT_RELATIVE_PATH).resolve()
-    resolved = Path(vintage_dir).resolve()
-    if resolved.parent != expected_parent:
-        raise ValueError(
-            "prospective vintage 必须位于 research/shadow/s4c_r1/vintages/<as-of>/；"
-            "任意外部目录不得成为官方前瞻证据"
-        )
-    if resolved.name != pd.Timestamp(as_of).date().isoformat():
-        raise ValueError("vintage 目录名必须等于 --as-of 的 ISO 日期")
-
-
-def load_prospective_inputs(
-    vintage_dir: Path,
-    manifest: dict[str, Any],
-    *,
-    as_of: pd.Timestamp,
-    root: Path = ROOT,
-) -> tuple[pd.DataFrame, pd.DataFrame, str]:
-    for name in VINTAGE_FILES:
-        if not (vintage_dir / name).is_file():
-            raise FileNotFoundError(f"prospective vintage 缺少 {name}")
-    cutoff = pd.Timestamp(manifest["historical_cutoff"])
-    historical_prices = load_price_csv(root / "data/canonical/etf_adjusted_close.csv")
-    historical_calendar = load_calendar(root / "data/canonical/trading_calendar.csv")
-    vintage_prices = load_price_csv(vintage_dir / "etf_adjusted_close.csv")
-    vintage_calendar = load_calendar(vintage_dir / "trading_calendar.csv")
-    if list(vintage_prices.columns) != list(historical_prices.columns):
-        raise ValueError("prospective vintage 的价格资产列必须与冻结 historical 基线一致")
-    _assert_overlaps_identical(historical_prices, vintage_prices, "价格")
-    _assert_overlaps_identical(historical_calendar, vintage_calendar, "日历")
-    if vintage_prices.index.max() > as_of:
-        raise ValueError("prospective vintage 不得包含 as-of 之后的行情")
-    prospective_prices = vintage_prices.loc[vintage_prices.index > cutoff]
-    prospective_calendar = vintage_calendar.loc[vintage_calendar.index > cutoff]
-    if prospective_prices.empty or prospective_calendar.empty:
-        raise ValueError("prospective vintage 没有 historical_cutoff 之后的数据")
-    combined_prices = pd.concat([historical_prices, prospective_prices]).sort_index()
-    combined_calendar = pd.concat([historical_calendar, prospective_calendar]).sort_index()
-    if combined_prices.index.has_duplicates or combined_calendar.index.has_duplicates:
-        raise ValueError("prospective vintage 的重叠数据未被安全去重")
-    vintage_hash = hashlib.sha256(
-        "".join(f"{name}:{sha256_file(vintage_dir / name)}\n" for name in VINTAGE_FILES).encode()
-    ).hexdigest()
-    return combined_prices.loc[:as_of], combined_calendar.loc[:as_of], vintage_hash
 
 
 # --------------------------------------------------------------------------------------
@@ -401,7 +383,7 @@ def load_prospective_inputs(
 # --------------------------------------------------------------------------------------
 
 
-def _validate_windows(manifest: dict[str, Any]) -> None:
+def _validate_windows(manifest: Mapping[str, Any]) -> None:
     semantics = manifest["strategy_semantics"]
     if semantics["price_window"] != WINDOW or semantics["returns_window"] != WINDOW - 1:
         raise ValueError("冻结窗口语义与 upstream 实现不一致")
@@ -411,7 +393,7 @@ def _validate_windows(manifest: dict[str, Any]) -> None:
 
 def derive_target(
     prices: pd.DataFrame,
-    manifest: dict[str, Any],
+    manifest: Mapping[str, Any],
     signal_date: pd.Timestamp,
 ) -> tuple[pd.Series, dict[str, object]]:
     """只使用截至 signal_date 可得的冻结语义推导 target；不重算任何历史结论。"""
@@ -446,7 +428,7 @@ def derive_target(
 
 
 def previous_signal_target(
-    prices: pd.DataFrame, manifest: dict[str, Any], signal_date: pd.Timestamp
+    prices: pd.DataFrame, manifest: Mapping[str, Any], signal_date: pd.Timestamp
 ) -> pd.Series | None:
     month_ends = pd.DatetimeIndex(prices.index).to_period("M")
     signals = prices.groupby(month_ends).tail(1).index
@@ -470,22 +452,88 @@ def verify_target_tradable(
     validate_execution_targets(frame, prices, mask, lifetimes)
 
 
+# --------------------------------------------------------------------------------------
+# Decision row contract
+# --------------------------------------------------------------------------------------
+
+
+def verify_decision_row_is_fixed_before_execution(record: Mapping[str, str]) -> None:
+    if record["record_type"] != "decision":
+        raise ValueError("只有 decision 行适用 decision-before-execution 契约")
+    if record["execution_status"] != PENDING_EXECUTION_STATUS:
+        raise ValueError("decision 行的 execution_status 必须是待执行状态")
+    filled = [field for field in EXECUTION_ONLY_FIELDS if record.get(field, "") != ""]
+    if filled:
+        raise ValueError(f"decision 行不得包含执行结果字段: {filled}")
+
+
+def verify_record_generation_time(record: Mapping[str, str]) -> None:
+    """decision 只能在其 signal date 收盘后、且当日封存，不得回填更早或更晚的时间。"""
+    seal = require_timezone_aware_instant(
+        record["record_generated_at"], label="record_generated_at"
+    )
+    signal_date = parse_iso_date(record["signal_date"], label="signal_date")
+    if seal.tz_convert(SHANGHAI_TIMEZONE).date() != signal_date.date():
+        raise ValueError("record_generated_at 的上海本地日历日必须等于 signal_date")
+    if seal < signal_close_instant(signal_date):
+        raise ValueError("record_generated_at 不得早于 signal_close")
+
+
+def verify_decision_row(
+    record: Mapping[str, str],
+    *,
+    manifest: Mapping[str, Any],
+    expected_symbols: Iterable[str],
+) -> None:
+    """decision 行契约：完整身份、合法时间、完整目标且不含任何执行结果。"""
+    verify_decision_row_is_fixed_before_execution(record)
+    if record["candidate_id"] != manifest["candidate_id"]:
+        raise ValueError("decision 行的 candidate_id 与冻结 manifest 不一致")
+    if record["protocol_version"] != PROTOCOL_VERSION:
+        raise ValueError("decision 行的 protocol_version 与冻结协议不一致")
+    signal_date = parse_iso_date(record["signal_date"], label="signal_date")
+    if parse_iso_date(record["data_as_of"], label="data_as_of") != signal_date:
+        raise ValueError("decision 行的 data_as_of 必须等于 signal_date")
+    if record["vintage_identifier"] != signal_date.date().isoformat():
+        raise ValueError("decision 行的 vintage_identifier 必须是 canonical vintage 目录名")
+    verify_hex_digest(record["historical_manifest_hash"], label="historical_manifest_hash")
+    verify_hex_digest(record["prospective_data_hash"], label="prospective_data_hash")
+    if parse_finite_float(record["eligible_asset_count"], label="eligible_asset_count") < 0.0:
+        raise ValueError("eligible_asset_count 不得为负")
+    if record["regime"] not in REGIMES:
+        raise ValueError("regime 必须是冻结的 RISK/FALLBACK 之一")
+    maximum_weight = parse_finite_float(record["maximum_weight"], label="maximum_weight")
+    if not 0.0 <= maximum_weight <= 1.0:
+        raise ValueError("maximum_weight 必须落在 [0, 1]")
+    if parse_finite_float(record["effective_number_assets"], label="effective_number_assets") < 1.0:
+        raise ValueError("effective_number_assets 不得小于一")
+    if record["target_changed"] not in {"true", "false"}:
+        raise ValueError("target_changed 必须是 true/false")
+    if record["action_required"] != "true":
+        raise ValueError("S4C 采用 MONTHLY_TARGET_SUBMISSION，action_required 必须为 true")
+    parse_weight_vector(
+        record["desired_targets"], expected_symbols=expected_symbols, label="desired_targets"
+    )
+    verify_record_generation_time(record)
+
+
 def build_decision_record(
     prices: pd.DataFrame,
-    manifest: dict[str, Any],
+    manifest: Mapping[str, Any],
     *,
     as_of: pd.Timestamp,
     vintage_identifier: str,
     prospective_data_hash: str,
     historical_manifest_hash: str,
-    generated_at: str | None = None,
+    expected_symbols: Sequence[str] | None = None,
+    decision_seal_time: str | None = None,
     root: Path = ROOT,
 ) -> dict[str, str]:
     target, diagnostics = derive_target(prices, manifest, as_of)
     verify_target_tradable(target, prices, root, signal_date=as_of)
     previous = previous_signal_target(prices, manifest, as_of)
     target_changed = previous is None or not target.round(12).equals(previous.round(12))
-    timestamp = generated_at or _now_utc_iso()
+    timestamp = decision_seal_time or _now_utc_iso()
     desired_targets = {symbol: float(weight) for symbol, weight in target.items()}
     record = {field: "" for field in RECORD_FIELDS}
     record.update(
@@ -501,16 +549,19 @@ def build_decision_record(
             "signal_date": as_of.date().isoformat(),
             "eligible_asset_count": str(int(diagnostics["eligible_asset_count"])),
             "regime": str(diagnostics["regime"]),
-            "maximum_weight": str(float(diagnostics["maximum_weight"])),
-            "effective_number_assets": str(float(diagnostics["effective_number_assets"])),
+            "maximum_weight": repr(float(diagnostics["maximum_weight"])),
+            "effective_number_assets": repr(float(diagnostics["effective_number_assets"])),
             "target_changed": str(bool(target_changed)).lower(),
             "desired_targets": json.dumps(desired_targets, ensure_ascii=False, sort_keys=True),
             "action_required": "true",
             "execution_status": PENDING_EXECUTION_STATUS,
         }
     )
-    verify_decision_row_is_fixed_before_execution(record)
-    verify_record_generation_time(record)
+    verify_decision_row(
+        record,
+        manifest=manifest,
+        expected_symbols=list(prices.columns) if expected_symbols is None else expected_symbols,
+    )
     return record
 
 
@@ -520,120 +571,237 @@ def build_decision_record(
 
 
 def read_observation_rows(path: Path = OBSERVATIONS_PATH) -> list[dict[str, str]]:
-    if not path.is_file():
-        raise FileNotFoundError("observations.csv 必须先以协议表头创建")
-    with path.open(encoding="utf-8", newline="") as handle:
-        rows = list(csv.reader(handle))
-    if not rows:
-        raise ValueError("observations.csv 缺少协议表头")
-    if tuple(rows[0]) != RECORD_FIELDS:
-        raise ValueError("observations.csv schema 与冻结协议不一致")
-    return [dict(zip(RECORD_FIELDS, row, strict=True)) for row in rows[1:]]
+    return read_event_rows(path, RECORD_FIELDS)
 
 
 def observation_record_count(path: Path = OBSERVATIONS_PATH) -> int:
-    return len(read_observation_rows(path))
+    return len(read_event_rows(path, RECORD_FIELDS))
 
 
 def decision_record_count(path: Path = OBSERVATIONS_PATH) -> int:
-    return sum(1 for row in read_observation_rows(path) if row["record_type"] == "decision")
+    return sum(
+        1 for row in read_event_rows(path, RECORD_FIELDS) if row["record_type"] == "decision"
+    )
 
 
-def verify_decision_row_is_fixed_before_execution(record: dict[str, str]) -> None:
-    if record["record_type"] != "decision":
-        raise ValueError("只有 decision 行适用 decision-before-execution 契约")
-    if record["execution_status"] != PENDING_EXECUTION_STATUS:
-        raise ValueError("decision 行的 execution_status 必须是待执行状态")
-    filled = [field for field in EXECUTION_ONLY_FIELDS if record.get(field, "") != ""]
-    if filled:
-        raise ValueError(f"decision 行不得包含执行结果字段: {filled}")
-
-
-def verify_record_generation_time(record: dict[str, str]) -> None:
-    """decision 只能在其 signal date 当日或之后形成，不得伪造更早的生成时间。"""
-    generated = pd.Timestamp(record["record_generated_at"])
-    if generated.tzinfo is not None:
-        generated = generated.tz_convert("UTC").tz_localize(None)
-    signal_date = pd.Timestamp(record["signal_date"])
-    if generated.normalize() < signal_date.normalize():
-        raise ValueError(
-            "record_generated_at 不得早于 signal_date：decision 必须在其 signal 时点形成"
-        )
-
-
-def _append_row(record: dict[str, str], path: Path) -> None:
-    if tuple(record.keys()) != RECORD_FIELDS:
-        raise ValueError("record 字段集合与冻结 observation schema 不一致")
-    existing = read_observation_rows(path)
-    for row in existing:
-        if (
-            row["record_type"] == record["record_type"]
-            and row["candidate_id"] == record["candidate_id"]
-            and row["signal_date"] == record["signal_date"]
-        ):
-            raise ValueError(
-                "append-only 协议禁止重复写入同一 candidate + signal_date 的 "
-                f"{record['record_type']} record"
-            )
-    with path.open("a", encoding="utf-8", newline="") as handle:
-        csv.DictWriter(handle, fieldnames=RECORD_FIELDS).writerow(record)
-
-
-def append_decision_record(record: dict[str, str], path: Path = OBSERVATIONS_PATH) -> None:
+def append_decision_record(record: Mapping[str, str], path: Path = OBSERVATIONS_PATH) -> None:
     if record["record_type"] != "decision":
         raise ValueError("append_decision_record 只接受 decision 行")
     verify_decision_row_is_fixed_before_execution(record)
     verify_record_generation_time(record)
-    _append_row(record, path)
+    append_event_row(record, path=path, fields=RECORD_FIELDS)
 
 
-def append_execution_record(record: dict[str, str], path: Path = OBSERVATIONS_PATH) -> None:
+def verify_material_asset_differences(
+    raw: object, *, realized_symbols: Iterable[str]
+) -> list[dict[str, Any]]:
+    differences = parse_json_list(raw, label="material_asset_differences")
+    for entry in differences:
+        if not isinstance(entry, Mapping):
+            raise ValueError("material_asset_differences 的每个元素必须是 JSON object")
+        symbol = entry.get("symbol")
+        if not isinstance(symbol, str) or symbol not in set(realized_symbols):
+            raise ValueError("material_asset_differences 引用了未知 symbol")
+        intended = parse_finite_float(
+            entry.get("intended"), label="material_asset_differences.intended"
+        )
+        realized = parse_finite_float(
+            entry.get("realized"), label="material_asset_differences.realized"
+        )
+        if abs(intended - realized) <= MATERIAL_DEVIATION_THRESHOLD:
+            raise ValueError("material_asset_differences 只能记录超过 5pp 的单资产差异")
+        native_evidence = entry.get("native_evidence")
+        if not isinstance(native_evidence, str) or not native_evidence:
+            raise ValueError("material_asset_differences 必须携带 native_evidence")
+    return list(differences)
+
+
+def verify_execution_row(
+    record: Mapping[str, str],
+    *,
+    decision: Mapping[str, str],
+    expected_symbols: Iterable[str],
+    expected_framework_version: str,
+    root: Path = ROOT,
+) -> None:
+    """execution 行必须**完整**才能 append：不允许空壳，不允许事后补字段。"""
+    if record["record_type"] != "execution":
+        raise ValueError("只有 execution 行适用 execution completeness 契约")
+    if record["candidate_id"] != decision["candidate_id"]:
+        raise ValueError("execution 行的 candidate_id 与对应 decision 不一致")
+    if record["protocol_version"] != decision["protocol_version"]:
+        raise ValueError("execution 行的 protocol_version 与对应 decision 不一致")
+    if record["signal_date"] != decision["signal_date"]:
+        raise ValueError("execution 行的 signal_date 必须匹配对应 decision")
+    signal_date = parse_iso_date(record["signal_date"], label="signal_date")
+    execution_date = parse_iso_date(record["execution_date"], label="execution_date")
+    if execution_date <= signal_date:
+        raise ValueError("execution 日期必须晚于 signal date：决策必须先于执行")
+    if record["execution_status"] not in ALLOWED_EXECUTION_STATUSES:
+        raise ValueError("execution_status 必须是 RQAlpha 原生执行完成状态")
+    realized = parse_weight_vector(
+        record["realized_weights"],
+        expected_symbols=expected_symbols,
+        label="realized_weights",
+        require_total_one=False,
+    )
+    cash = parse_finite_float(record["cash_weight"], label="cash_weight")
+    if cash < 0.0:
+        raise ValueError("cash_weight 不得为负")
+    if abs(sum(realized.values()) + cash - 1.0) > 1e-3:
+        raise ValueError("realized_weights 与 cash_weight 合计必须覆盖组合")
+    deviation = parse_finite_float(
+        record["portfolio_total_absolute_weight_deviation"],
+        label="portfolio_total_absolute_weight_deviation",
+    )
+    if deviation < 0.0:
+        raise ValueError("portfolio_total_absolute_weight_deviation 不得为负")
+    if record["material_portfolio_tracking_date"] not in {"true", "false"}:
+        raise ValueError("material_portfolio_tracking_date 必须是 true/false")
+    expected_material = str(deviation > MATERIAL_DEVIATION_THRESHOLD).lower()
+    if record["material_portfolio_tracking_date"] != expected_material:
+        raise ValueError("material_portfolio_tracking_date 必须与 5pp 组合层判据一致")
+    verify_material_asset_differences(
+        record["material_asset_differences"], realized_symbols=realized
+    )
+    if parse_finite_float(record["turnover"], label="turnover") < 0.0:
+        raise ValueError("turnover 不得为负")
+    verify_rqalpha_evidence_identity(
+        record["execution_evidence"],
+        root=root,
+        expected_framework_version=expected_framework_version,
+    )
+
+
+def build_execution_record(
+    decision: Mapping[str, str],
+    *,
+    execution_date: object,
+    execution_status: str,
+    realized_weights: Mapping[str, float],
+    cash_weight: float,
+    portfolio_total_absolute_weight_deviation: float,
+    material_asset_differences: Sequence[Mapping[str, Any]],
+    turnover: float,
+    execution_evidence: str,
+    expected_symbols: Iterable[str],
+    expected_framework_version: str,
+    root: Path = ROOT,
+) -> dict[str, str]:
+    """由权威执行输出构造一条完整 execution 行；不完整即拒绝。"""
+    material = float(portfolio_total_absolute_weight_deviation) > MATERIAL_DEVIATION_THRESHOLD
+    record = {field: "" for field in RECORD_FIELDS}
+    record.update(
+        {
+            "record_type": "execution",
+            "candidate_id": decision["candidate_id"],
+            "protocol_version": decision["protocol_version"],
+            "record_generated_at": _now_utc_iso(),
+            "data_as_of": decision["data_as_of"],
+            "vintage_identifier": decision["vintage_identifier"],
+            "historical_manifest_hash": decision["historical_manifest_hash"],
+            "prospective_data_hash": decision["prospective_data_hash"],
+            "signal_date": decision["signal_date"],
+            "eligible_asset_count": decision["eligible_asset_count"],
+            "regime": decision["regime"],
+            "maximum_weight": decision["maximum_weight"],
+            "effective_number_assets": decision["effective_number_assets"],
+            "target_changed": decision["target_changed"],
+            "desired_targets": decision["desired_targets"],
+            "action_required": decision["action_required"],
+            "execution_date": pd.Timestamp(execution_date).date().isoformat(),
+            "execution_status": execution_status,
+            "realized_weights": json.dumps(
+                {symbol: float(weight) for symbol, weight in realized_weights.items()},
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+            "cash_weight": repr(float(cash_weight)),
+            "portfolio_total_absolute_weight_deviation": repr(
+                float(portfolio_total_absolute_weight_deviation)
+            ),
+            "material_portfolio_tracking_date": str(material).lower(),
+            "material_asset_differences": json.dumps(
+                [dict(entry) for entry in material_asset_differences],
+                ensure_ascii=False,
+                sort_keys=True,
+            ),
+            "turnover": repr(float(turnover)),
+            "execution_evidence": execution_evidence,
+        }
+    )
+    verify_execution_row(
+        record,
+        decision=decision,
+        expected_symbols=expected_symbols,
+        expected_framework_version=expected_framework_version,
+        root=root,
+    )
+    return record
+
+
+def append_execution_record(
+    record: Mapping[str, str],
+    path: Path = OBSERVATIONS_PATH,
+    *,
+    expected_symbols: Iterable[str] | None = None,
+    expected_framework_version: str | None = None,
+    root: Path = ROOT,
+) -> None:
     if record["record_type"] != "execution":
         raise ValueError("append_execution_record 只接受 execution 行")
-    if not record.get("execution_date", ""):
-        raise ValueError("execution 行必须带 execution_date")
-    if pd.Timestamp(record["execution_date"]) <= pd.Timestamp(record["signal_date"]):
-        raise ValueError("execution 不得早于或等于 signal date：决策必须先于执行")
+    rows = read_event_rows(path, RECORD_FIELDS)
     decisions = [
         row
-        for row in read_observation_rows(path)
+        for row in rows
         if row["record_type"] == "decision"
         and row["candidate_id"] == record["candidate_id"]
         and row["signal_date"] == record["signal_date"]
     ]
     if len(decisions) != 1:
         raise ValueError("execution 行只能追加在唯一对应的 decision 行之后")
-    _append_row(record, path)
+    manifest = load_manifest(root / MANIFEST_RELATIVE_PATH)
+    symbols = (
+        list(load_price_csv(root / "data/canonical/etf_adjusted_close.csv").columns)
+        if expected_symbols is None
+        else list(expected_symbols)
+    )
+    verify_execution_row(
+        record,
+        decision=decisions[0],
+        expected_symbols=symbols,
+        expected_framework_version=(
+            str(manifest["framework_versions"]["rqalpha"])
+            if expected_framework_version is None
+            else expected_framework_version
+        ),
+        root=root,
+    )
+    append_event_row(record, path=path, fields=RECORD_FIELDS)
 
 
 # --------------------------------------------------------------------------------------
-# CLI
+# Production write gate
 # --------------------------------------------------------------------------------------
-
-
-def canonical_activation_path(root: Path = ROOT) -> Path:
-    return root / ACTIVATION_RELATIVE_PATH
-
-
-def canonical_observations_path(root: Path = ROOT) -> Path:
-    return root / "research/shadow/s4c_r1/observations.csv"
 
 
 def run_decision(
-    as_of: pd.Timestamp,
-    vintage_dir: Path,
+    as_of: object,
+    vintage_dir: Path | None = None,
     *,
-    manifest: dict[str, Any] | None = None,
+    manifest: Mapping[str, Any] | None = None,
     root: Path = ROOT,
     activation_path: Path | None = None,
     record_path: Path | None = None,
-    generated_at: str | None = None,
-    enforce_canonical_vintage: bool = True,
+    decision_seal_time: str | None = None,
 ) -> dict[str, str]:
-    """唯一写入门：候选完整性 → activation → as-of 边界 → vintage → append-only 追加。
+    """唯一写入门：候选完整性 → activation → as-of 边界 → canonical 位置 → vintage 真实性
+    → temporal seal → append。
 
-    生产 CLI 只使用 canonical 路径；`activation_path` / `record_path` /
-    `enforce_canonical_vintage` 仅供 tmp_path 测试的下层 helper 使用，不对用户暴露。
+    生产 CLI 只使用 canonical 路径与 runner 的实际运行时钟；`vintage_dir` /
+    `activation_path` / `record_path` / `decision_seal_time` 只供 `tmp_path` fixture 与
+    dependency injection 使用，不对用户暴露。任何非 canonical vintage 目录都在读取任何
+    文件之前被拒绝。
     """
     resolved_manifest = (
         manifest if manifest is not None else load_manifest(root / MANIFEST_RELATIVE_PATH)
@@ -641,31 +809,49 @@ def run_decision(
     resolved_activation = (
         Path(activation_path) if activation_path is not None else canonical_activation_path(root)
     )
-    resolved_records = (
-        Path(record_path) if record_path is not None else canonical_observations_path(root)
+    records = Path(record_path) if record_path is not None else canonical_observations_path(root)
+    verify_candidate_shadow(dict(resolved_manifest), root)
+    require_activation(resolved_activation, dict(resolved_manifest), root=root)
+    as_of_day = pd.Timestamp(as_of).normalize()
+    # 候选级前瞻边界必须在读取该 as-of 的任何 vintage 文件之前 fail closed。
+    cutoff = pd.Timestamp(resolved_manifest["historical_cutoff"]).normalize()
+    first_signal = pd.Timestamp(resolved_manifest["first_eligible_prospective_signal"]).normalize()
+    if as_of_day <= cutoff:
+        raise ValueError("prospective --as-of 必须严格晚于 historical_data_cutoff")
+    if as_of_day < first_signal:
+        raise ValueError(
+            "prospective --as-of 早于 first_eligible_prospective_signal；该时点不可形成前瞻证据"
+        )
+    vintage_path = (
+        Path(vintage_dir) if vintage_dir is not None else canonical_vintage_dir(root, as_of_day)
     )
-    vintage_path = Path(vintage_dir)
-    verify_candidate_shadow(resolved_manifest, root)
-    require_activation(resolved_activation, resolved_manifest, root=root)
-    if enforce_canonical_vintage:
-        # 位置校验必须先于任何 vintage 文件访问：外部目录不得成为官方前瞻证据。
-        verify_canonical_vintage_location(vintage_path, as_of, root)
-    vintage_calendar = load_calendar(vintage_path / "trading_calendar.csv")
-    validate_month_end(vintage_calendar, as_of, resolved_manifest)
-    prices, _, vintage_hash = load_prospective_inputs(
-        vintage_path, resolved_manifest, as_of=as_of, root=root
+    # 位置校验必须先于任何 vintage 文件访问：外部目录不得成为官方前瞻证据。
+    verify_canonical_vintage_location(
+        vintage_path, as_of_day, canonical_parent=root / VINTAGE_PARENT_RELATIVE_PATH
+    )
+    vintage = load_prospective_inputs(vintage_path, resolved_manifest, as_of=as_of_day, root=root)
+    validate_month_end(vintage.raw_calendar, as_of_day, resolved_manifest)
+    seal = require_timezone_aware_instant(
+        decision_seal_time if decision_seal_time is not None else _now_utc_iso(),
+        label="decision_seal_time",
+    )
+    verify_signal_day_seal(
+        signal_date=as_of_day,
+        download_timestamp=vintage.provenance.download_timestamp,
+        decision_seal_time=seal,
+        calendar=vintage.raw_calendar,
     )
     record = build_decision_record(
-        prices,
+        vintage.prices,
         resolved_manifest,
-        as_of=as_of,
+        as_of=as_of_day,
         vintage_identifier=vintage_path.name,
-        prospective_data_hash=vintage_hash,
+        prospective_data_hash=vintage.vintage_hash,
         historical_manifest_hash=sha256_frozen_repository_text(root / MANIFEST_RELATIVE_PATH),
-        generated_at=generated_at,
+        decision_seal_time=seal.isoformat(),
         root=root,
     )
-    append_decision_record(record, resolved_records)
+    append_decision_record(record, records)
     return record
 
 
@@ -673,8 +859,12 @@ def build_parser() -> ArgumentParser:
     parser = ArgumentParser(description=__doc__)
     parser.add_argument("--verify-candidate", action="store_true")
     parser.add_argument("--verify-activation", action="store_true")
+    parser.add_argument(
+        "--verify-no-observations",
+        action="store_true",
+        help="stage-specific：在首个真实 cycle 之前确认 observations.csv 仍为 0 行",
+    )
     parser.add_argument("--as-of", help="决策时点 YYYY-MM-DD；不得使用 wall-clock 默认值")
-    parser.add_argument("--vintage-dir", type=Path)
     return parser
 
 
@@ -683,9 +873,9 @@ def main() -> None:
     args = parser.parse_args()
     manifest = load_manifest()
 
-    if args.verify_candidate or args.verify_activation:
-        if args.as_of or args.vintage_dir:
-            parser.error("只读校验模式不能与 --as-of 或 --vintage-dir 同用")
+    if args.verify_candidate or args.verify_activation or args.verify_no_observations:
+        if args.as_of:
+            parser.error("只读校验模式不能与 --as-of 同用")
         verify_candidate_shadow(manifest)
         lines = [
             "S4C_R1 candidate manifest、冻结身份输入、PIT 契约与冻结语义再推导校验通过；",
@@ -702,13 +892,18 @@ def main() -> None:
             else:
                 verify_activation(activation, manifest)
                 lines.append(f"activation_status = {activation['activation_status']}（校验通过）。")
+        if args.verify_no_observations:
+            count = observation_record_count(OBSERVATIONS_PATH)
+            if count != 0:
+                raise ValueError("首个真实前瞻 cycle 之前 observations.csv 必须仍为 0 行")
+            lines.append("observations.csv 仍为表头（首个真实前瞻 cycle 之前）。")
         print("\n".join(lines))
         return
 
-    if not args.as_of or args.vintage_dir is None:
-        parser.error("前瞻决策必须同时提供 --as-of 与 --vintage-dir")
+    if not args.as_of:
+        parser.error("前瞻决策必须显式提供 --as-of")
 
-    record = run_decision(pd.Timestamp(args.as_of), args.vintage_dir)
+    record = run_decision(pd.Timestamp(args.as_of))
     print(f"已追加 S4C_R1 前瞻 decision record: {record['signal_date']}（执行证据尚未产生）")
 
 

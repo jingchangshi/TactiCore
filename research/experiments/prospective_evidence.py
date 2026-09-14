@@ -1,0 +1,556 @@
+#!/usr/bin/env python3
+"""S2_R1 / S4C_R1 前瞻证据共享的纯验证原语。
+
+本模块只承担两个活动候选**完全相同**的 evidence-control mechanics：canonical vintage 位置、
+provenance 解析与文件身份、`price_as_of` / `calendar_as_of` 语义、signal-day temporal seal、
+append-only 事件表校验与 RQAlpha evidence 身份绑定。
+
+它**不**包含策略语义、target derivation、候选状态机、候选注册表、scheduler、database、
+provider abstraction、组合编排或通用研究框架。只服务单一候选的逻辑留在该候选的 runner 中；
+若某段抽象不能实质减少重复的正确性逻辑，就不应放在这里。
+"""
+
+from __future__ import annotations
+
+import csv
+import hashlib
+import json
+import math
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
+from typing import Any
+
+import pandas as pd
+
+from tacticore.data.prices import load_price_csv
+
+SHANGHAI_TIMEZONE = "Asia/Shanghai"
+SIGNAL_CLOSE_HOUR = 15
+PRICE_VINTAGE_FILE = "etf_adjusted_close.csv"
+CALENDAR_VINTAGE_FILE = "trading_calendar.csv"
+PROVENANCE_VINTAGE_FILE = "provenance.json"
+REQUIRED_VINTAGE_FILES = (PRICE_VINTAGE_FILE, CALENDAR_VINTAGE_FILE, PROVENANCE_VINTAGE_FILE)
+PRICE_ENDPOINTS = ("fund_daily", "fund_adj")
+HASH_HEX_LENGTH = 64
+RQALPHA_EVIDENCE_FRAMEWORK = "rqalpha"
+RQALPHA_EVIDENCE_FIELDS = ("framework", "framework_version", "evidence_path", "evidence_sha256")
+
+
+# --------------------------------------------------------------------------------------
+# File identity
+# --------------------------------------------------------------------------------------
+
+
+def sha256_file(path: Path) -> str:
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def sha256_frozen_repository_text(path: Path) -> str:
+    """Hash frozen repository text consistently across LF and CRLF checkouts."""
+    return hashlib.sha256(Path(path).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
+def verify_hex_digest(value: object, *, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != HASH_HEX_LENGTH
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise ValueError(f"{label} 必须是 64 位小写十六进制 SHA-256")
+    return value
+
+
+# --------------------------------------------------------------------------------------
+# Instant and as-of semantics
+# --------------------------------------------------------------------------------------
+
+
+def require_timezone_aware_instant(value: object, *, label: str) -> pd.Timestamp:
+    try:
+        instant = pd.Timestamp(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{label} 不可解析为时间戳: {value!r}") from error
+    if pd.isna(instant) or instant.tzinfo is None:
+        raise ValueError(f"{label} 必须带时区，不得使用 naive timestamp")
+    return instant
+
+
+def normalize_signal_date(signal_date: object) -> pd.Timestamp:
+    day = pd.Timestamp(signal_date)  # type: ignore[arg-type]
+    if day.tzinfo is not None:
+        day = day.tz_convert(SHANGHAI_TIMEZONE).tz_localize(None)
+    return day.normalize()
+
+
+def parse_iso_date(value: object, *, label: str) -> pd.Timestamp:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{label} 必须是非空 ISO 日期字符串")
+    try:
+        parsed = pd.Timestamp(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{label} 不可解析为日期: {value!r}") from error
+    if pd.isna(parsed) or parsed.tzinfo is not None or parsed.normalize() != parsed:
+        raise ValueError(f"{label} 必须是 YYYY-MM-DD 形式的日期")
+    return parsed
+
+
+def signal_close_instant(signal_date: object) -> pd.Timestamp:
+    """该候选 universe（SSE/SZSE ETF）的 signal_close = signal_date 15:00 Asia/Shanghai。"""
+    return normalize_signal_date(signal_date).tz_localize(SHANGHAI_TIMEZONE) + pd.Timedelta(
+        hours=SIGNAL_CLOSE_HOUR
+    )
+
+
+def next_canonical_execution_boundary(calendar: pd.DataFrame, signal_date: object) -> pd.Timestamp:
+    """只用 decision 时点已合法的交易所日历推导下一个 canonical 交易日起点。
+
+    日历若已覆盖 signal_date 之后已公布的交易日，则取最近的开放日；否则以
+    signal_date 次日的 00:00（Asia/Shanghai）为更严格的上界。
+    """
+    day = normalize_signal_date(signal_date)
+    later = calendar.loc[calendar.index > day]
+    open_dates = later.index[later.any(axis=1)]
+    if len(open_dates):
+        boundary_day = pd.Timestamp(open_dates.min()).normalize()
+    else:
+        boundary_day = day + pd.Timedelta(days=1)
+    return boundary_day.tz_localize(SHANGHAI_TIMEZONE)
+
+
+def verify_signal_day_seal(
+    *,
+    signal_date: object,
+    download_timestamp: object,
+    decision_seal_time: object,
+    calendar: pd.DataFrame,
+) -> pd.Timestamp:
+    """强制 signal_close <= download_timestamp <= decision_seal_time < next boundary。"""
+    day = normalize_signal_date(signal_date)
+    close = signal_close_instant(day)
+    download = require_timezone_aware_instant(
+        download_timestamp, label="provenance download_timestamp"
+    )
+    seal = require_timezone_aware_instant(decision_seal_time, label="decision_seal_time")
+    if download < close:
+        raise ValueError(
+            "provenance download_timestamp 不得早于 signal_close：收盘前下载不能支撑月末决策"
+        )
+    if seal < close:
+        raise ValueError("decision_seal_time 不得早于 signal_close")
+    if seal < download:
+        raise ValueError(
+            "decision_seal_time 不得早于 provenance download_timestamp：证据不能在决策之后下载"
+        )
+    if seal.tz_convert(SHANGHAI_TIMEZONE).date() != day.date():
+        raise ValueError(
+            "decision_seal_time 的上海本地日历日必须等于 signal_date：拒绝晚到的回填决策"
+        )
+    boundary = next_canonical_execution_boundary(calendar, day)
+    if seal >= boundary:
+        raise ValueError(
+            "decision_seal_time 不早于 next_canonical_execution_boundary：execution 结果已可观察"
+        )
+    return seal
+
+
+# --------------------------------------------------------------------------------------
+# Canonical candidate-specific vintage location
+# --------------------------------------------------------------------------------------
+
+
+def resolve_canonical_vintage_dir(canonical_parent: Path, as_of: object) -> Path:
+    return Path(canonical_parent) / normalize_signal_date(as_of).date().isoformat()
+
+
+def verify_canonical_vintage_location(
+    vintage_dir: Path, as_of: object, *, canonical_parent: Path
+) -> Path:
+    """官方前瞻 vintage 只能来自 <canonical_parent>/<as-of>/，且在任何文件读取之前判定。"""
+    expected_parent = Path(canonical_parent).resolve()
+    resolved = Path(vintage_dir).resolve()
+    if resolved.parent != expected_parent:
+        raise ValueError(
+            "prospective vintage 必须位于 candidate canonical vintages/<as-of>/ 目录；"
+            "任意外部目录不得成为官方前瞻证据"
+        )
+    if resolved.name != normalize_signal_date(as_of).date().isoformat():
+        raise ValueError("vintage 目录名必须等于 --as-of 的 ISO 日期")
+    return resolved
+
+
+# --------------------------------------------------------------------------------------
+# Vintage provenance authenticity
+# --------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class VintageProvenance:
+    price_as_of: pd.Timestamp
+    calendar_as_of: pd.Timestamp
+    download_timestamp: pd.Timestamp
+    declared_hashes: dict[str, str]
+
+
+@dataclass(frozen=True)
+class ProspectiveVintage:
+    prices: pd.DataFrame
+    calendar: pd.DataFrame
+    raw_calendar: pd.DataFrame
+    vintage_hash: str
+    provenance: VintageProvenance
+
+
+def load_calendar(path: Path) -> pd.DataFrame:
+    calendar = pd.read_csv(path, index_col="date", parse_dates=["date"])
+    if (
+        calendar.empty
+        or calendar.index.has_duplicates
+        or not calendar.index.is_monotonic_increasing
+    ):
+        raise ValueError("交易日历必须非空、唯一且递增")
+    if set(calendar.columns) != {"sse_open", "szse_open"}:
+        raise ValueError("交易日历必须只包含 sse_open 与 szse_open")
+    if not calendar.isin([0, 1]).all().all():
+        raise ValueError("交易日历只能包含 0/1")
+    return calendar.astype(int)
+
+
+def load_provenance(path: Path) -> dict[str, Any]:
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("provenance.json 必须是 JSON object")
+    return payload
+
+
+def _require_mapping(value: object, *, label: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ValueError(f"{label} 必须是 JSON object")
+    return value
+
+
+def validate_vintage_provenance(
+    provenance: Mapping[str, Any],
+    *,
+    vintage_dir: Path,
+    as_of: object,
+    expected_source: str,
+    expected_adjustment_type: str,
+    expected_symbols: Iterable[str],
+    prices: pd.DataFrame,
+    calendar: pd.DataFrame,
+) -> VintageProvenance:
+    """真正解析 provenance.json，并把它绑定到实际数据文件与 as-of 语义。"""
+    if not isinstance(provenance, Mapping):
+        raise ValueError("provenance.json 必须是 JSON object")
+    as_of_day = normalize_signal_date(as_of)
+    as_of_token = as_of_day.strftime("%Y%m%d")
+    if provenance.get("source") != expected_source:
+        raise ValueError("provenance source 与冻结数据契约不一致")
+    if provenance.get("end_date") != as_of_token:
+        raise ValueError("provenance end_date 必须等于 --as-of")
+    if provenance.get("adjustment_type") != expected_adjustment_type:
+        raise ValueError("provenance adjustment 语义与冻结候选数据契约不一致")
+    download_timestamp = require_timezone_aware_instant(
+        provenance.get("download_timestamp"), label="provenance download_timestamp"
+    )
+
+    raw_symbols = provenance.get("symbols")
+    if not isinstance(raw_symbols, list) or not raw_symbols:
+        raise ValueError("provenance 缺少逐标的 symbols 记录")
+    observed_symbols: set[str] = set()
+    data_timestamps: list[pd.Timestamp] = []
+    for raw_record in raw_symbols:
+        record = _require_mapping(raw_record, label="provenance symbol 记录")
+        symbol = record.get("symbol")
+        if not isinstance(symbol, str) or not symbol:
+            raise ValueError("provenance symbol 记录缺少 symbol")
+        if symbol in observed_symbols:
+            raise ValueError(f"provenance symbol 记录重复: {symbol}")
+        observed_symbols.add(symbol)
+        requests = _require_mapping(
+            record.get("request_parameters"), label=f"provenance {symbol} request_parameters"
+        )
+        for endpoint in PRICE_ENDPOINTS:
+            request = _require_mapping(
+                requests.get(endpoint), label=f"provenance {symbol} {endpoint} 请求记录"
+            )
+            if request.get("end_date") != as_of_token:
+                raise ValueError(
+                    f"provenance {symbol} 的 {endpoint} request end_date 必须等于 --as-of"
+                )
+        try:
+            data_timestamp = pd.Timestamp(record.get("data_timestamp")).normalize()
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"provenance {symbol} 的 data_timestamp 不可解析") from error
+        if pd.isna(data_timestamp):
+            raise ValueError(f"provenance {symbol} 的 data_timestamp 不可解析")
+        if data_timestamp > as_of_day:
+            raise ValueError(f"provenance {symbol} 的 data_timestamp 晚于 --as-of")
+        data_timestamps.append(data_timestamp)
+    if observed_symbols != set(expected_symbols):
+        raise ValueError("provenance symbol 集合与冻结候选 universe 不一致")
+
+    price_as_of = max(data_timestamps)
+    if price_as_of != as_of_day:
+        raise ValueError("provenance price_as_of 必须等于 --as-of：as-of 快照必须含该日价格证据")
+    if prices.index.max() > as_of_day:
+        raise ValueError("prospective vintage 不得包含 as-of 之后的行情")
+    calendar_as_of = pd.Timestamp(calendar.index.max()).normalize()
+    if calendar_as_of < as_of_day:
+        raise ValueError("prospective vintage 的交易日历未覆盖 --as-of")
+
+    declared = _require_mapping(provenance.get("files"), label="provenance files 声明")
+    declared_hashes: dict[str, str] = {}
+    for name, frame in ((PRICE_VINTAGE_FILE, prices), (CALENDAR_VINTAGE_FILE, calendar)):
+        entry = _require_mapping(declared.get(name), label=f"provenance {name} 文件身份声明")
+        declared_hash = verify_hex_digest(entry.get("sha256"), label=f"provenance {name} sha256")
+        declared_rows = entry.get("rows")
+        if not isinstance(declared_rows, int) or isinstance(declared_rows, bool):
+            raise ValueError(f"provenance {name} rows 声明必须是整数")
+        if declared_rows != len(frame):
+            raise ValueError(f"provenance {name} 行数与实际文件不一致")
+        if sha256_file(Path(vintage_dir) / name) != declared_hash:
+            raise ValueError(f"provenance {name} SHA-256 与实际文件不一致")
+        declared_hashes[name] = declared_hash
+    return VintageProvenance(
+        price_as_of=price_as_of,
+        calendar_as_of=calendar_as_of,
+        download_timestamp=download_timestamp,
+        declared_hashes=declared_hashes,
+    )
+
+
+def verify_overlap_identical(historical: pd.DataFrame, vintage: pd.DataFrame, kind: str) -> None:
+    overlap = historical.index.intersection(vintage.index)
+    if overlap.empty:
+        return
+    try:
+        pd.testing.assert_frame_equal(historical.loc[overlap], vintage.loc[overlap])
+    except AssertionError as error:
+        raise ValueError(f"prospective vintage 与 historical {kind} 重叠但内容不同") from error
+
+
+def compute_vintage_hash(vintage_dir: Path) -> str:
+    vintage_path = Path(vintage_dir)
+    return hashlib.sha256(
+        "".join(
+            f"{name}:{sha256_file(vintage_path / name)}\n" for name in REQUIRED_VINTAGE_FILES
+        ).encode()
+    ).hexdigest()
+
+
+def load_prospective_vintage(
+    vintage_dir: Path,
+    *,
+    as_of: object,
+    historical_cutoff: object,
+    historical_prices: pd.DataFrame,
+    historical_calendar: pd.DataFrame,
+    expected_source: str,
+    expected_adjustment_type: str,
+) -> ProspectiveVintage:
+    """读取并机器验证 candidate-specific vintage，返回截至 as-of 的组合输入。"""
+    vintage_path = Path(vintage_dir)
+    for name in REQUIRED_VINTAGE_FILES:
+        if not (vintage_path / name).is_file():
+            raise FileNotFoundError(f"prospective vintage 缺少 {name}")
+    prices = load_price_csv(vintage_path / PRICE_VINTAGE_FILE)
+    calendar = load_calendar(vintage_path / CALENDAR_VINTAGE_FILE)
+    if list(prices.columns) != list(historical_prices.columns):
+        raise ValueError("prospective vintage 的价格资产列必须与冻结 historical 基线一致")
+    provenance = validate_vintage_provenance(
+        load_provenance(vintage_path / PROVENANCE_VINTAGE_FILE),
+        vintage_dir=vintage_path,
+        as_of=as_of,
+        expected_source=expected_source,
+        expected_adjustment_type=expected_adjustment_type,
+        expected_symbols=list(historical_prices.columns),
+        prices=prices,
+        calendar=calendar,
+    )
+    verify_overlap_identical(historical_prices, prices, "价格")
+    verify_overlap_identical(historical_calendar, calendar, "日历")
+    cutoff = pd.Timestamp(historical_cutoff)
+    prospective_prices = prices.loc[prices.index > cutoff]
+    prospective_calendar = calendar.loc[calendar.index > cutoff]
+    if prospective_prices.empty or prospective_calendar.empty:
+        raise ValueError("prospective vintage 没有 historical_cutoff 之后的数据")
+    combined_prices = pd.concat([historical_prices, prospective_prices]).sort_index()
+    combined_calendar = pd.concat([historical_calendar, prospective_calendar]).sort_index()
+    if combined_prices.index.has_duplicates or combined_calendar.index.has_duplicates:
+        raise ValueError("prospective vintage 的重叠数据未被安全去重")
+    as_of_day = normalize_signal_date(as_of)
+    return ProspectiveVintage(
+        prices=combined_prices.loc[:as_of_day],
+        calendar=combined_calendar.loc[:as_of_day],
+        raw_calendar=calendar,
+        vintage_hash=compute_vintage_hash(vintage_path),
+        provenance=provenance,
+    )
+
+
+# --------------------------------------------------------------------------------------
+# Parsed record fields
+# --------------------------------------------------------------------------------------
+
+
+def _decode_json(raw: object, *, label: str) -> Any:
+    if not isinstance(raw, str) or not raw:
+        raise ValueError(f"{label} 必须是非空 JSON 字符串")
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"{label} 不是合法 JSON") from error
+
+
+def parse_json_object(raw: object, *, label: str) -> dict[str, Any]:
+    payload = _decode_json(raw, label=label)
+    if not isinstance(payload, dict):
+        raise ValueError(f"{label} 必须是 JSON object")
+    return payload
+
+
+def parse_json_list(raw: object, *, label: str) -> list[Any]:
+    payload = _decode_json(raw, label=label)
+    if not isinstance(payload, list):
+        raise ValueError(f"{label} 必须是 JSON array")
+    return payload
+
+
+def parse_finite_float(raw: object, *, label: str) -> float:
+    if isinstance(raw, bool) or raw is None or raw == "":
+        raise ValueError(f"{label} 必须是数值")
+    try:
+        value = float(raw)  # type: ignore[arg-type]
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{label} 必须是数值") from error
+    if not math.isfinite(value):
+        raise ValueError(f"{label} 必须是有限数值")
+    return value
+
+
+def parse_weight_vector(
+    raw: object,
+    *,
+    expected_symbols: Iterable[str],
+    label: str,
+    require_total_one: bool = True,
+) -> dict[str, float]:
+    payload = parse_json_object(raw, label=label)
+    if set(payload) != set(expected_symbols):
+        raise ValueError(f"{label} 必须完整覆盖冻结 universe 的每个标的")
+    weights: dict[str, float] = {}
+    for symbol, value in payload.items():
+        weight = parse_finite_float(value, label=f"{label}.{symbol}")
+        if weight < 0.0 or weight > 1.0:
+            raise ValueError(f"{label}.{symbol} 必须落在 [0, 1] 区间")
+        weights[symbol] = weight
+    total = sum(weights.values())
+    if require_total_one and abs(total - 1.0) > 1e-6:
+        raise ValueError(f"{label} 的权重合计必须为一")
+    if not require_total_one and total > 1.0 + 1e-6:
+        raise ValueError(f"{label} 的权重合计不得超过一")
+    return weights
+
+
+# --------------------------------------------------------------------------------------
+# RQAlpha execution evidence binding
+# --------------------------------------------------------------------------------------
+
+
+def verify_rqalpha_evidence_identity(
+    raw: object, *, root: Path, expected_framework_version: str
+) -> dict[str, str]:
+    """execution evidence 必须绑定仓库内冻结的 RQAlpha 原生输出与其 SHA-256。"""
+    payload = parse_json_object(raw, label="execution_evidence")
+    if set(payload) != set(RQALPHA_EVIDENCE_FIELDS):
+        raise ValueError("execution_evidence 字段集合与冻结 RQAlpha evidence schema 不一致")
+    if payload["framework"] != RQALPHA_EVIDENCE_FRAMEWORK:
+        raise ValueError("execution_evidence 的 framework 必须是 RQAlpha 原生执行")
+    if payload["framework_version"] != expected_framework_version:
+        raise ValueError("execution_evidence 的 framework_version 与冻结 manifest 不一致")
+    raw_path = payload["evidence_path"]
+    if not isinstance(raw_path, str) or not raw_path:
+        raise ValueError("execution_evidence 必须包含 RQAlpha evidence relative path")
+    relative = PurePosixPath(raw_path)
+    if relative.is_absolute() or not relative.parts or relative.parts[0] != "research":
+        raise ValueError("RQAlpha evidence 必须是 research/ 下的仓库相对路径")
+    if ".." in relative.parts:
+        raise ValueError("RQAlpha evidence 路径不得包含上级目录")
+    digest = verify_hex_digest(payload["evidence_sha256"], label="execution_evidence sha256")
+    resolved_root = Path(root).resolve()
+    resolved = (resolved_root / Path(*relative.parts)).resolve()
+    if resolved_root != resolved and resolved_root not in resolved.parents:
+        raise ValueError("RQAlpha evidence 路径不得越出仓库")
+    if not resolved.is_file():
+        raise ValueError("RQAlpha evidence 文件不存在")
+    if sha256_file(resolved) != digest:
+        raise ValueError("RQAlpha evidence SHA-256 与实际文件不一致")
+    return {key: str(value) for key, value in payload.items()}
+
+
+def build_rqalpha_evidence_identity(
+    *,
+    evidence_path: str,
+    root: Path,
+    expected_framework_version: str,
+) -> str:
+    relative = PurePosixPath(evidence_path)
+    if relative.is_absolute() or not relative.parts or relative.parts[0] != "research":
+        raise ValueError("RQAlpha evidence 必须是 research/ 下的仓库相对路径")
+    resolved = Path(root).resolve() / Path(*relative.parts)
+    if not resolved.is_file():
+        raise ValueError("RQAlpha evidence 文件不存在")
+    payload = {
+        "framework": RQALPHA_EVIDENCE_FRAMEWORK,
+        "framework_version": expected_framework_version,
+        "evidence_path": str(relative),
+        "evidence_sha256": sha256_file(resolved),
+    }
+    verify_rqalpha_evidence_identity(
+        json.dumps(payload), root=root, expected_framework_version=expected_framework_version
+    )
+    return json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
+
+# --------------------------------------------------------------------------------------
+# Append-only event table
+# --------------------------------------------------------------------------------------
+
+
+def read_event_rows(path: Path, fields: Sequence[str]) -> list[dict[str, str]]:
+    field_names = tuple(fields)
+    if not Path(path).is_file():
+        raise FileNotFoundError("observations.csv 必须先以协议表头创建")
+    with Path(path).open(encoding="utf-8", newline="") as handle:
+        rows = list(csv.reader(handle))
+    if not rows:
+        raise ValueError("observations.csv 缺少协议表头")
+    if tuple(rows[0]) != field_names:
+        raise ValueError("observations.csv schema 与冻结协议不一致")
+    return [dict(zip(field_names, row, strict=True)) for row in rows[1:]]
+
+
+def verify_no_duplicate_event(rows: Iterable[Mapping[str, str]], record: Mapping[str, str]) -> None:
+    for row in rows:
+        if (
+            row["record_type"] == record["record_type"]
+            and row["candidate_id"] == record["candidate_id"]
+            and row["signal_date"] == record["signal_date"]
+        ):
+            raise ValueError(
+                "append-only 协议禁止重复写入同一 candidate + signal_date 的 "
+                f"{record['record_type']} record"
+            )
+
+
+def append_event_row(record: Mapping[str, str], *, path: Path, fields: Sequence[str]) -> None:
+    """单一追加点：schema 与重复校验完成后才打开文件，失败不改变 evidence bytes。"""
+    field_names = tuple(fields)
+    if tuple(record.keys()) != field_names:
+        raise ValueError("record 字段集合与冻结 observation schema 不一致")
+    existing = read_event_rows(path, field_names)
+    verify_no_duplicate_event(existing, record)
+    with Path(path).open("a", encoding="utf-8", newline="") as handle:
+        csv.DictWriter(handle, fieldnames=list(field_names)).writerow(dict(record))

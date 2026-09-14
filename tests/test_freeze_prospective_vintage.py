@@ -315,6 +315,45 @@ def test_provenance_record_outside_the_frozen_universe_is_rejected(tmp_path: Pat
 # --- mocked end-to-end snapshot success path ----------------------------------------------
 
 
+@pytest.mark.parametrize("candidate_id", ["S2_R1", "S4C_R1"])
+@pytest.mark.parametrize(
+    "relative_path",
+    ["config/universe.csv", "data/canonical/provenance.json"],
+)
+def test_manifest_frozen_identity_drift_is_rejected_before_any_download(
+    tmp_path: Path, candidate_id: str, relative_path: str
+) -> None:
+    """结构仍然合法、但已不等于 manifest 冻结身份的 repository 契约必须先被拒绝。"""
+    root = _repo(tmp_path, candidate_id)
+    target = root / relative_path
+    if relative_path.endswith(".csv"):
+        text = target.read_text(encoding="utf-8")
+        assert "510300.SS" in text
+        target.write_text(text.replace("510300.SS", "510301.SS", 1), encoding="utf-8")
+    else:
+        payload = json.loads(target.read_text(encoding="utf-8"))
+        payload["start_date"] = "20130101"
+        target.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+    with pytest.raises(ValueError, match="与 candidate manifest 冻结身份不一致"):
+        freeze.freeze_vintage(_UnusedApi(), candidate_id=candidate_id, as_of=AS_OF, root=root)
+
+    shadow_dir = freeze.CANDIDATES[candidate_id]
+    assert not (root / shadow_dir / "vintages").exists()
+
+
+def test_snapshot_requires_both_repository_identity_hashes(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    manifest = freeze.candidate_manifest("research/shadow/s2_r1", root)
+    manifest.pop("file_hashes")
+
+    with pytest.raises(ValueError, match="未冻结"):
+        freeze.require_frozen_repository_identity(manifest, root)
+
+
 def test_mocked_tushare_snapshot_publishes_and_feeds_both_decisions(tmp_path: Path) -> None:
     """真实 downloader 的成功路径：mock Tushare → freeze → validate → publish → decision。"""
     root = _repo(tmp_path, "S2_R1")

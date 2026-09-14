@@ -19,18 +19,22 @@ import os
 import shutil
 import tempfile
 from argparse import ArgumentParser
+from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
 from research.experiments.prospective_evidence import (
+    CANONICAL_PROVENANCE_RELATIVE_PATH,
     REQUIRED_VINTAGE_FILES,
     UNIVERSE_RELATIVE_PATH,
     load_calendar,
     load_frozen_universe,
     load_prospective_vintage,
     sha256_file,
+    sha256_frozen_repository_text,
     verify_canonical_vintage_location,
 )
 from tacticore.data.prices import load_price_csv
@@ -47,11 +51,42 @@ CANDIDATES = {
     "S2_R1": "research/shadow/s2_r1",
     "S4C_R1": "research/shadow/s4c_r1",
 }
+# snapshot 身份硬门：这两份 repository 契约决定 universe 与下载起点，必须与候选 manifest 一致。
+FROZEN_SNAPSHOT_IDENTITY_PATHS = (UNIVERSE_RELATIVE_PATH, CANONICAL_PROVENANCE_RELATIVE_PATH)
+MANIFEST_HASH_CONTAINERS = ("file_hashes", "frozen_identity_artifacts")
 
 
 def candidate_manifest(relative_shadow_dir: str, root: Path = ROOT) -> dict[str, object]:
     path = root / relative_shadow_dir / "candidate_manifest.json"
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def frozen_manifest_hashes(manifest: Mapping[str, Any]) -> dict[str, str]:
+    """候选 manifest 冻结的 repository 身份 hash；两个冻结容器语义相同。"""
+    frozen: dict[str, str] = {}
+    for container in MANIFEST_HASH_CONTAINERS:
+        for relative_path, digest in manifest.get(container, {}).items():
+            frozen.setdefault(str(relative_path), str(digest))
+    return frozen
+
+
+def require_frozen_repository_identity(manifest: Mapping[str, Any], root: Path = ROOT) -> None:
+    """下载前硬门：universe 与 canonical provenance 必须仍等于候选 manifest 冻结值。
+
+    否则一份结构合法但已被替换的 universe（或不同的 canonical 起点）会被当成冻结契约，
+    并在 candidate 完整性 gate 察觉之前占用不可覆盖的 canonical vintage 路径。
+    """
+    frozen = frozen_manifest_hashes(manifest)
+    for relative_path in FROZEN_SNAPSHOT_IDENTITY_PATHS:
+        expected = frozen.get(relative_path)
+        if expected is None:
+            raise ValueError(f"candidate manifest 未冻结 {relative_path} 的身份 hash")
+        actual = sha256_frozen_repository_text(root / relative_path)
+        if actual != expected:
+            raise ValueError(
+                f"{relative_path} 与 candidate manifest 冻结身份不一致，"
+                "拒绝冻结 prospective vintage"
+            )
 
 
 def freeze_vintage(
@@ -73,6 +108,7 @@ def freeze_vintage(
         raise ValueError(f"未知 candidate: {candidate_id}")
     shadow_dir = root / CANDIDATES[candidate_id]
     manifest = candidate_manifest(CANDIDATES[candidate_id], root)
+    require_frozen_repository_identity(manifest, root)
     as_of_day = pd.Timestamp(as_of).normalize()
     cutoff = pd.Timestamp(str(manifest["historical_cutoff"])).normalize()
     if as_of_day <= cutoff:

@@ -39,7 +39,7 @@ UNIVERSE_FIELDS = ("symbol", "tushare_symbol", "list_date")
 HASH_HEX_LENGTH = 64
 RQALPHA_EVIDENCE_FRAMEWORK = "rqalpha"
 RQALPHA_EVIDENCE_FIELDS = ("framework", "framework_version", "evidence_path", "evidence_sha256")
-RQALPHA_ARTIFACT_SCHEMA = "tacticore.rqalpha.execution_artifact.v1"
+RQALPHA_ARTIFACT_SCHEMA = "tacticore.rqalpha.execution_artifact.v2"
 RQALPHA_ARTIFACT_FIELDS = (
     "schema",
     "candidate_id",
@@ -55,8 +55,19 @@ RQALPHA_ARTIFACT_FIELDS = (
     "turnover",
     "portfolio",
     "native_evidence",
+    "native",
 )
 PORTFOLIO_FIELDS = ("portfolio_value", "drawdown")
+NATIVE_FIELDS = (
+    "execution_status",
+    "order_book_values",
+    "total_value",
+    "cash",
+    "turnover",
+    "max_drawdown",
+    "order_events",
+)
+NATIVE_ORDER_EVENT_FIELDS = ("order_book_id", "status", "message")
 
 
 # --------------------------------------------------------------------------------------
@@ -219,6 +230,7 @@ class FrozenUniverse:
     start_date: str
     symbols: tuple[str, ...]
     tushare_symbols: Mapping[str, str]
+    rqalpha_symbols: Mapping[str, str]
     list_dates: Mapping[str, str]
 
     def identity(self) -> dict[str, Any]:
@@ -247,6 +259,8 @@ def load_frozen_universe(
         raise ValueError("frozen universe 的 symbol 必须唯一")
     if frame["tushare_symbol"].duplicated().any():
         raise ValueError("frozen universe 的 tushare_symbol 必须唯一")
+    if frame["rqalpha_symbol"].duplicated().any():
+        raise ValueError("frozen universe 的 rqalpha_symbol 必须唯一")
     canonical = json.loads(
         (Path(root) / CANONICAL_PROVENANCE_RELATIVE_PATH).read_text(encoding="utf-8")
     )
@@ -260,6 +274,9 @@ def load_frozen_universe(
         symbols=tuple(str(value) for value in frame["symbol"]),
         tushare_symbols={
             str(row.symbol): str(row.tushare_symbol) for row in frame.itertuples(index=False)
+        },
+        rqalpha_symbols={
+            str(row.symbol): str(row.rqalpha_symbol) for row in frame.itertuples(index=False)
         },
         list_dates={
             str(row.symbol): pd.Timestamp(row.start_date).strftime("%Y%m%d")
@@ -702,28 +719,148 @@ def _parse_artifact_instants(record: Mapping[str, Any]) -> tuple[pd.Timestamp, p
     return execution_timestamp, artifact_generated_at
 
 
-def _parse_artifact_native_evidence(
-    raw: object, *, expected_symbols: Iterable[str]
-) -> dict[str, str]:
-    payload = _require_mapping(raw, label="artifact native_evidence")
-    universe = set(expected_symbols)
-    evidence: dict[str, str] = {}
-    for symbol, text in payload.items():
-        if symbol not in universe:
-            raise ValueError(f"artifact native_evidence 引用了冻结 universe 之外的标的: {symbol}")
-        if not isinstance(text, str) or not text:
-            raise ValueError(f"artifact native_evidence.{symbol} 必须是非空 native 说明")
-        evidence[str(symbol)] = text
-    return evidence
+@dataclass(frozen=True)
+class NativeExecutionFacts:
+    """由 RQAlpha 原生输出确定性导出的执行事实。"""
+
+    execution_status: str
+    realized_weights: dict[str, float]
+    cash_weight: float
+    portfolio_value: float
+    drawdown: float
+    turnover: float
+    native_evidence: dict[str, str]
+
+
+def derive_native_execution_facts(
+    native: object, *, frozen_universe: FrozenUniverse
+) -> NativeExecutionFacts:
+    """只从 native facts 推导 execution 结论：持仓市值、现金、净值、换手与 native 说明。"""
+    record = _require_mapping(native, label="native RQAlpha 输出")
+    if set(record) != set(NATIVE_FIELDS):
+        raise ValueError("native RQAlpha 输出字段集合与冻结 schema 不一致")
+    status = record["execution_status"]
+    if not isinstance(status, str) or not status:
+        raise ValueError("native RQAlpha 输出缺少 execution_status")
+    total_value = parse_finite_float(record["total_value"], label="native total_value")
+    if total_value <= 0.0:
+        raise ValueError("native total_value 必须为正")
+    cash = parse_finite_float(record["cash"], label="native cash")
+    if cash < 0.0:
+        raise ValueError("native cash 不得为负")
+    turnover = parse_finite_float(record["turnover"], label="native turnover")
+    if turnover < 0.0:
+        raise ValueError("native turnover 不得为负")
+    drawdown = parse_finite_float(record["max_drawdown"], label="native max_drawdown")
+    if drawdown > 0.0:
+        raise ValueError("native max_drawdown 必须为非正值")
+
+    symbol_by_code = {code: symbol for symbol, code in frozen_universe.rqalpha_symbols.items()}
+    values = _require_mapping(record["order_book_values"], label="native order_book_values")
+    market_values = {symbol: 0.0 for symbol in frozen_universe.symbols}
+    for code, raw_value in values.items():
+        if code not in symbol_by_code:
+            raise ValueError(
+                f"native order_book_values 引用了冻结 universe 之外的 rqalpha_symbol: {code}"
+            )
+        value = parse_finite_float(raw_value, label=f"native order_book_values.{code}")
+        if value < 0.0:
+            raise ValueError(f"native order_book_values.{code} 不得为负")
+        market_values[symbol_by_code[code]] = value
+    if abs(sum(market_values.values()) + cash - total_value) > 1e-6 * total_value:
+        raise ValueError("native 持仓市值与现金合计必须等于 native total_value")
+
+    raw_events = record["order_events"]
+    if not isinstance(raw_events, list):
+        raise ValueError("native order_events 必须是 JSON array")
+    native_evidence: dict[str, str] = {}
+    for raw_event in raw_events:
+        event = _require_mapping(raw_event, label="native order event")
+        if set(event) != set(NATIVE_ORDER_EVENT_FIELDS):
+            raise ValueError("native order event 字段集合与冻结 schema 不一致")
+        code = event["order_book_id"]
+        if code not in symbol_by_code:
+            raise ValueError(f"native order event 引用了冻结 universe 之外: {code}")
+        message = str(event["message"])
+        status_text = str(event["status"])
+        text = message if message else f"native status {status_text}"
+        if not text:
+            raise ValueError("native order event 必须携带可读的 native 说明")
+        native_evidence[symbol_by_code[str(code)]] = text
+    return NativeExecutionFacts(
+        execution_status=status,
+        realized_weights={symbol: value / total_value for symbol, value in market_values.items()},
+        cash_weight=cash / total_value,
+        portfolio_value=total_value,
+        drawdown=drawdown,
+        turnover=turnover,
+        native_evidence=native_evidence,
+    )
+
+
+def _require_same_weights(
+    claimed: Mapping[str, float], derived: Mapping[str, float], *, label: str
+) -> None:
+    if set(claimed) != set(derived):
+        raise ValueError(f"{label} 必须与 native facts 推导结果一致")
+    for symbol, value in derived.items():
+        if not math.isclose(claimed[symbol], value, rel_tol=0.0, abs_tol=1e-12):
+            raise ValueError(f"{label}.{symbol} 与 native facts 推导结果不一致")
+
+
+def build_rqalpha_execution_artifact_payload(
+    *,
+    root: Path,
+    candidate_id: str,
+    signal_date: str,
+    execution_timestamp: str,
+    artifact_generated_at: str,
+    framework_version: str,
+    intended_targets: Mapping[str, float],
+    native: Mapping[str, Any],
+) -> dict[str, Any]:
+    """把 RQAlpha 原生输出序列化成 authoritative artifact。
+
+    这是 producer：它只搬运 native facts，所有 execution 结论都由 `native` 推导，
+    调用方无法另行提供 realized weights / cash / turnover / status。
+    """
+    frozen_universe = load_frozen_universe(root)
+    facts = derive_native_execution_facts(native, frozen_universe=frozen_universe)
+    payload: dict[str, Any] = {
+        "schema": RQALPHA_ARTIFACT_SCHEMA,
+        "candidate_id": candidate_id,
+        "signal_date": signal_date,
+        "framework": RQALPHA_EVIDENCE_FRAMEWORK,
+        "framework_version": framework_version,
+        "execution_status": facts.execution_status,
+        "execution_timestamp": execution_timestamp,
+        "artifact_generated_at": artifact_generated_at,
+        "intended_targets": {
+            str(symbol): float(weight) for symbol, weight in intended_targets.items()
+        },
+        "realized_weights": facts.realized_weights,
+        "cash_weight": facts.cash_weight,
+        "turnover": facts.turnover,
+        "portfolio": {
+            "portfolio_value": facts.portfolio_value,
+            "drawdown": facts.drawdown,
+        },
+        "native_evidence": facts.native_evidence,
+        "native": dict(native),
+    }
+    verify_rqalpha_artifact_payload(
+        payload, frozen_universe=frozen_universe, expected_framework_version=framework_version
+    )
+    return payload
 
 
 def verify_rqalpha_artifact_payload(
     payload: object,
     *,
-    expected_symbols: Iterable[str],
+    frozen_universe: FrozenUniverse,
     expected_framework_version: str,
 ) -> None:
-    """artifact 自身必须自洽：schema、身份、时间、权重、现金与 native 说明都可校验。"""
+    """artifact 自身必须自洽：每个 execution 结论都要能被 native facts 重新推导。"""
     record = _require_mapping(payload, label="RQAlpha execution artifact")
     if set(record) != set(RQALPHA_ARTIFACT_FIELDS):
         raise ValueError("RQAlpha execution artifact 字段集合与冻结 schema 不一致")
@@ -741,44 +878,62 @@ def verify_rqalpha_artifact_payload(
     _parse_artifact_instants(record)
     parse_weight_vector(
         json.dumps(record["intended_targets"], ensure_ascii=False),
-        expected_symbols=expected_symbols,
+        expected_symbols=frozen_universe.symbols,
         label="artifact intended_targets",
     )
-    realized = parse_weight_vector(
+    facts = derive_native_execution_facts(record["native"], frozen_universe=frozen_universe)
+    if record["execution_status"] != facts.execution_status:
+        raise ValueError("artifact execution_status 必须等于 native RQAlpha 输出的状态")
+    claimed_realized = parse_weight_vector(
         json.dumps(record["realized_weights"], ensure_ascii=False),
-        expected_symbols=expected_symbols,
+        expected_symbols=frozen_universe.symbols,
         label="artifact realized_weights",
         require_total_one=False,
     )
+    _require_same_weights(
+        claimed_realized, facts.realized_weights, label="artifact realized_weights"
+    )
     cash_weight = parse_finite_float(record["cash_weight"], label="artifact cash_weight")
-    if cash_weight < 0.0:
-        raise ValueError("artifact cash_weight 不得为负")
-    if abs(sum(realized.values()) + cash_weight - 1.0) > 1e-3:
+    if not math.isclose(cash_weight, facts.cash_weight, rel_tol=0.0, abs_tol=1e-12):
+        raise ValueError("artifact cash_weight 与 native 持仓/现金推导结果不一致")
+    if abs(sum(claimed_realized.values()) + cash_weight - 1.0) > 1e-3:
         raise ValueError("artifact realized_weights 与 cash_weight 合计必须覆盖组合")
-    if parse_finite_float(record["turnover"], label="artifact turnover") < 0.0:
-        raise ValueError("artifact turnover 不得为负")
+    turnover = parse_finite_float(record["turnover"], label="artifact turnover")
+    if not math.isclose(turnover, facts.turnover, rel_tol=0.0, abs_tol=1e-12):
+        raise ValueError("artifact turnover 与 native 汇总推导结果不一致")
     portfolio = _require_mapping(record["portfolio"], label="artifact portfolio")
     if set(portfolio) != set(PORTFOLIO_FIELDS):
         raise ValueError("artifact portfolio 字段集合与冻结 schema 不一致")
-    if parse_finite_float(portfolio["portfolio_value"], label="artifact portfolio_value") <= 0.0:
-        raise ValueError("artifact portfolio_value 必须为正")
-    if parse_finite_float(portfolio["drawdown"], label="artifact drawdown") > 0.0:
-        raise ValueError("artifact drawdown 必须为非正值")
-    _parse_artifact_native_evidence(record["native_evidence"], expected_symbols=expected_symbols)
+    portfolio_value = parse_finite_float(
+        portfolio["portfolio_value"], label="artifact portfolio_value"
+    )
+    if not math.isclose(portfolio_value, facts.portfolio_value, rel_tol=0.0, abs_tol=1e-9):
+        raise ValueError("artifact portfolio_value 与 native total_value 不一致")
+    drawdown = parse_finite_float(portfolio["drawdown"], label="artifact drawdown")
+    if not math.isclose(drawdown, facts.drawdown, rel_tol=0.0, abs_tol=1e-12):
+        raise ValueError("artifact drawdown 与 native max_drawdown 不一致")
+    claimed_evidence = _require_mapping(record["native_evidence"], label="artifact native_evidence")
+    if set(claimed_evidence) != set(facts.native_evidence):
+        raise ValueError("artifact native_evidence 必须完全由 native order events 推导")
+    for symbol, text in facts.native_evidence.items():
+        if claimed_evidence[symbol] != text:
+            raise ValueError(
+                f"artifact native_evidence.{symbol} 与 native order events 推导结果不一致"
+            )
 
 
 def write_rqalpha_execution_artifact(
     payload: Mapping[str, Any],
     *,
     path: Path,
-    expected_symbols: Iterable[str],
+    frozen_universe: FrozenUniverse,
     expected_framework_version: str,
 ) -> Path:
     """冻结一份 authoritative execution artifact；既有 evidence 不可覆盖。"""
     destination = Path(path)
     verify_rqalpha_artifact_payload(
         payload,
-        expected_symbols=expected_symbols,
+        frozen_universe=frozen_universe,
         expected_framework_version=expected_framework_version,
     )
     if destination.exists():
@@ -796,7 +951,7 @@ def parse_rqalpha_execution_artifact(
     *,
     root: Path,
     decision: Mapping[str, str],
-    expected_symbols: Iterable[str],
+    frozen_universe: FrozenUniverse,
     expected_framework_version: str,
     record_generated_at: object,
 ) -> RqalphaExecutionArtifact:
@@ -814,7 +969,7 @@ def parse_rqalpha_execution_artifact(
     )
     verify_rqalpha_artifact_payload(
         record,
-        expected_symbols=expected_symbols,
+        frozen_universe=frozen_universe,
         expected_framework_version=expected_framework_version,
     )
     if record["candidate_id"] != decision["candidate_id"]:
@@ -849,11 +1004,13 @@ def parse_rqalpha_execution_artifact(
         raise ValueError("execution_date 必须晚于 signal_date：决策必须先于执行")
     intended = parse_weight_vector(
         json.dumps(record["intended_targets"], ensure_ascii=False),
-        expected_symbols=expected_symbols,
+        expected_symbols=frozen_universe.symbols,
         label="artifact intended_targets",
     )
     decision_targets = parse_weight_vector(
-        decision["desired_targets"], expected_symbols=expected_symbols, label="desired_targets"
+        decision["desired_targets"],
+        expected_symbols=frozen_universe.symbols,
+        label="desired_targets",
     )
     if set(intended) != set(decision_targets) or any(
         abs(intended[symbol] - decision_targets[symbol]) > 1e-9 for symbol in intended
@@ -861,7 +1018,7 @@ def parse_rqalpha_execution_artifact(
         raise ValueError("artifact intended_targets 必须等于 decision 冻结的 desired_targets")
     realized = parse_weight_vector(
         json.dumps(record["realized_weights"], ensure_ascii=False),
-        expected_symbols=expected_symbols,
+        expected_symbols=frozen_universe.symbols,
         label="artifact realized_weights",
         require_total_one=False,
     )
@@ -886,9 +1043,12 @@ def parse_rqalpha_execution_artifact(
             abs(intended[symbol] - realized[symbol]) for symbol in intended
         )
         + abs(cash_weight),
-        native_evidence=_parse_artifact_native_evidence(
-            record["native_evidence"], expected_symbols=expected_symbols
-        ),
+        native_evidence={
+            str(symbol): str(text)
+            for symbol, text in _require_mapping(
+                record["native_evidence"], label="artifact native_evidence"
+            ).items()
+        },
     )
 
 

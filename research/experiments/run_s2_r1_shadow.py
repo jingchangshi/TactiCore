@@ -434,7 +434,7 @@ def verify_execution_row(
         record["execution_evidence"],
         root=root,
         decision=decision,
-        expected_symbols=expected_symbols,
+        frozen_universe=load_frozen_universe(root),
         expected_framework_version=expected_framework_version,
         record_generated_at=record["record_generated_at"],
     )
@@ -500,7 +500,7 @@ def build_execution_record(
         execution_evidence,
         root=root,
         decision=decision,
-        expected_symbols=expected_symbols,
+        frozen_universe=load_frozen_universe(root),
         expected_framework_version=expected_framework_version,
         record_generated_at=record_generated_at,
     )

@@ -203,6 +203,44 @@ def write_observations_header(path: Path, fields: tuple[str, ...]) -> Path:
     return path
 
 
+def rqalpha_code(root: Path, symbol: str) -> str:
+    universe = pd.read_csv(root / "config/universe.csv")
+    return str(universe.loc[universe["symbol"].eq(symbol), "rqalpha_symbol"].iloc[0])
+
+
+def native_rqalpha_output(
+    root: Path,
+    *,
+    realized_weights: Mapping[str, float],
+    cash_weight: float = 0.0,
+    turnover: float = 0.0,
+    max_drawdown: float = 0.0,
+    total_value: float = 1_000_000.0,
+    order_events: tuple[tuple[str, str, str], ...] = (),
+    execution_status: str = "EXECUTED",
+) -> dict[str, Any]:
+    """构造 RQAlpha 原生形状的 analyser/position/order 输出（synthetic，不运行 RQAlpha）。"""
+    universe = pd.read_csv(root / "config/universe.csv")
+    code_by_symbol = dict(zip(universe["symbol"], universe["rqalpha_symbol"], strict=True))
+    values = {
+        code_by_symbol[str(symbol)]: float(weight) * total_value
+        for symbol, weight in realized_weights.items()
+        if float(weight) > 0.0
+    }
+    return {
+        "execution_status": execution_status,
+        "order_book_values": values,
+        "total_value": float(total_value),
+        "cash": float(cash_weight) * total_value,
+        "turnover": float(turnover),
+        "max_drawdown": float(max_drawdown),
+        "order_events": [
+            {"order_book_id": str(code), "status": str(status), "message": str(message)}
+            for code, status, message in order_events
+        ],
+    }
+
+
 def write_execution_artifact(
     root: Path,
     *,
@@ -215,38 +253,42 @@ def write_execution_artifact(
     realized_weights: Mapping[str, float] | None = None,
     cash_weight: float = 0.0,
     turnover: float = 0.0,
-    portfolio_value: float = 1_000_000.0,
-    drawdown: float = 0.0,
-    native_evidence: Mapping[str, str] | None = None,
-    framework_version: str = "6.3.0",
+    max_drawdown: float = 0.0,
+    total_value: float = 1_000_000.0,
+    order_events: tuple[tuple[str, str, str], ...] = (),
     execution_status: str = "EXECUTED",
+    framework_version: str = "6.3.0",
 ) -> str:
-    """写出一个 structured synthetic RQAlpha execution artifact（不联网、不需要 RQAlpha）。"""
+    """由一个 native-shaped RQAlpha 输出写出 authoritative artifact。
+
+    调用方只能提供 native facts（持仓市值/现金/换手/回撤/order events）；realized weights、
+    cash、turnover、status 与 native 说明全部由 producer 推导。
+    """
     targets = {str(symbol): float(weight) for symbol, weight in desired_targets.items()}
-    payload = {
-        "schema": pe.RQALPHA_ARTIFACT_SCHEMA,
-        "candidate_id": candidate_id,
-        "signal_date": signal_date,
-        "framework": pe.RQALPHA_EVIDENCE_FRAMEWORK,
-        "framework_version": framework_version,
-        "execution_status": execution_status,
-        "execution_timestamp": execution_timestamp,
-        "artifact_generated_at": artifact_generated_at,
-        "intended_targets": targets,
-        "realized_weights": (
-            targets
-            if realized_weights is None
-            else {str(symbol): float(weight) for symbol, weight in realized_weights.items()}
-        ),
-        "cash_weight": float(cash_weight),
-        "turnover": float(turnover),
-        "portfolio": {"portfolio_value": float(portfolio_value), "drawdown": float(drawdown)},
-        "native_evidence": {str(k): str(v) for k, v in (native_evidence or {}).items()},
-    }
+    native = native_rqalpha_output(
+        root,
+        realized_weights=targets if realized_weights is None else realized_weights,
+        cash_weight=cash_weight,
+        turnover=turnover,
+        max_drawdown=max_drawdown,
+        total_value=total_value,
+        order_events=order_events,
+        execution_status=execution_status,
+    )
+    payload = pe.build_rqalpha_execution_artifact_payload(
+        root=root,
+        candidate_id=candidate_id,
+        signal_date=signal_date,
+        execution_timestamp=execution_timestamp,
+        artifact_generated_at=artifact_generated_at,
+        framework_version=framework_version,
+        intended_targets=targets,
+        native=native,
+    )
     pe.write_rqalpha_execution_artifact(
         payload,
         path=root / relative_path,
-        expected_symbols=list(targets),
+        frozen_universe=frozen_universe(root),
         expected_framework_version=framework_version,
     )
     return relative_path

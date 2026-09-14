@@ -14,6 +14,7 @@ import pandas as pd
 import pytest
 from conftest import (
     build_candidate_repo,
+    rqalpha_code,
     write_execution_artifact,
     write_observations_header,
     write_prospective_vintage,
@@ -655,7 +656,7 @@ def test_material_asset_difference_above_5pp_requires_artifact_native_evidence(
         realized_weights=realized,
         execution_timestamp=EXECUTION_TIMESTAMP,
         artifact_generated_at=ARTIFACT_GENERATED_AT,
-        native_evidence={symbol: "sys_analyser native 成交说明"},
+        order_events=((rqalpha_code(root, symbol), "ACTIVE", "sys_analyser native 成交说明"),),
         **extra,
     )
     identity = shadow.build_rqalpha_evidence_identity(

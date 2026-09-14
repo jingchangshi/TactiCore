@@ -271,6 +271,20 @@ ARCHITECTURE
 
 一旦已有前瞻 observation，不得根据看到的结果修改原候选、追溯改变旧 target decision、把新策略回填到旧前瞻期间，或静默以供应商修订替换旧 data vintage。任何实质变更都必须建立新的顺序候选版本，旧候选与其记录保持可复现。历史 canonical 基线保持冻结；后续数据只能作为候选专属、append-only 的 vintage 证据。候选完整性失效与策略表现偏弱必须分别记录，不能用短期收益或回撤触发隐形优化。
 
+### 9.1 前瞻证据的永久不变量
+
+以下不变量对任何前瞻候选长期有效，不随候选版本变化：
+
+- prospective record 必须来自真实的 candidate-specific vintage；vintage 必须有机器可验证的 provenance，且 provenance 必须绑定实际数据文件 hash，而不只是"文件存在"；
+- 价格证据截止日与已知日历覆盖上界必须显式区分，已公布的未来日历只能用于推导下一个 canonical 日期，绝不能作为价格证据；
+- prospective decision 必须在 execution outcome 可观察之前永久固定；decision 与 execution 是 append-only 的不同事件，decision 证据必须先于 execution 证据进入版本历史；
+- execution record 必须完整后才能 append，不允许先写空壳再补字段；
+- 被拒绝的写入、重复写入与失败运行不得改变 evidence bytes；
+- historical canonical 基线永久冻结；candidate identity 在 observation 之后不可修改；
+- 候选完整性失效（manifest/hash/框架/PIT/schema/重复/越界）与策略表现偏弱（收益、回撤、跑输、集中度）必须分别记录，后者不得触发参数变化、cap 或候选改写。
+
+候选级阈值、具体日期、schema 与评审期限属于候选协议本身，不得写入本节。
+
 ## 10. 提交与架构漂移检查
 
 只有完成验证后才可提交并推送。

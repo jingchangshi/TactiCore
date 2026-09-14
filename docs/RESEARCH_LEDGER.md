@@ -486,3 +486,47 @@
 - 重开条件：仅当 canonical 数据契约、S4C 经济语义或 RQAlpha 订单/撮合/账户语义变化，或出现具体
   矛盾证据时；不得以集中度、历史收益、短期前瞻表现或时间压力为由改参数、加 cap、改写 R1 或
   重写 activation 语义。真实前瞻 observation 只能按协议在 `2026-09-30` 及之后的月末 signal 形成。
+
+## RL-046 双候选前瞻证据路径审计
+
+- 策略：S2 Research Candidate R1 与 S4C Research Candidate R1（跨候选结构审计）
+- 状态：CLOSED
+- 问题/范围：两个活动前瞻候选的 prospective path 是否存在**相同或候选级**的正确性缺口；
+  不实现修复、不激活候选、不生成 observation、不下载数据。
+- 结论：审计识别出 7 项共享阻塞——机器可验证 provenance、`price_as_of` 与 `calendar_as_of`
+  区分、阻止晚到 decision 重建的时间上界、Git 分离的 decision/execution 证据、append 前
+  完整的 execution 行、RQAlpha evidence path/hash 绑定、失败/重复操作不改变 evidence bytes。
+  候选级差异：S2 的 canonical vintage 位置与 observation 路径未被 CLI 授权、provenance 不透明、
+  decision 时间未 seal、无 execution 写入器；S4C 的 lifecycle 与写入路径控制更强，但 activation
+  review 曾高估 `record_generated_at >= signal_date` 的证明力，且 provenance 真实性与 execution
+  完整性同样未关闭。已有 S4C activation 仍是有效 lifecycle 授权，但**不**证明 Foundation V1 正确性。
+- 结论边界：S2 **不得**补造 S4C 风格的历史 activation artifact；S4C 候选 README 的 pre-activation
+  行文与 `verify_s4c_r1_candidate.py` 的 header-only 假设登记为**非阻塞**历史文档/实现不一致，
+  不得仅为"当前化"改写候选历史或削弱不可变 manifest 契约。
+- 证据：[双候选前瞻审计 V1](../research/results/DUAL_CANDIDATE_PROSPECTIVE_AUDIT_V1.md)、
+  [Foundation 预注册协议](../research/batches/prospective_evidence_foundation/PROTOCOL.md)。
+- 数据快照：canonical 同 RL-001；两个 `observations.csv` 均仅表头（`0` 行）；不存在任何
+  candidate vintage 目录；未下载、未冻结、未查看任何真实 2026-09 市场数据。
+- 重开条件：仅当出现新的候选级矛盾证据，或 canonical 数据契约/框架语义变化使本次审计失效时；
+  不得以"再审计一次"为由重做本次通用审计。
+
+## RL-047 研究优先级决策 V3（双候选前瞻证据 foundation）
+
+- 策略：N/A（研究优先级裁决，不涉及策略语义）
+- 状态：CLOSED
+- 问题/范围：在选项 A（S2+S4C 双候选 Foundation V1）、B（只修 S4C）、C（新策略/S27A/Theme）、
+  D（现在创建 portfolio candidate）、E（等到 2026-09-30）之间独立排序。
+- 结论：`DECISION = A`，`SELECTED_NEXT_GOAL = PROSPECTIVE_EVIDENCE_FOUNDATION_V1_FOR_S2_AND_S4C`
+  （加权 95 / 100）。拒绝 B，因为一个严格的 S4C 加一个宽松的 S2 不等于可信的双候选前瞻证据；
+  拒绝 C/D，因为在现状证据链可信之前扩大自由度或叠加组合层不确定性；拒绝 E，因为它会在证据路径
+  仍有缺陷时不可逆地浪费第一个合格前瞻周期。
+- 授权范围：只授权 Foundation 实现与 readiness 判定（provenance 机器验证、as-of 语义分离、
+  signal-day temporal seal、decision/execution 分离 append-only、execution 完整性、RQAlpha
+  evidence 绑定、候选 CLI 授权收紧、只读 verifier 未来兼容性）；**不**授权任何 observation、
+  vintage 证据形成、候选身份/语义修改、组合候选或新策略工作。
+- 证据：[研究优先级决策 V3](../research/results/RESEARCH_PRIORITY_DECISION_V3.md)、
+  [双候选前瞻审计 V1](../research/results/DUAL_CANDIDATE_PROSPECTIVE_AUDIT_V1.md)、
+  [Foundation 预注册协议](../research/batches/prospective_evidence_foundation/PROTOCOL.md)。
+- 数据快照：canonical 同 RL-001；两个候选 `prospective observations = 0`。
+- 重开条件：仅当 Foundation 被判为 `BLOCKED_BY_PROSPECTIVE_CORRECTNESS`，或出现新的独立
+  correctness/优先级证据时；不得以历史收益、叙事或 2026-09-30 的时间压力重开本次排序。

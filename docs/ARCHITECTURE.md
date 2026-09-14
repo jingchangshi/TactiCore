@@ -35,6 +35,7 @@ TactiCore 是策略优先的低频多资产配置研究系统。稳定链路为�
 | 快速研究 | VectorBT | 组合模拟、研究记录、收益/成交/回撤、参数与敏感性研究 |
 | 权威执行 | RQAlpha | 订单 sizing、整手、撮合、现金、持仓、账户、成本、滑点、市场限制、公司行动与执行记录 |
 | 证据与决策 | TactiCore | 薄框架编排、有界派生比较、研究报告与阶段决策 |
+| 前瞻证据收集 | TactiCore | 候选级 as-of 冻结、provenance 验证、薄编排、append-only 记录 |
 
 TactiCore 不拥有通用组合会计、撮合引擎、订单生命周期框架、通用执行模拟器、第三套回测引擎、通用数据平台或通用研究治理平台。
 
@@ -94,6 +95,23 @@ ARCHITECTURE
 + CURRENT_STATE
 → 生成下一 Goal
 ```
+
+### 3.5.1 前瞻证据收集
+
+前瞻证据收集是 TactiCore 自有的一小块职责：在候选已冻结并激活后，把未来真实数据固定成
+不可回填、可机器验证的 prospective evidence。
+
+```text
+Tushare        拥有外部市场数据
+TactiCore      拥有候选级 as-of 冻结、provenance 验证、薄证据编排、append-only 记录
+strategy runner 拥有候选级信号语义
+RQAlpha        拥有执行语义
+Git            拥有版本化证据历史
+```
+
+该职责明确**不**拥有：scheduler、database、workflow engine、通用 event store、broker、
+execution simulator 或研究治理平台。它复用既有 Tushare downloader 与 RQAlpha 原生执行，
+只增加候选级、极薄的编排与验证。
 
 ### 3.6 未来生产决策
 

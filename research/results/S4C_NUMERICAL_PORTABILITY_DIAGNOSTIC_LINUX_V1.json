@@ -202,7 +202,7 @@
             "tol_gap_abs": "1e-09",
             "tol_gap_rel": "1e-09"
           },
-          "solve_time": 0.000332093,
+          "solve_time": 0.0003827,
           "solver_name": "CLARABEL",
           "status": "optimal"
         }
@@ -232,7 +232,7 @@
     },
     "python_implementation": "CPython",
     "python_version": "3.11.16",
-    "repository_head": "35cc57c4be3cd6a8f222e48b4310b54c0746b059"
+    "repository_head": "15b9bca5c101148cbce6441e0b38da4d362b8503"
   },
   "frozen_target_artifact": {
     "committed_sha256": "f7bf398d7f8a016933cbe287bfa1cac98b3cccf175d40ef99092b95db1227e47",
@@ -241,6 +241,12 @@
     "last_date": "2026-08-03",
     "observed_normalized_sha256": "f7bf398d7f8a016933cbe287bfa1cac98b3cccf175d40ef99092b95db1227e47",
     "path": "research/results/s4c_pit_corrected_frozen_targets_v1.csv"
+  },
+  "inputs": {
+    "fallback_windows": 23,
+    "note": "\u6307\u7eb9\u8986\u76d6\u9010\u6708 aligned returns window \u7684\u5168\u90e8\u6570\u503c\u4e0e\u8d44\u4ea7\u5217\uff0c\u7528\u4e8e\u9694\u79bb solver \u4e0e\u6570\u636e\u8def\u5f84\u3002",
+    "returns_window_sha256": "450a66193d2e1c7a9f7236cc3dfbf3c7d1d823ab345f2496a7297244c481903c",
+    "risk_windows": 149
   },
   "purpose": "measure committed vs re-derived frozen S4C targets across environments",
   "read_only": true,

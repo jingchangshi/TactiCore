@@ -309,6 +309,38 @@ def schedule_shape(schedule: pd.DataFrame) -> dict[str, Any]:
     }
 
 
+def return_window_provenance(prices: pd.DataFrame) -> dict[str, Any]:
+    """对每个 RISK 月的 aligned returns window 做逐值指纹。
+
+    若该指纹跨环境一致，则差异只能来自数值求解器/BLAS，而不是数据对齐、复权或 pandas 语义。
+    """
+    from hashlib import sha256
+
+    from research.experiments.run_s4c_erc_skfolio_transfer import aligned_window
+
+    risk_symbols = review.load_review_inputs()[4]
+    risk = prices.loc[:, list(risk_symbols)]
+    month_ends = pd.DatetimeIndex(prices.index).to_period("M")
+    ends = list(prices.groupby(month_ends).tail(1).index)
+    digest = sha256()
+    risk_windows = 0
+    fallback_windows = 0
+    for date in ends:
+        window = aligned_window(risk, pd.Timestamp(date), review.PRICE_WINDOW)
+        if len(window) != review.PRICE_WINDOW:
+            fallback_windows += 1
+            continue
+        returns = window.pct_change(fill_method=None).dropna(how="any")
+        digest.update(returns.to_csv(float_format="%.17g", lineterminator="\n").encode())
+        risk_windows += 1
+    return {
+        "risk_windows": risk_windows,
+        "fallback_windows": fallback_windows,
+        "returns_window_sha256": digest.hexdigest(),
+        "note": "指纹覆盖逐月 aligned returns window 的全部数值与资产列，用于隔离 solver 与数据路径。",
+    }
+
+
 def economic_materiality(
     committed: pd.DataFrame,
     derived: pd.DataFrame,
@@ -401,6 +433,7 @@ def build_report(label: str, repository_head: str | None) -> dict[str, Any]:
         },
         "environment": environment_fingerprint(label, repository_head, prices),
         "comparison": comparison_report(committed, derived),
+        "inputs": return_window_provenance(prices),
         "structure": {
             "committed": schedule_shape(committed),
             "derived": schedule_shape(derived),

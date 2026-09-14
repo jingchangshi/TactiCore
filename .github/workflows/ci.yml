@@ -19,6 +19,13 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: uv sync --extra dev --extra research
+      # 只读跨环境数值可移植性诊断：比较 committed 冻结目标与重推导日程，并把环境指纹与
+      # 逐值差异写入 job log。credential-free：不调用 Tushare、不下载数据、不写 repository evidence。
+      - name: S4C numerical portability diagnostic
+        run: >-
+          uv run python research/experiments/s4c_numerical_portability_diagnostic.py
+          --output /tmp/s4c_numerical_portability_diagnostic.json
+          --environment-label github_actions_ubuntu
       - name: pytest
         run: uv run pytest -q
       - name: ruff check

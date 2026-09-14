@@ -1,0 +1,206 @@
+{
+  "artifacts_modified": [],
+  "classification": "PENDING_INDEPENDENT_REVIEW",
+  "comparison": {
+    "absolute_delta_percentiles": {
+      "p100": 2.7996468267524333e-05,
+      "p50": 2.7755575615628914e-17,
+      "p90": 1.9255551316980926e-06,
+      "p95": 4.680856715108523e-06,
+      "p99": 1.1734893465563683e-05
+    },
+    "asset_columns_identical": true,
+    "committed_columns": [
+      "510300.SS",
+      "510500.SS",
+      "513500.SS",
+      "513100.SS",
+      "159920.SZ",
+      "513520.SS",
+      "513030.SS",
+      "518880.SS",
+      "159980.SZ",
+      "511010.SS",
+      "511260.SS",
+      "511880.SS"
+    ],
+    "committed_row_weight_sum_bounds": [
+      0.9999999999999992,
+      1.0
+    ],
+    "committed_rows": 161,
+    "comparable": true,
+    "count_above_threshold": {
+      "1e-02": 0,
+      "1e-04": 0,
+      "1e-05": 30,
+      "1e-06": 243,
+      "1e-08": 418,
+      "1e-10": 431,
+      "1e-12": 431
+    },
+    "derived_row_weight_sum_bounds": [
+      0.9999999999999998,
+      1.0000000000000002
+    ],
+    "derived_rows": 161,
+    "elements_compared": 1932,
+    "execution_date_index_identical": true,
+    "largest_differing_dates_assets": [
+      {
+        "absolute_delta": 2.7996468267524333e-05,
+        "committed_weight": 0.0770328758749008,
+        "derived_weight": 0.07706087234316833,
+        "execution_date": "2018-10-08",
+        "symbol": "159920.SZ"
+      },
+      {
+        "absolute_delta": 2.225106682081368e-05,
+        "committed_weight": 0.0857780023105121,
+        "derived_weight": 0.08580025337733291,
+        "execution_date": "2024-04-01",
+        "symbol": "513100.SS"
+      },
+      {
+        "absolute_delta": 2.0181682077902163e-05,
+        "committed_weight": 0.1214848107562207,
+        "derived_weight": 0.1214646290741428,
+        "execution_date": "2015-08-03",
+        "symbol": "513030.SS"
+      },
+      {
+        "absolute_delta": 1.924934427055547e-05,
+        "committed_weight": 0.2911243435493711,
+        "derived_weight": 0.29110509420510056,
+        "execution_date": "2023-01-03",
+        "symbol": "518880.SS"
+      },
+      {
+        "absolute_delta": 1.918977079136408e-05,
+        "committed_weight": 0.0718217038320282,
+        "derived_weight": 0.07184089360281956,
+        "execution_date": "2022-01-04",
+        "symbol": "513100.SS"
+      },
+      {
+        "absolute_delta": 1.8648883418598272e-05,
+        "committed_weight": 0.1157766747668305,
+        "derived_weight": 0.1157580258834119,
+        "execution_date": "2024-08-01",
+        "symbol": "513500.SS"
+      },
+      {
+        "absolute_delta": 1.754525450833877e-05,
+        "committed_weight": 0.1111730611273671,
+        "derived_weight": 0.11115551587285877,
+        "execution_date": "2024-04-01",
+        "symbol": "513500.SS"
+      },
+      {
+        "absolute_delta": 1.6905727805965887e-05,
+        "committed_weight": 0.1017849698990611,
+        "derived_weight": 0.10176806417125514,
+        "execution_date": "2023-12-01",
+        "symbol": "513500.SS"
+      },
+      {
+        "absolute_delta": 1.6599678207440682e-05,
+        "committed_weight": 0.0859353417820739,
+        "derived_weight": 0.08591874210386646,
+        "execution_date": "2021-02-01",
+        "symbol": "513100.SS"
+      },
+      {
+        "absolute_delta": 1.6338591721329343e-05,
+        "committed_weight": 0.0803236625154604,
+        "derived_weight": 0.08030732392373907,
+        "execution_date": "2018-10-08",
+        "symbol": "510500.SS"
+      }
+    ],
+    "maximum_absolute_delta": 2.7996468267524333e-05,
+    "maximum_row_weight_sum_difference": 7.771561172376096e-16,
+    "maximum_weight_identity_change_count": 0,
+    "maximum_weight_identity_changes": [],
+    "mean_absolute_delta": 6.891444410562036e-07,
+    "nonnegative_committed": true,
+    "nonnegative_derived": true,
+    "per_month_maximum_weight_delta": {
+      "maximum": 2.7996468267524333e-05,
+      "median": 9.71445146547012e-17
+    },
+    "support_change_count": 0,
+    "support_changes": []
+  },
+  "derivation": {
+    "derived_first_date": "2013-04-01",
+    "derived_rows": 161,
+    "derived_serialized_matches_committed": false,
+    "derived_sha256": "f6d3db5773c4c8f1fabe7bd61abbd2f8bbcbd17717d4d4feff5927d7f2775bc8",
+    "price_window": 61,
+    "returns_window": 60,
+    "risk_regime_months": 149,
+    "serialized_line_differences": 54
+  },
+  "diagnostic": "S4C_NUMERICAL_PORTABILITY_DIAGNOSTIC_V1",
+  "environment": {
+    "architecture": "x86_64",
+    "blas_lapack": {
+      "available": true,
+      "blas": "openblas64",
+      "lapack": "dep140213194937296"
+    },
+    "environment_label": "clean_linux_wsl_ubuntu",
+    "erc_solver_probe": {
+      "available": true,
+      "captured": [
+        {
+          "num_iters": 17,
+          "solve_kwargs": {
+            "solver": "CLARABEL",
+            "tol_gap_abs": "1e-09",
+            "tol_gap_rel": "1e-09"
+          },
+          "solve_time": 0.0003429,
+          "solver_name": "CLARABEL",
+          "status": "optimal"
+        }
+      ],
+      "num_iters": null,
+      "probe_signal_date": "2026-08-31",
+      "problem_attribute": null,
+      "solve_calls": 1,
+      "solve_time": null,
+      "solver_name": null,
+      "status": null
+    },
+    "github_actions": null,
+    "installed_cvxpy_solvers": [
+      "CLARABEL",
+      "SCIPY"
+    ],
+    "os": "Linux",
+    "os_release": "6.6.87.2-microsoft-standard-WSL2",
+    "package_versions": {
+      "cvxpy": null,
+      "cvxpy-base": "1.7.5",
+      "numpy": "1.26.4",
+      "pandas": "2.3.3",
+      "scipy": "1.17.1",
+      "skfolio": "1.0.6"
+    },
+    "python_implementation": "CPython",
+    "python_version": "3.11.16",
+    "repository_head": "31833879a2fd5ed76834abe64e8d7addeeec17f1"
+  },
+  "frozen_target_artifact": {
+    "committed_sha256": "f7bf398d7f8a016933cbe287bfa1cac98b3cccf175d40ef99092b95db1227e47",
+    "expected_rows": 161,
+    "first_date": "2013-04-01",
+    "last_date": "2026-08-03",
+    "observed_normalized_sha256": "f7bf398d7f8a016933cbe287bfa1cac98b3cccf175d40ef99092b95db1227e47",
+    "path": "research/results/s4c_pit_corrected_frozen_targets_v1.csv"
+  },
+  "purpose": "measure committed vs re-derived frozen S4C targets across environments",
+  "read_only": true
+}

@@ -1,0 +1,206 @@
+{
+  "artifacts_modified": [],
+  "classification": "PENDING_INDEPENDENT_REVIEW",
+  "comparison": {
+    "absolute_delta_percentiles": {
+      "p100": 1.1102230246251565e-16,
+      "p50": 1.3877787807814457e-17,
+      "p90": 8.326672684688674e-17,
+      "p95": 8.326672684688674e-17,
+      "p99": 9.71445146547012e-17
+    },
+    "asset_columns_identical": true,
+    "committed_columns": [
+      "510300.SS",
+      "510500.SS",
+      "513500.SS",
+      "513100.SS",
+      "159920.SZ",
+      "513520.SS",
+      "513030.SS",
+      "518880.SS",
+      "159980.SZ",
+      "511010.SS",
+      "511260.SS",
+      "511880.SS"
+    ],
+    "committed_row_weight_sum_bounds": [
+      0.9999999999999992,
+      1.0
+    ],
+    "committed_rows": 161,
+    "comparable": true,
+    "count_above_threshold": {
+      "1e-02": 0,
+      "1e-04": 0,
+      "1e-05": 0,
+      "1e-06": 0,
+      "1e-08": 0,
+      "1e-10": 0,
+      "1e-12": 0
+    },
+    "derived_row_weight_sum_bounds": [
+      0.9999999999999998,
+      1.0000000000000002
+    ],
+    "derived_rows": 161,
+    "elements_compared": 1932,
+    "execution_date_index_identical": true,
+    "largest_differing_dates_assets": [
+      {
+        "absolute_delta": 1.1102230246251565e-16,
+        "committed_weight": 0.3273949940911158,
+        "derived_weight": 0.3273949940911159,
+        "execution_date": "2018-02-01",
+        "symbol": "518880.SS"
+      },
+      {
+        "absolute_delta": 1.1102230246251565e-16,
+        "committed_weight": 0.5912680791699902,
+        "derived_weight": 0.5912680791699904,
+        "execution_date": "2019-03-01",
+        "symbol": "518880.SS"
+      },
+      {
+        "absolute_delta": 1.1102230246251565e-16,
+        "committed_weight": 0.5260977385042175,
+        "derived_weight": 0.5260977385042176,
+        "execution_date": "2018-08-01",
+        "symbol": "518880.SS"
+      },
+      {
+        "absolute_delta": 1.1102230246251565e-16,
+        "committed_weight": 0.2653948950217774,
+        "derived_weight": 0.2653948950217775,
+        "execution_date": "2025-09-01",
+        "symbol": "518880.SS"
+      },
+      {
+        "absolute_delta": 1.1102230246251565e-16,
+        "committed_weight": 0.331978381323941,
+        "derived_weight": 0.3319783813239411,
+        "execution_date": "2022-03-01",
+        "symbol": "518880.SS"
+      },
+      {
+        "absolute_delta": 1.1102230246251565e-16,
+        "committed_weight": 0.2557582017343746,
+        "derived_weight": 0.2557582017343747,
+        "execution_date": "2015-04-01",
+        "symbol": "518880.SS"
+      },
+      {
+        "absolute_delta": 1.1102230246251565e-16,
+        "committed_weight": 0.6124301595299432,
+        "derived_weight": 0.6124301595299433,
+        "execution_date": "2018-12-03",
+        "symbol": "518880.SS"
+      },
+      {
+        "absolute_delta": 1.1102230246251565e-16,
+        "committed_weight": 0.506835424385838,
+        "derived_weight": 0.5068354243858381,
+        "execution_date": "2018-04-02",
+        "symbol": "518880.SS"
+      },
+      {
+        "absolute_delta": 1.1102230246251565e-16,
+        "committed_weight": 0.4064568994433135,
+        "derived_weight": 0.4064568994433136,
+        "execution_date": "2018-10-08",
+        "symbol": "518880.SS"
+      },
+      {
+        "absolute_delta": 1.1102230246251565e-16,
+        "committed_weight": 0.6635020010633353,
+        "derived_weight": 0.6635020010633355,
+        "execution_date": "2019-01-02",
+        "symbol": "518880.SS"
+      }
+    ],
+    "maximum_absolute_delta": 1.1102230246251565e-16,
+    "maximum_row_weight_sum_difference": 7.771561172376096e-16,
+    "maximum_weight_identity_change_count": 0,
+    "maximum_weight_identity_changes": [],
+    "mean_absolute_delta": 2.9447200371705676e-17,
+    "nonnegative_committed": true,
+    "nonnegative_derived": true,
+    "per_month_maximum_weight_delta": {
+      "maximum": 1.1102230246251565e-16,
+      "median": 8.326672684688674e-17
+    },
+    "support_change_count": 0,
+    "support_changes": []
+  },
+  "derivation": {
+    "derived_first_date": "2013-04-01",
+    "derived_rows": 161,
+    "derived_serialized_matches_committed": true,
+    "derived_sha256": "f7bf398d7f8a016933cbe287bfa1cac98b3cccf175d40ef99092b95db1227e47",
+    "price_window": 61,
+    "returns_window": 60,
+    "risk_regime_months": 149,
+    "serialized_line_differences": 0
+  },
+  "diagnostic": "S4C_NUMERICAL_PORTABILITY_DIAGNOSTIC_V1",
+  "environment": {
+    "architecture": "AMD64",
+    "blas_lapack": {
+      "available": true,
+      "blas": "openblas64",
+      "lapack": "dep2270588361616"
+    },
+    "environment_label": "local_windows_development",
+    "erc_solver_probe": {
+      "available": true,
+      "captured": [
+        {
+          "num_iters": 18,
+          "solve_kwargs": {
+            "solver": "CLARABEL",
+            "tol_gap_abs": "1e-09",
+            "tol_gap_rel": "1e-09"
+          },
+          "solve_time": 0.0003522,
+          "solver_name": "CLARABEL",
+          "status": "optimal"
+        }
+      ],
+      "num_iters": null,
+      "probe_signal_date": "2026-08-31",
+      "problem_attribute": null,
+      "solve_calls": 1,
+      "solve_time": null,
+      "solver_name": null,
+      "status": null
+    },
+    "github_actions": null,
+    "installed_cvxpy_solvers": [
+      "CLARABEL",
+      "SCIPY"
+    ],
+    "os": "Windows",
+    "os_release": "10",
+    "package_versions": {
+      "cvxpy": null,
+      "cvxpy-base": "1.7.5",
+      "numpy": "1.26.4",
+      "pandas": "2.3.3",
+      "scipy": "1.17.1",
+      "skfolio": "1.0.6"
+    },
+    "python_implementation": "CPython",
+    "python_version": "3.11.15",
+    "repository_head": "31833879a2fd5ed76834abe64e8d7addeeec17f1"
+  },
+  "frozen_target_artifact": {
+    "committed_sha256": "f7bf398d7f8a016933cbe287bfa1cac98b3cccf175d40ef99092b95db1227e47",
+    "expected_rows": 161,
+    "first_date": "2013-04-01",
+    "last_date": "2026-08-03",
+    "observed_normalized_sha256": "f7bf398d7f8a016933cbe287bfa1cac98b3cccf175d40ef99092b95db1227e47",
+    "path": "research/results/s4c_pit_corrected_frozen_targets_v1.csv"
+  },
+  "purpose": "measure committed vs re-derived frozen S4C targets across environments",
+  "read_only": true
+}

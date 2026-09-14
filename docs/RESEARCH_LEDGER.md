@@ -558,3 +558,41 @@
   candidate vintage 目录；未下载、未冻结、未查看任何真实 2026-09 市场数据。
 - 重开条件：仅当出现新的候选级 contradiction、canonical 数据契约/框架语义变化，或真实前瞻 cycle
   暴露具体 correctness 缺陷时；不得以"再审计一次"、历史收益或时间压力重做本次闭环。
+- 后续状态：本条的 readiness 判定已被 **RL-049 撤销**（clean Linux CI 失败）。本条作为审计历史
+  保持不变，不重写；替代记录见 [Foundation V1 errata / revocation](../research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1_ERRATA.md)。
+
+## RL-049 Foundation V1 readiness 撤销与最终更正闭包
+
+- 策略：N/A（前瞻证据机制，不涉及策略经济语义）
+- 状态：ACTIVE
+- 问题/范围：RL-048 宣布的 `PROSPECTIVE_FOUNDATION_READY_WITH_NONBLOCKING_LIMITATIONS` 是否被
+  可执行证据支持。范围限定为 clean-environment correctness closure：S4C 冻结语义的跨平台可重现性
+  契约、production execution artifact 的生成时间权威、一条集成的 dual-candidate
+  production-path readiness drill，以及 GitHub HEAD CI。不产生 observation、不创建 vintage、
+  不接触 2026-09 数据、不修改候选身份或策略经济语义。
+- 结论：readiness **撤销**。GitHub Actions 在审计时的 `main` HEAD
+  `74613246aab3d93cf381239f3ab499a58f96b555` 上 `pytest = 6 failed / 436 passed`、workflow
+  `conclusion = failure`（run `34854103876`；前一 run `34853395374` 同样失败）。失败全部指向
+  「S4C 冻结语义无法再现 committed 冻结目标日程」，其判据是**跨环境逐字节 / `1e-12` 精确相等**。
+  同一源码在 clean Linux（WSL Ubuntu + `uv sync --frozen`，Python 3.11.16）逐项复现该结果，
+  而在本地 Windows 为 `442 passed`，即 RL-048 的 READY 只由单一平台证据支撑。
+  当前真实状态：
+  `FOUNDATION_V1_READINESS_STATUS = READINESS_REVOKED_PENDING_CORRECTION`、
+  `PROSPECTIVE_FOUNDATION_IMPLEMENTATION_GATE = FAIL`、
+  `PROSPECTIVE_FOUNDATION_DECISION = BLOCKED_BY_PROSPECTIVE_CORRECTNESS`、
+  `CURRENT_FRONTIER = PROSPECTIVE_FOUNDATION_V1_FINAL_CORRECTIVE_CLOSURE`。
+- 结论边界：这不否证 Foundation 已实现的不变量（snapshot 身份、temporal seal、artifact→metrics
+  绑定），也不代表策略语义变化；它只说明 readiness 断言超出了证据。差异的**可接受性**尚未裁决，
+  必须先做有界的 `S4C_PORTABILITY_DIAGNOSIS`，之后才允许预注册可移植 reproduction 契约；
+  不得跳过诊断直接放宽容差，也不得跳过、xfail、平台条件禁用或删除精确身份检查。
+  本条**不**授权任何候选提升、组合候选、portfolio promotion、S27A 或新策略工作。
+- 证据：[Foundation V1 errata / revocation](../research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1_ERRATA.md)、
+  [原始 readiness 判定](../research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1.md)（历史，不修改）、
+  [INVALID_RUN R1](../research/results/INVALID_RUN_S4C_EXECUTION_R1.md)（同类 platform-bound
+  reproduction 判据的先例）、[Platform evidence](../research/results/PHASE_A_WINDOWS_NATIVE_PORTABILITY_AUDIT_V1.md)。
+- 数据快照：canonical 同 RL-001；两个候选 `observations.csv` 仍仅表头（`0` 行）；无候选 vintage
+  目录；未下载、未冻结、未查看任何真实 2026-09 市场数据；冻结目标文件与两个 candidate manifest
+  未被本次更正触碰。
+- 重开条件：本条在更正闭包完成并由独立 review 判定 `PROSPECTIVE_FOUNDATION_IMPLEMENTATION_GATE`
+  后才可关闭；不得以历史收益、时间压力或"再审计一次"替代可执行证据，也不得在未完成诊断的情况下
+  以容差调整关闭本条。

@@ -741,6 +741,30 @@ def _require_native_frame(analyser: Mapping[str, Any], name: str) -> pd.DataFram
     return frame
 
 
+def _require_positions_frame(analyser: Mapping[str, Any]) -> pd.DataFrame:
+    """stock_positions 必须带原生字段，但允许为空（全现金执行是合法观测）。"""
+    frame = analyser.get("stock_positions")
+    if not isinstance(frame, pd.DataFrame):
+        raise ValueError("native RQAlpha analyser 缺少 stock_positions")
+    missing = {"order_book_id", "market_value"}.difference(frame.columns)
+    if missing:
+        raise ValueError(f"native stock_positions 缺少字段: {sorted(missing)}")
+    return frame
+
+
+def require_replayed_observation(replayed_dates: object, *, execution_date: object) -> None:
+    """只有原生 replay 真的在该观测日发生过，才允许产生 EXECUTED。"""
+    if replayed_dates is None:
+        raise ValueError("native replay 缺少 replayed_dates：无法证明 execution 观测真实发生")
+    day = pd.Timestamp(execution_date).normalize()
+    try:
+        observed = pd.DatetimeIndex(pd.to_datetime(list(replayed_dates))).normalize()
+    except (TypeError, ValueError) as error:
+        raise ValueError("native replay 的 replayed_dates 不可解析") from error
+    if observed.empty or day not in observed:
+        raise ValueError(f"native replay 未在 {day.date().isoformat()} 观测：不得据此产生 EXECUTED")
+
+
 def _native_order_events(order_events: object, day: pd.Timestamp) -> list[dict[str, str]]:
     """把捕获到的原生 order events 压缩成 native 说明记录。"""
     if not isinstance(order_events, pd.DataFrame):
@@ -748,9 +772,16 @@ def _native_order_events(order_events: object, day: pd.Timestamp) -> list[dict[s
     missing = set(NATIVE_ORDER_EVENT_COLUMNS).difference(order_events.columns)
     if missing:
         raise ValueError(f"native order events 缺少字段: {sorted(missing)}")
-    frame = order_events
-    if isinstance(frame.index, pd.DatetimeIndex):
-        frame = frame.loc[frame.index.normalize() == day]
+    if "date" in order_events.columns:
+        event_dates = pd.to_datetime(order_events["date"]).dt.normalize()
+        frame = order_events.loc[event_dates == day]
+    elif isinstance(order_events.index, pd.DatetimeIndex):
+        frame = order_events.loc[order_events.index.normalize() == day]
+    else:
+        raise ValueError(
+            "native order events 必须携带 date 列（或 DatetimeIndex），"
+            "否则无法把说明绑定到指定 execution 日"
+        )
     records: list[dict[str, str]] = []
     for row in frame.loc[:, list(NATIVE_ORDER_EVENT_COLUMNS)].itertuples(index=False):
         code = "" if pd.isna(row.rqalpha_symbol) else str(row.rqalpha_symbol)
@@ -767,24 +798,29 @@ def _native_order_events(order_events: object, day: pd.Timestamp) -> list[dict[s
 
 
 def extract_native_execution_block(
-    analyser: Mapping[str, Any], order_events: object, *, execution_date: object
+    analyser: Mapping[str, Any],
+    order_events: object,
+    replayed_dates: object,
+    *,
+    execution_date: object,
 ) -> dict[str, Any]:
     """把 RQAlpha 原生 sys_analyser / order events 抽取成 normalized native facts。
 
     这是唯一的 native 抽取入口：调用方不能提供 weights、cash、turnover、回撤或状态。
+    `replayed_dates` 是冻结回放回调实际观测到的日期；只有该日真实回放过才产生 EXECUTED。
     """
     if not isinstance(analyser, Mapping):
         raise ValueError("native RQAlpha analyser 必须是 mapping")
     day = pd.Timestamp(execution_date).normalize()
+    require_replayed_observation(replayed_dates, execution_date=day)
     portfolio = _require_native_frame(analyser, "portfolio")
-    positions = _require_native_frame(analyser, "stock_positions")
+    positions = _require_positions_frame(analyser)
     summary = analyser.get("summary")
     if not isinstance(summary, Mapping):
         raise ValueError("native RQAlpha analyser 缺少 summary")
     if day not in portfolio.index:
         raise ValueError(
-            f"native replay 未覆盖请求的 execution 观测日 {day.date().isoformat()}："
-            "无法证明该 execution 观测真实发生"
+            f"native analyser portfolio 未覆盖请求的 execution 观测日 {day.date().isoformat()}"
         )
     portfolio_row = portfolio.loc[day]
     total_value = parse_finite_float(
@@ -812,6 +848,7 @@ def extract_native_execution_block(
 def build_rqalpha_execution_artifact_from_analyser(
     analyser: Mapping[str, Any],
     order_events: object,
+    replayed_dates: object,
     *,
     root: Path,
     candidate_id: str,
@@ -828,7 +865,9 @@ def build_rqalpha_execution_artifact_from_analyser(
         .tz_localize(None)
         .normalize()
     )
-    native = extract_native_execution_block(analyser, order_events, execution_date=execution_day)
+    native = extract_native_execution_block(
+        analyser, order_events, replayed_dates, execution_date=execution_day
+    )
     return build_rqalpha_execution_artifact_payload(
         root=root,
         candidate_id=candidate_id,
@@ -844,6 +883,7 @@ def build_rqalpha_execution_artifact_from_analyser(
 def freeze_prospective_execution_artifact(
     analyser: Mapping[str, Any],
     order_events: object,
+    replayed_dates: object,
     *,
     root: Path,
     decision: Mapping[str, str],
@@ -857,6 +897,7 @@ def freeze_prospective_execution_artifact(
     payload = build_rqalpha_execution_artifact_from_analyser(
         analyser,
         order_events,
+        replayed_dates,
         root=root,
         candidate_id=decision["candidate_id"],
         signal_date=decision["signal_date"],

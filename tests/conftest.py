@@ -218,16 +218,22 @@ def rqalpha_analyser_fixture(
     max_drawdown: float = 0.0,
     total_value: float = 1_000_000.0,
     order_events: tuple[tuple[str, str, str], ...] = (),
-) -> tuple[dict[str, Any], pd.DataFrame]:
-    """构造 RQAlpha 原生形状的 sys_analyser + order events（synthetic，不运行 RQAlpha）。"""
+    replayed_dates: tuple[str, ...] | None = None,
+    positions_empty: bool = False,
+) -> tuple[dict[str, Any], pd.DataFrame, list[pd.Timestamp]]:
+    """构造冻结回放回调的真实返回形状：sys_analyser + events（含 date 列）+ replayed_dates。"""
     universe = pd.read_csv(root / "config/universe.csv")
     code_by_symbol = dict(zip(universe["symbol"], universe["rqalpha_symbol"], strict=True))
     day = pd.Timestamp(execution_date).normalize()
-    holdings = {
-        code_by_symbol[str(symbol)]: float(weight) * total_value
-        for symbol, weight in realized_weights.items()
-        if float(weight) > 0.0
-    }
+    holdings = (
+        {}
+        if positions_empty
+        else {
+            code_by_symbol[str(symbol)]: float(weight) * total_value
+            for symbol, weight in realized_weights.items()
+            if float(weight) > 0.0
+        }
+    )
     portfolio = pd.DataFrame(
         {"cash": [float(cash_weight) * total_value], "total_value": [float(total_value)]},
         index=pd.DatetimeIndex([day], name="date"),
@@ -242,18 +248,24 @@ def rqalpha_analyser_fixture(
     )
     events = pd.DataFrame(
         {
+            "event": ["ORDER_CREATION_PASS"] * len(order_events),
+            "date": [day] * len(order_events),
             "rqalpha_symbol": [str(code) for code, _, _ in order_events],
             "status": [str(status) for _, status, _ in order_events],
             "message": [str(message) for _, _, message in order_events],
         },
-        index=pd.DatetimeIndex([day] * len(order_events), name="date"),
     )
     analyser = {
         "portfolio": portfolio,
         "stock_positions": positions,
         "summary": {"turnover": float(turnover), "max_drawdown": float(max_drawdown)},
     }
-    return analyser, events
+    replayed = (
+        [day]
+        if replayed_dates is None
+        else [pd.Timestamp(value).normalize() for value in replayed_dates]
+    )
+    return analyser, events, replayed
 
 
 def write_execution_artifact(
@@ -279,7 +291,7 @@ def write_execution_artifact(
     cash、turnover、status 与 native 说明全部由 producer 推导。
     """
     targets = {str(symbol): float(weight) for symbol, weight in desired_targets.items()}
-    analyser, events = rqalpha_analyser_fixture(
+    analyser, events, replayed = rqalpha_analyser_fixture(
         root,
         execution_date=pd.Timestamp(execution_timestamp)
         .tz_convert("Asia/Shanghai")
@@ -300,6 +312,7 @@ def write_execution_artifact(
     pe.freeze_prospective_execution_artifact(
         analyser,
         events,
+        replayed,
         root=root,
         decision=decision,
         artifact_relative_path=relative_path,

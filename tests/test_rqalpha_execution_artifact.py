@@ -40,11 +40,17 @@ def _targets(root: Path) -> dict[str, float]:
 
 
 def _produce_from_analyser(
-    root: Path, *, targets: dict[str, float], analyser: dict[str, Any], events: pd.DataFrame
+    root: Path,
+    *,
+    targets: dict[str, float],
+    analyser: dict[str, Any],
+    events: pd.DataFrame,
+    replayed: list[pd.Timestamp],
 ) -> dict[str, Any]:
     return pe.build_rqalpha_execution_artifact_from_analyser(
         analyser,
         events,
+        replayed,
         root=root,
         candidate_id="S2_R1",
         signal_date=SIGNAL_DATE,
@@ -58,7 +64,7 @@ def _produce_from_analyser(
 def test_native_positions_and_cash_produce_the_derived_execution_facts(repo: Path) -> None:
     targets = _targets(repo)
     symbol = next(iter(targets))
-    analyser, events = rqalpha_analyser_fixture(
+    analyser, events, replayed = rqalpha_analyser_fixture(
         repo,
         execution_date=EXECUTION_DATE,
         realized_weights={symbol: 0.75},
@@ -68,7 +74,9 @@ def test_native_positions_and_cash_produce_the_derived_execution_facts(repo: Pat
         total_value=2_000_000.0,
     )
 
-    payload = _produce_from_analyser(repo, targets=targets, analyser=analyser, events=events)
+    payload = _produce_from_analyser(
+        repo, targets=targets, analyser=analyser, events=events, replayed=replayed
+    )
 
     assert payload["realized_weights"][symbol] == pytest.approx(0.75)
     assert payload["cash_weight"] == pytest.approx(0.25)
@@ -82,11 +90,13 @@ def test_native_positions_and_cash_produce_the_derived_execution_facts(repo: Pat
 def test_missing_native_position_becomes_zero_weight(repo: Path) -> None:
     targets = _targets(repo)
     held, absent = list(targets)[0], list(targets)[1]
-    analyser, events = rqalpha_analyser_fixture(
+    analyser, events, replayed = rqalpha_analyser_fixture(
         repo, execution_date=EXECUTION_DATE, realized_weights={held: 1.0}
     )
 
-    payload = _produce_from_analyser(repo, targets=targets, analyser=analyser, events=events)
+    payload = _produce_from_analyser(
+        repo, targets=targets, analyser=analyser, events=events, replayed=replayed
+    )
 
     assert payload["realized_weights"][held] == pytest.approx(1.0)
     assert payload["realized_weights"][absent] == 0.0
@@ -111,7 +121,7 @@ def test_production_seam_exposes_no_execution_metrics() -> None:
 
 def test_producer_rejects_native_facts_that_do_not_add_up(repo: Path) -> None:
     targets = _targets(repo)
-    analyser, events = rqalpha_analyser_fixture(
+    analyser, events, replayed = rqalpha_analyser_fixture(
         repo,
         execution_date=EXECUTION_DATE,
         realized_weights={list(targets)[0]: 0.5},
@@ -119,29 +129,102 @@ def test_producer_rejects_native_facts_that_do_not_add_up(repo: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="合计必须等于"):
-        _produce_from_analyser(repo, targets=targets, analyser=analyser, events=events)
+        _produce_from_analyser(
+            repo, targets=targets, analyser=analyser, events=events, replayed=replayed
+        )
 
 
 def test_producer_rejects_universe_foreign_native_symbols(repo: Path) -> None:
     targets = _targets(repo)
-    analyser, events = rqalpha_analyser_fixture(
+    analyser, events, replayed = rqalpha_analyser_fixture(
         repo, execution_date=EXECUTION_DATE, realized_weights={list(targets)[0]: 1.0}
     )
     analyser["stock_positions"] = analyser["stock_positions"].assign(order_book_id="999999.XSHG")
 
     with pytest.raises(ValueError, match="rqalpha_symbol"):
-        _produce_from_analyser(repo, targets=targets, analyser=analyser, events=events)
+        _produce_from_analyser(
+            repo, targets=targets, analyser=analyser, events=events, replayed=replayed
+        )
 
 
-def test_missing_requested_replay_observation_is_rejected(repo: Path) -> None:
-    """请求的 execution 观测日不在 native replay 中时必须拒绝，而不是猜测。"""
+def test_portfolio_observation_without_a_replay_is_rejected(repo: Path) -> None:
+    """portfolio 里恰好有该日，但 replay 没有在该日发生：仍必须拒绝。"""
     targets = _targets(repo)
-    analyser, events = rqalpha_analyser_fixture(
-        repo, execution_date="2026-10-08", realized_weights={list(targets)[0]: 1.0}
+    analyser, events, _replayed = rqalpha_analyser_fixture(
+        repo,
+        execution_date=EXECUTION_DATE,
+        realized_weights={list(targets)[0]: 1.0},
+        replayed_dates=("2026-10-08",),
     )
 
-    with pytest.raises(ValueError, match="未覆盖请求的 execution 观测日"):
-        _produce_from_analyser(repo, targets=targets, analyser=analyser, events=events)
+    with pytest.raises(ValueError, match="未在 2026-10-09 观测"):
+        _produce_from_analyser(
+            repo, targets=targets, analyser=analyser, events=events, replayed=[_replayed[0]]
+        )
+
+
+def test_replayed_observation_derives_executed_status(repo: Path) -> None:
+    targets = _targets(repo)
+    analyser, events, replayed = rqalpha_analyser_fixture(
+        repo,
+        execution_date=EXECUTION_DATE,
+        realized_weights={list(targets)[0]: 1.0},
+        replayed_dates=(EXECUTION_DATE,),
+    )
+
+    payload = _produce_from_analyser(
+        repo, targets=targets, analyser=analyser, events=events, replayed=replayed
+    )
+
+    assert payload["execution_status"] == pe.RQALPHA_EXECUTED_STATUS
+
+
+def test_order_events_are_filtered_by_the_native_date_column(repo: Path) -> None:
+    """同标的在两个日期都有 native event 时，只允许 execution 日的说明进入 artifact。"""
+    targets = _targets(repo)
+    code = rqalpha_code(repo, list(targets)[0])
+    analyser, events, replayed = rqalpha_analyser_fixture(
+        repo,
+        execution_date=EXECUTION_DATE,
+        realized_weights={list(targets)[0]: 1.0},
+        order_events=((code, "ACTIVE", "execution 日说明"),),
+    )
+    stale = pd.DataFrame(
+        {
+            "event": ["ORDER_CREATION_REJECT"],
+            "date": [pd.Timestamp("2026-10-08")],
+            "rqalpha_symbol": [code],
+            "status": ["REJECTED"],
+            "message": ["上一日说明"],
+        }
+    )
+    events = pd.concat([stale, events], ignore_index=True)
+
+    payload = _produce_from_analyser(
+        repo, targets=targets, analyser=analyser, events=events, replayed=replayed
+    )
+
+    assert payload["native_evidence"] == {list(targets)[0]: "execution 日说明"}
+    assert [event["message"] for event in payload["native"]["order_events"]] == ["execution 日说明"]
+
+
+def test_all_cash_execution_with_empty_positions_is_accepted(repo: Path) -> None:
+    """持仓为空的合法观测：全部现金、资产权重为零。"""
+    targets = _targets(repo)
+    analyser, events, replayed = rqalpha_analyser_fixture(
+        repo,
+        execution_date=EXECUTION_DATE,
+        realized_weights={},
+        cash_weight=1.0,
+        positions_empty=True,
+    )
+
+    payload = _produce_from_analyser(
+        repo, targets=targets, analyser=analyser, events=events, replayed=replayed
+    )
+
+    assert payload["cash_weight"] == pytest.approx(1.0)
+    assert set(payload["realized_weights"].values()) == {0.0}
 
 
 def test_production_seam_writes_the_artifact_and_returns_an_identity(repo: Path) -> None:
@@ -151,13 +234,14 @@ def test_production_seam_writes_the_artifact_and_returns_an_identity(repo: Path)
         "signal_date": SIGNAL_DATE,
         "desired_targets": json.dumps(targets, ensure_ascii=False, sort_keys=True),
     }
-    analyser, events = rqalpha_analyser_fixture(
+    analyser, events, replayed = rqalpha_analyser_fixture(
         repo, execution_date=EXECUTION_DATE, realized_weights={list(targets)[0]: 1.0}
     )
 
     identity = pe.freeze_prospective_execution_artifact(
         analyser,
         events,
+        replayed,
         root=repo,
         decision=decision,
         artifact_relative_path=ARTIFACT_RELATIVE_PATH,

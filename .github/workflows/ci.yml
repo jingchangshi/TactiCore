@@ -1,0 +1,39 @@
+name: CI
+
+# 极薄的 credential-free CI：只跑 deterministic 测试、静态检查与只读 candidate 校验。
+# 它**不**调用 Tushare、不需要 TUSHARE_TOKEN、不下载真实市场数据、不运行真实 RQAlpha
+# research experiment、不创建 vintage、不产生任何 observation。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: uv sync --extra dev --extra research
+      - name: pytest
+        run: uv run pytest -q
+      - name: ruff check
+        run: uv run ruff check .
+      - name: ruff format --check
+        run: uv run ruff format --check .
+      - name: mypy
+        run: uv run mypy
+      # 只读、与未来 observation 兼容的 candidate 校验；不使用 stage-specific
+      # --verify-no-observations，以免首个真实前瞻 observation 之后 CI 失效。
+      - name: S2 candidate verification
+        run: uv run python research/experiments/run_s2_r1_shadow.py --verify-candidate
+      - name: S4C candidate verification
+        run: uv run python research/experiments/verify_s4c_r1_candidate.py --verify-candidate
+      - name: S4C prospective shadow verification
+        run: >-
+          uv run python research/experiments/run_s4c_r1_shadow.py
+          --verify-candidate --verify-activation

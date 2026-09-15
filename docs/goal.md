@@ -1,51 +1,55 @@
 # TactiCore — 当前执行指令
 
-状态：Foundation V1 的 readiness 已被撤销（RL-049），开发重新打开，仅用于更正闭包。
+状态：Foundation V1 实现完成并通过独立 revalidation，开发冻结，等待真实前瞻时间。
 
 ## 当前唯一前沿
 
 ```text
-PROSPECTIVE_FOUNDATION_V1_FINAL_CORRECTIVE_CLOSURE
+AWAIT_2026_09_30_DUAL_CANDIDATE_PROSPECTIVE_DECISION_CYCLE
 ```
 
-## 触发原因
+## 已完成
 
-RL-048 曾宣布：
+`PROSPECTIVE_EVIDENCE_FOUNDATION_V1_FOR_S2_AND_S4C` 的历史链完整保留并可复核：
 
 ```text
-PROSPECTIVE_FOUNDATION_DECISION = PROSPECTIVE_FOUNDATION_READY_WITH_NONBLOCKING_LIMITATIONS
+RL-048 原始 readiness
+  → clean Linux CI 反证（74613246：6 failed / 436 passed）
+  → RL-049 显式撤销 / errata
+  → 有界更正闭包（3183387..c70e74e）
+  → RL-050 独立 revalidation
+  → 恢复 READY
 ```
-
-该判定只由本地 Windows 环境支撑。clean Linux（GitHub Actions，审计时 `main` HEAD
-`74613246aab3d93cf381239f3ab499a58f96b555`）给出 `pytest = 6 failed / 436 passed`、
-workflow `conclusion = failure`，失败集中在「S4C 冻结语义无法再现 committed 冻结目标日程」。
-可执行证据优先于状态文档，因此该 READY 已被显式撤销，历史不被改写：
-
-[`PROSPECTIVE_EVIDENCE_FOUNDATION_V1_ERRATA.md`](../research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1_ERRATA.md)
 
 当前真实状态：
 
 ```text
-FOUNDATION_V1_READINESS_STATUS              = READINESS_REVOKED_PENDING_CORRECTION
-PROSPECTIVE_FOUNDATION_IMPLEMENTATION_GATE  = FAIL
-PROSPECTIVE_FOUNDATION_DECISION             = BLOCKED_BY_PROSPECTIVE_CORRECTNESS
+PROSPECTIVE_FOUNDATION_IMPLEMENTATION_GATE = PASS
+PROSPECTIVE_FOUNDATION_DECISION            = PROSPECTIVE_FOUNDATION_READY
+S2_R1                                      = FROZEN / PROSPECTIVE_SHADOW_ACTIVE
+S4C_R1                                     = FROZEN / PROSPECTIVE_SHADOW_ACTIVE
+S2 prospective observations                = 0
+S4C prospective observations               = 0
+DEVELOPMENT_STATUS                         = FROZEN_PENDING_REAL_PROSPECTIVE_TIME
 ```
 
-## 更正范围（有界）
+恢复 READY 的依据是可执行证据，不是文档：S4C 跨环境差异被独立分类为
+`NUMERICALLY_EQUIVALENT` 并由预注册 [S4C portable reproduction contract
+V1](../research/batches/prospective_evidence_foundation/PORTABLE_REPRODUCTION_CONTRACT_V1.md) 承接
+（artifact identity 精确、结构精确、schedule 权重 `ABS_TOL = 1e-4`）；production execution
+artifact 不再接受调用方的时间/位置权威；集成 dual-candidate production-path drill 通过；
+clean Linux CI run `34873004632`（head `c70e74e`）`conclusion = SUCCESS`、`pytest = 462 passed`、
+无跳过步骤。两个候选都**不是**生产候选。
 
-```text
-1. S4C clean-environment 数值可移植性只读诊断（本地 + Linux，测量差值，不预设可接受性）
-2. 独立分类：NUMERICALLY_EQUIVALENT / MATERIAL_SOLVER_DIVERGENCE / UNRESOLVED
-3. 仅在分类为数值等价时：预注册有界 portable reproduction contract，并最小化修正 verifier
-   —— 冻结 artifact 身份（SHA / 行数 / 日期 / 非负 / 逐行和）保持精确，不削弱
-4. production execution artifact 不得接受 caller 注入的生成时间或未来 execution 时间戳；
-   未来观测未发生时不得存在权威 artifact
-5. 一条真正集成的 dual-candidate production-path readiness drill（MockTushare → vintage →
-   decision → native RQAlpha artifact → execution）
-6. 本地质量门 + GitHub HEAD CI 全绿，之后才可重新判定 readiness
-```
+完整记录见
+[`PROSPECTIVE_EVIDENCE_FOUNDATION_V1_REVALIDATION_V1.md`](../research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1_REVALIDATION_V1.md)；
+当前策略状态见 [`CURRENT_STATE.md`](CURRENT_STATE.md)，已关闭历史见
+[`RESEARCH_LEDGER.md`](RESEARCH_LEDGER.md) 的 RL-048–RL-050。
 
-每一步都必须在独立复核通过后才进入下一步；不得自行授权最终 gate。
+Foundation implementation is complete.
+
+No discretionary development is authorized before the real 2026-09-30 prospective decision cycle
+unless a new correctness blocker is discovered.
 
 ## 硬边界
 
@@ -57,11 +61,10 @@ PROSPECTIVE_FOUNDATION_DECISION             = BLOCKED_BY_PROSPECTIVE_CORRECTNESS
 不得改名重做已关闭问题，也不得借更正闭包启动新 alpha、S27A、Theme Rotation 或组合候选
 ```
 
-## 完成后的下一步（未授权提前执行）
+## 下一步（未授权提前执行）
 
-只有全部更正通过并由独立 review 判定 PASS 后，才可写入 revalidation 结果并恢复
-`AWAIT_2026_09_30_DUAL_CANDIDATE_PROSPECTIVE_DECISION_CYCLE`；届时在真实 `2026-09-30` 收盘后
-（即该 as-of 数据已合法可得）启动该 cycle。流程保持
+在真实 `2026-09-30` 收盘后（即该 as-of 数据已合法可得）方可启动该 cycle；该 as-of 的
+candidate-specific vintage 是该 cycle 的第一阶段，此前并不存在。流程保持
 `freeze vintage → verify → derive decision → seal → append DECISION → commit/push → STOP`；
 每个候选只有一次写操作（candidate CLI 在一次调用中完成 derive + seal + append），
 不得再手工重复 append。execution 证据在下一 canonical 观测日由独立 Goal 追加。

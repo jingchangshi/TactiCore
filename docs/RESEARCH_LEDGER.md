@@ -564,7 +564,7 @@
 ## RL-049 Foundation V1 readiness 撤销与最终更正闭包
 
 - 策略：N/A（前瞻证据机制，不涉及策略经济语义）
-- 状态：ACTIVE
+- 状态：CLOSED（由 RL-050 关闭）
 - 问题/范围：RL-048 宣布的 `PROSPECTIVE_FOUNDATION_READY_WITH_NONBLOCKING_LIMITATIONS` 是否被
   可执行证据支持。范围限定为 clean-environment correctness closure：S4C 冻结语义的跨平台可重现性
   契约、production execution artifact 的生成时间权威、一条集成的 dual-candidate
@@ -596,3 +596,40 @@
 - 重开条件：本条在更正闭包完成并由独立 review 判定 `PROSPECTIVE_FOUNDATION_IMPLEMENTATION_GATE`
   后才可关闭；不得以历史收益、时间压力或"再审计一次"替代可执行证据，也不得在未完成诊断的情况下
   以容差调整关闭本条。
+
+## RL-050 Foundation V1 最终 revalidation 与 READY 恢复
+
+- 策略：N/A（前瞻证据机制，不涉及策略经济语义）
+- 状态：CLOSED
+- 问题/范围：RL-049 撤销后的有界更正闭包是否真的把 readiness 恢复到可执行证据支持的状态。
+  范围只含 S4C 跨环境可移植性契约、production execution artifact 时间权威、集成
+  dual-candidate production-path drill、本地质量门与 clean Linux CI 的复核；不产生 observation、
+  不创建 vintage、不接触 2026-09 数据、不修改候选身份或策略经济语义。
+- 结论：`PROSPECTIVE_FOUNDATION_IMPLEMENTATION_GATE = PASS`、
+  `PROSPECTIVE_FOUNDATION_DECISION = PROSPECTIVE_FOUNDATION_READY`。
+  更正链（`3183387..c70e74e`）逐条复核自 repository history。关键判定：
+  (1) S4C 跨环境差异被独立分类为 `NUMERICALLY_EQUIVALENT`——两个环境的求解器输入指纹逐位相同
+  （`450a6619…1903c`，149 RISK / 23 fallback），solver 为显式 CLARABEL（tol_gap 1e-9），
+  Linux max |Δw| `2.7996468267524333e-05`、mean `6.891444410562036e-07`、support 与
+  maximum-weight 身份变化均为 0，同路径经济指标差异落在已冻结 V2 尺度内；
+  (2) 以预注册的 `S4C_PORTABLE_REPRODUCTION_CONTRACT_V1` 分离「artifact identity 精确」与
+  「cross-platform solver re-derivation 允许 `ABS_TOL = 1e-4`、`REL_TOL = 0`」，结构不变量
+  继续精确，历史 byte-exact audit 保留为平台绑定的历史证据路径；
+  (3) production execution artifact 不再接受调用方对 `artifact_generated_at`、
+  `execution_timestamp`、`execution_date` 或目标位置的权威，未来观测在收盘前不可能被封存；
+  (4) 集成 production-path drill 与 clean Linux CI 均通过：run `34873004632`（head `c70e74e`）
+  `conclusion = SUCCESS`、`pytest = 462 passed / 0 failed`、无跳过/xfail/平台条件禁用步骤。
+- 结论边界：READY 只表示前瞻证据机制可信，**不**表示 S2_R1、S4C_R1 或任何组合具备生产资格；
+  prospective observations 仍为 `0`，S4C 集中度仍是已登记 known risk（不得以 cap 修补）。
+  真实 RQAlpha execution adapter 尚未在真实输出上运行；它的首次真实使用仍是 future cycle 的边界，
+  不构成 Foundation correctness limitation。本条不授权任何候选提升、组合候选或新策略工作。
+- 证据：[Foundation V1 revalidation V1](../research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1_REVALIDATION_V1.md)、
+  [Portable reproduction contract V1](../research/batches/prospective_evidence_foundation/PORTABLE_REPRODUCTION_CONTRACT_V1.md)、
+  [Foundation V1 errata / revocation](../research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1_ERRATA.md)、
+  [原始 readiness 判定](../research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1.md)（历史，不修改）。
+- 数据快照：canonical 同 RL-001；两个候选 `observations.csv` 仍仅表头（`0` 行）；无候选 vintage、
+  无 execution artifact；未下载、未冻结、未查看任何真实 2026-09 市场数据；两个 candidate manifest、
+  S4C activation、S4C 冻结目标文件与 historical canonical 数据均未被更正闭包触碰。
+- 重开条件：仅当出现新的候选级 correctness contradiction、canonical 数据契约/框架语义变化，
+  或真实前瞻 cycle 暴露具体 Foundation correctness 缺陷时；不得以历史收益、集中度、时间压力或
+  "再审计一次"重开本条，也不得据此启动新 alpha、S27A、Theme Rotation 或组合候选工作。

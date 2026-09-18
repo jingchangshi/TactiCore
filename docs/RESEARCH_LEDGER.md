@@ -633,3 +633,32 @@
 - 重开条件：仅当出现新的候选级 correctness contradiction、canonical 数据契约/框架语义变化，
   或真实前瞻 cycle 暴露具体 Foundation correctness 缺陷时；不得以历史收益、集中度、时间压力或
   "再审计一次"重开本条，也不得据此启动新 alpha、S27A、Theme Rotation 或组合候选工作。
+
+## RL-051 Foundation V1 READY 的独立本地复现验证
+
+- 策略：N/A（前瞻证据机制验证，不涉及策略经济语义）
+- 状态：CLOSED
+- 问题/范围：RL-050 恢复 READY 的本地可执行判据，在治理 closeout（`ab8916b`）之后的独立会话中
+  是否仍可在本地 Windows 完整重现。范围只含 CI 同构验证链执行、S4C portability 诊断数值交叉核对
+  与冻结 identity 逐项复核；不修改实现代码、不修改候选身份、不产生 observation、不创建 vintage、
+  不接触真实 2026-09 数据。这是确认性验证，不重开也不修改 RL-050 的判定。
+- 起因：可观察的环境事实——本地 `.venv` 失效（其 python.exe 指向已不存在的 uv CPython 3.11.15），
+  使 RL-050 的本地声明在修复前不可测试；修复仅作用于 gitignored 本地环境
+  （`uv sync` 重供给 CPython 3.11.16，仓库文件零改动）。
+- 结论：`FOUNDATION_V1_LOCAL_WINDOWS_REVALIDATION_GATE = PASS`、
+  `NEW_CORRECTNESS_BLOCKER_FOUND = NO`。8/8 验证链命令 exit 0：ruff check、ruff format --check、
+  mypy、S4C portability diagnostic（`within_contract = true`、1932 elements、0 exceeding、
+  max |Δw| `1.1102230246251565e-16`）、pytest `462 passed / 0 failed / 0 skipped`、三项 candidate
+  verification。本地诊断 `returns_window_sha256` 与 committed Linux 基线逐位一致（`450a6619…`）；
+  冻结目标 `observed_normalized_sha256 f7bf398d…1227e47` 未变；S4C manifest 13 个
+  `frozen_identity_artifacts` 按官方 CRLF→LF 规范化口径 13/13 一致；两个 `observations.csv`
+  仍仅表头；无 `vintages/`、无 `execution_artifacts/`。
+- 结论边界：READY 判定不变，候选资格不变，开发冻结
+  （`FROZEN_PENDING_REAL_PROSPECTIVE_TIME`）不变；本条不授权任何候选提升、组合候选或新策略工作。
+- 证据：[Foundation V1 本地 Windows 独立 revalidation 审计 V1](../research/results/FOUNDATION_V1_LOCAL_WINDOWS_REVALIDATION_V1.md)、
+  [Foundation V1 revalidation V1](../research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1_REVALIDATION_V1.md)（RL-050）、
+  [committed Linux 诊断基线](../research/results/S4C_NUMERICAL_PORTABILITY_DIAGNOSTIC_LINUX_V1.json)。
+- 数据快照：canonical 同 RL-001；审计起点 `ab8916b1fdd574e01479dcb53fe62714e01aa81d`
+  （governance closeout），working tree clean。
+- 重开条件：仅当推送后 CI 失败、后续同链重现出现 mismatch，或真实前瞻 cycle 暴露具体
+  Foundation correctness 缺陷时；"再验证一次"本身不构成重开理由。

@@ -21,6 +21,12 @@ workflow `conclusion = failure`，该 READY 被显式撤销并登记为
 
 `PROSPECTIVE_FOUNDATION_IMPLEMENTATION_GATE = PASS`、
 `PROSPECTIVE_FOUNDATION_DECISION = PROSPECTIVE_FOUNDATION_READY`。
+READY 判定的本地判据已在 governance closeout（`ab8916b`）后的独立会话中于本地 Windows 完整复现
+（[本地 revalidation 审计 V1](../research/results/FOUNDATION_V1_LOCAL_WINDOWS_REVALIDATION_V1.md)，
+RL-051）：8/8 验证链命令 exit 0、pytest `462 passed / 0 skipped`、S4C portability 诊断
+`within_contract = true`（max |Δw| 1.11e-16，求解器输入指纹与 committed Linux 基线逐位一致）、
+冻结 identity 13/13 一致、两个候选 observations 仍为 0；未发现新 correctness blocker，
+开发冻结不变。
 恢复 READY 的依据是可执行证据：S4C 跨环境差异被独立分类为 `NUMERICALLY_EQUIVALENT` 并由预注册的
 `S4C_PORTABLE_REPRODUCTION_CONTRACT_V1`（artifact identity 精确、结构精确、schedule 权重
 `ABS_TOL = 1e-4`）承接；production execution artifact 不再接受调用方时间/位置权威；集成

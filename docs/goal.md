@@ -43,8 +43,10 @@ clean Linux CI run `34873004632`（head `c70e74e`）`conclusion = SUCCESS`、`py
 
 完整记录见
 [`PROSPECTIVE_EVIDENCE_FOUNDATION_V1_REVALIDATION_V1.md`](../research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1_REVALIDATION_V1.md)；
+其 READY 判据已在独立会话中于本地 Windows 完整复现（RL-051，见
+[`FOUNDATION_V1_LOCAL_WINDOWS_REVALIDATION_V1.md`](../research/results/FOUNDATION_V1_LOCAL_WINDOWS_REVALIDATION_V1.md)）；
 当前策略状态见 [`CURRENT_STATE.md`](CURRENT_STATE.md)，已关闭历史见
-[`RESEARCH_LEDGER.md`](RESEARCH_LEDGER.md) 的 RL-048–RL-050。
+[`RESEARCH_LEDGER.md`](RESEARCH_LEDGER.md) 的 RL-048–RL-051。
 
 Foundation implementation is complete.
 

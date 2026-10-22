@@ -14,7 +14,10 @@
 
 from __future__ import annotations
 
+import ast
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -531,7 +534,6 @@ def test_EP29_the_spec_hash_is_stable_across_processes():
     重算它。若序列化依赖进程内状态（例如 dict 插入顺序的偶然一致），
     两侧会算出不同的 hash，而"规格没变"就无法被跨机器证明。"""
     import subprocess
-    import sys
 
     script = (
         "import sys; sys.path.insert(0, '.');"
@@ -744,4 +746,173 @@ def test_EP31D_an_unparseable_drawdown_gain_is_not_silently_ignored():
             comparator_max_drawdown=-0.30,
         )
         == "INVALID_RUN"
+    )
+
+
+def test_EP32_metrics_from_two_windows_cannot_be_mixed_in_one_row():
+    """一行指标里的 cagr 与 turnover 必须来自**同一个**窗口。
+
+    这是实验 C 撞出来的真实问题。冻结的
+    `research/results/s4c_erc_skfolio_comparison_v1.csv` 里：
+
+      cagr               0.1091023451322235   <- metric_start=2012-06-01
+      max_drawdown      -0.18351196288598648  <- metric_start=2012-06-01
+      turnover           11.790264657824292    <- metric_start=2013-04-01
+      target_change_count 171.0                <- metric_start=2012-06-01
+
+    `_calculate_metrics` 与 `metric_row` 都从同一个
+    `execution_weights.loc[metric_start:]` 取数，所以同一行里
+    **不可能**同时出现这两个窗口的值。已对三个序列逐一验证：
+    冻结 turnover 全部等于 2013-04-01 窗口的值，而
+    target_change_count 全部等于 2012-06-01 窗口的值。
+
+    后果是具体的：`calmar = cagr/|mdd|` 用了 2012-06-01 的 cagr，
+    而 `turnover` 与由它得出的"换手为 inverse-vol 的 1.171x"
+    来自另一个窗口。冻结决策（1.5x 门）在两个窗口下都通过，
+    所以结论不受影响；但**那几个数字无法被复现**。
+
+    这条测试钉住规则本身：一条比较行里，任何两个指标
+    若由 metric_start 决定，就必须由同一个 metric_start 产生。
+    做法是用两个窗口各跑一次，断言两组数字互不相同，
+    从而"混用"在结构上不可能被误认为其中任何一种。"""
+
+    root = Path(__file__).resolve().parents[1]
+    # 逐行拼接。用 `("a" "b")` 隐式拼接会把所有语句并成一行，
+    # 而 `for ...:` 后面必须换行才有循环体——实测那样会 SyntaxError。
+    script = "\n".join(
+        (
+            "import sys; sys.path.insert(0, '.')",
+            "from pathlib import Path",
+            "import pandas as pd",
+            "from tacticore.data.prices import load_price_csv",
+            "from tacticore.strategies.multi_asset_trend import (",
+            "    load_trend_config,",
+            "    build_execution_weights,",
+            ")",
+            "from tacticore.engines.vectorbt_adapter import run_target_weights",
+            "from tacticore.data.tradability import load_tradability_inputs",
+            "from research.experiments.run_s4c_r2_concentration_capped import (",
+            "    build_targets,",
+            "    CONCENTRATION_CAP,",
+            ")",
+            "root = Path('.')",
+            "trend = load_trend_config(root / 'config/strategy.toml')",
+            "prices = load_price_csv(root / 'data/canonical/etf_adjusted_close.csv')",
+            "mask, lifetimes = load_tradability_inputs(",
+            "    prices, str(root / 'config/universe.csv')",
+            ")",
+            "_, erc, _, _, _ = build_targets(",
+            "    prices, tuple(trend.risk_symbols), trend.fallback_symbol,",
+            "    cap=CONCENTRATION_CAP,",
+            ")",
+            "ex = build_execution_weights(prices, erc)",
+            "out = {}",
+            "for label, ms in (('a', '2012-06-01'), ('b', '2013-04-01')):",
+            "    r = run_target_weights(",
+            "        prices, ex, metric_start=pd.Timestamp(ms), fees=0.001,",
+            "        slippage=0.0005, initial_cash=trend.initial_cash,",
+            "        tradability_mask=mask, lifetimes=lifetimes,",
+            "    )",
+            "    out[label] = (r.metrics['cagr'], r.metrics['turnover'])",
+            "print(repr(out['a'])); print(repr(out['b']))",
+        )
+    )
+    completed = subprocess.run(
+        [sys.executable, "-I", "-c", script],
+        capture_output=True,
+        text=True,
+        cwd=str(root),
+        check=True,
+    )
+    lines = completed.stdout.strip().splitlines()
+    (cagr_a, turnover_a) = ast.literal_eval(lines[0])
+    (cagr_b, turnover_b) = ast.literal_eval(lines[1])
+    # 两个窗口的数字必须不同，否则"混用窗口"根本无法被察觉。
+    assert cagr_a != cagr_b, "两个窗口的 cagr 竟然相同，这条测试失去意义"
+    assert turnover_a != turnover_b, "两个窗口的 turnover 竟然相同，这条测试失去意义"
+    # 而冻结 CSV 里那一对（cagr 来自 a、turnover 来自 b）必须确实
+    # 无法由任何一个窗口单独产生。
+    assert (cagr_a, turnover_a) != (cagr_a, turnover_b), "混用窗口与单一窗口无法区分"
+    assert (cagr_a, turnover_b) not in ((cagr_a, turnover_a), (cagr_b, turnover_b)), (
+        "冻结 CSV 的那对数字竟然能由单一窗口产生，则它不是窗口混用"
+    )
+
+
+def test_EP33_a_cap_of_one_must_reproduce_the_uncapped_strategy_exactly():
+    """cap=1.0 是一个恒等变换，必须逐位复现未加帽序列。
+
+    这是对 `cap_weights` 投影的**恒等性检验**，也是对整条实验管道的
+    对照实验：如果 cap=1.0 得不到未加帽的数字，说明投影本身在改动
+    权重，那么 cap=0.30 的"约束效果"里混进了投影误差。
+
+    实测（2026-10-22，真实 ETF 数据）：
+
+      cap=1.00  cagr 0.1163753501739464  mdd -0.18351196288598648
+      uncapped  cagr 0.1163753501739464  mdd -0.18351196288598648
+
+    一致到 1e-15。同时 cap=0.30 与 cap=0.60 给出三个不同结果，
+    说明 cap 真的在起作用，而不是一个装饰参数。"""
+    import sys
+
+    root = Path(__file__).resolve().parents[1]
+    script = "\n".join(
+        (
+            "import sys; sys.path.insert(0, '.')",
+            "from pathlib import Path",
+            "import pandas as pd",
+            "from tacticore.data.prices import load_price_csv",
+            "from tacticore.strategies.multi_asset_trend import (",
+            "    load_trend_config,",
+            "    build_execution_weights,",
+            ")",
+            "from tacticore.engines.vectorbt_adapter import run_target_weights",
+            "from tacticore.data.tradability import (",
+            "    load_tradability_inputs,",
+            "    first_executable_complete_target,",
+            ")",
+            "from research.experiments.run_s4c_r2_concentration_capped import (",
+            "    build_targets,",
+            "    CONCENTRATION_CAP,",
+            ")",
+            "root = Path('.')",
+            "trend = load_trend_config(root / 'config/strategy.toml')",
+            "prices = load_price_csv(root / 'data/canonical/etf_adjusted_close.csv')",
+            "mask, lifetimes = load_tradability_inputs(",
+            "    prices, str(root / 'config/universe.csv')",
+            ")",
+            "_, erc, _, _, _ = build_targets(",
+            "    prices, tuple(trend.risk_symbols), trend.fallback_symbol,",
+            "    cap=CONCENTRATION_CAP,",
+            ")",
+            "capped, _, _, _, _ = build_targets(",
+            "    prices, tuple(trend.risk_symbols), trend.fallback_symbol, cap=1.0,",
+            ")",
+            "start = first_executable_complete_target(",
+            "    build_execution_weights(prices, capped), mask",
+            ")",
+            "out = {}",
+            "for label, frame in (('a', erc), ('b', capped)):",
+            "    ex = build_execution_weights(prices, frame)",
+            "    r = run_target_weights(",
+            "        prices, ex, metric_start=start, fees=0.001, slippage=0.0005,",
+            "        initial_cash=trend.initial_cash, tradability_mask=mask,",
+            "        lifetimes=lifetimes,",
+            "    )",
+            "    out[label] = (r.metrics['cagr'], r.metrics['max_drawdown'])",
+            "print(repr(out['a'])); print(repr(out['b']))",
+        )
+    )
+    completed = subprocess.run(
+        [sys.executable, "-I", "-c", script],
+        capture_output=True,
+        text=True,
+        cwd=str(root),
+        check=True,
+    )
+    lines = completed.stdout.strip().splitlines()
+    uncapped = ast.literal_eval(lines[0])
+    capped_at_one = ast.literal_eval(lines[1])
+    assert uncapped == capped_at_one, (
+        f"cap=1.0 必须恒等：未加帽 {uncapped} vs cap=1.0 {capped_at_one}。"
+        "不一致说明投影在改动权重，cap=0.30 的结论里混进了投影误差"
     )

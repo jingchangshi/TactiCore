@@ -1,0 +1,109 @@
+{
+  "experiment_id": "S4C_R2_CONCENTRATION_CAPPED_ERC",
+  "spec_hash": "c3ac73492fa1bad056136fb71f1263ee58982d6f271e625048c545ddbbdf89c1",
+  "cost_model": "frozen-toml-10bps/etf: fees=0.001 slippage=0.0005（权威来源: TactiCore config/*.toml（S1/S2/S4/S8/S27/S30 冻结运行））",
+  "concentration_cap": 0.6,
+  "metric_start": "2013-04-01",
+  "reproduction_note": "frozen metric_start=2012-06-01 (first non-empty execution row, an all-zero fallback row before 511010.SS listed); this experiment uses first_executable_complete_target=2013-04-01. max_drawdown and turnover reproduce to 1e-15. The frozen CSV mixes two windows: its turnover and calmar come from the 2013-04-01 window while its cagr/mdd/sharpe/target_change_count come from 2012-06-01; no single metric_start produces that pair. The frozen 1.5x turnover gate passes on both windows (1.171x vs 1.163x), so the frozen decision is unaffected.",
+  "candidate": {
+    "series": "S4C_R2_CAPPED_ERC",
+    "cagr": 0.11666178037685393,
+    "max_drawdown": -0.1835119628859866,
+    "sharpe": 1.0933736223896964,
+    "calmar": 0.6357175768935253,
+    "turnover": 11.710612893701862,
+    "trade_count": 574.0,
+    "average_holding_days": 2091.993031358885,
+    "worst_year": -0.08073262482462029,
+    "target_change_count": 161.0,
+    "annualized_target_change_count": 12.001071428571429
+  },
+  "s4c_r1_reproduction": {
+    "series": "S4C_R1_ERC_REPRODUCTION",
+    "cagr": 0.1163753501739464,
+    "max_drawdown": -0.18351196288598648,
+    "sharpe": 1.0911209093079228,
+    "calmar": 0.634156751111909,
+    "turnover": 11.79026465782429,
+    "trade_count": 575.0,
+    "average_holding_days": 2091.417391304348,
+    "worst_year": -0.08073262482462029,
+    "target_change_count": 161.0,
+    "annualized_target_change_count": 12.001071428571429
+  },
+  "comparison_family": [
+    {
+      "series": "S4C_R2_CAPPED_ERC",
+      "cagr": 0.11666178037685393,
+      "max_drawdown": -0.1835119628859866,
+      "sharpe": 1.0933736223896964,
+      "calmar": 0.6357175768935253,
+      "turnover": 11.710612893701862,
+      "trade_count": 574.0,
+      "average_holding_days": 2091.993031358885,
+      "worst_year": -0.08073262482462029,
+      "target_change_count": 161.0,
+      "annualized_target_change_count": 12.001071428571429
+    },
+    {
+      "series": "S4C_R1_ERC_REPRODUCTION",
+      "cagr": 0.1163753501739464,
+      "max_drawdown": -0.18351196288598648,
+      "sharpe": 1.0911209093079228,
+      "calmar": 0.634156751111909,
+      "turnover": 11.79026465782429,
+      "trade_count": 575.0,
+      "average_holding_days": 2091.417391304348,
+      "worst_year": -0.08073262482462029,
+      "target_change_count": 161.0,
+      "annualized_target_change_count": 12.001071428571429
+    },
+    {
+      "series": "SAME_ELIGIBLE_EQUAL_WEIGHT",
+      "cagr": 0.10619499790175846,
+      "max_drawdown": -0.22330089615276838,
+      "sharpe": 0.8445198011971082,
+      "calmar": 0.4755690627820255,
+      "turnover": 2.378968253968254,
+      "trade_count": 568.0,
+      "average_holding_days": 2081.1073943661972,
+      "worst_year": -0.12623030970845783,
+      "target_change_count": 161.0,
+      "annualized_target_change_count": 12.001071428571429
+    },
+    {
+      "series": "SAME_ELIGIBLE_INVERSE_VOL",
+      "cagr": 0.11614099330537297,
+      "max_drawdown": -0.22477552780927934,
+      "sharpe": 1.0129428274546226,
+      "calmar": 0.5166976780671511,
+      "turnover": 10.065893867083886,
+      "trade_count": 584.0,
+      "average_holding_days": 2118.7654109589043,
+      "worst_year": -0.10753684099677563,
+      "target_change_count": 161.0,
+      "annualized_target_change_count": 12.001071428571429
+    }
+  ],
+  "cap_binding_share": 0.020134228187919462,
+  "return_leg": {
+    "candidate_cagr": 0.11666178037685393,
+    "comparator_cagr": 0.1163753501739464,
+    "gap": 0.0002864302029075283,
+    "threshold": 0.0
+  },
+  "drawdown_leg": {
+    "candidate_max_drawdown": -0.1835119628859866,
+    "comparator_max_drawdown": -0.18351196288598648,
+    "gain": -1.1102230246251565e-16,
+    "required_gain": 0.02
+  },
+  "turnover_leg": {
+    "candidate_turnover": 11.710612893701862,
+    "comparator_turnover": 11.79026465782429,
+    "ratio": 0.9932442768305825,
+    "limit": 1.5
+  },
+  "risk_and_drawdown_outcome": "DOES_NOT_SUPPORT_HYPOTHESIS",
+  "identity_hash": "f168718610f890f7b2fedac6215d8e7a2285575fae711e9c27d57be732be6029"
+}

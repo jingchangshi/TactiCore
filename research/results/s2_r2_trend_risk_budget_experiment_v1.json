@@ -1,0 +1,100 @@
+{
+  "experiment_id": "S2_R2_TREND_INVERSE_VOL_SLEEVES",
+  "spec_hash": "1868eebdb0ed33d5f4e8233b2f94cc5dce2b067f7c1638a00b328e907c863cd0",
+  "code_sha": "dd1c1ab0fbe78169ccc8d5c48e09d25b19d901e82ac1f27200e0d656b39e2182",
+  "cost_model": "frozen-toml-10bps/etf: fees=0.001 slippage=0.0005（权威来源: TactiCore config/*.toml（S1/S2/S4/S8/S27/S30 冻结运行））",
+  "metric_start": "2014-01-15",
+  "comparison_family": [
+    {
+      "series": "S2_R2_TREND_INVERSE_VOL",
+      "cagr": 0.0957337077876177,
+      "max_drawdown": -0.15276264281208762,
+      "sharpe": 1.0278334490119188,
+      "calmar": 0.626682715258986,
+      "turnover": 36.05251030423824,
+      "trade_count": 505.0,
+      "average_holding_days": 295.0930693069307,
+      "worst_year": -0.037254915347285866,
+      "target_change_count": 151.0,
+      "annualized_target_change_count": 11.961125569290827
+    },
+    {
+      "series": "S2_R1_REPRODUCTION",
+      "cagr": 0.08793927271276702,
+      "max_drawdown": -0.19168290499167728,
+      "sharpe": 0.8750089951842438,
+      "calmar": 0.4587747285893089,
+      "turnover": 21.501190476190473,
+      "trade_count": 515.0,
+      "average_holding_days": 299.90485436893204,
+      "worst_year": -0.04510207101120589,
+      "target_change_count": 151.0,
+      "annualized_target_change_count": 11.961125569290827
+    },
+    {
+      "series": "STATIC_EQUAL_WEIGHT",
+      "cagr": 0.05927411354698986,
+      "max_drawdown": -0.4257568690416623,
+      "sharpe": 0.4035836835549811,
+      "calmar": 0.13922056896089585,
+      "turnover": 0.0,
+      "trade_count": 2.0,
+      "average_holding_days": 4611.0,
+      "worst_year": -0.17579458731302644,
+      "target_change_count": 0.0,
+      "annualized_target_change_count": 0.0
+    },
+    {
+      "series": "STATIC_INVERSE_VOL",
+      "cagr": 0.03865113224402572,
+      "max_drawdown": -0.4508755788404215,
+      "sharpe": 0.29566335148045375,
+      "calmar": 0.08572460798038814,
+      "turnover": 0.0,
+      "trade_count": 2.0,
+      "average_holding_days": 4611.0,
+      "worst_year": -0.14218772356746245,
+      "target_change_count": 0.0,
+      "annualized_target_change_count": 0.0
+    },
+    {
+      "series": "S30_REFERENCE_REPRODUCTION",
+      "cagr": 0.09924939985733339,
+      "max_drawdown": -0.15038114071302056,
+      "sharpe": 1.1138964035445735,
+      "calmar": 0.6599856829569853,
+      "turnover": 1.0,
+      "trade_count": 27.0,
+      "average_holding_days": 2729.0,
+      "worst_year": -0.054688869092639036,
+      "target_change_count": 13.0,
+      "annualized_target_change_count": 1.0297657774886142
+    }
+  ],
+  "s2_r1_reproduction_matches_frozen_targets": true,
+  "reproduction_tolerance": {
+    "stored_decimal_places": 8,
+    "note": "容差由冻结文件的小数位数决定（半末位），不由比较代码决定。该文件写 8 位小数，所以半末位是 5e-9。复现序列的最大残差 4.444e-09，恰好是 1/3 与 2/3 在 8 位小数下的舍入残差——机制与冻结运行一致，不是巧合。"
+  },
+  "return_leg": {
+    "candidate_cagr": 0.0957337077876177,
+    "comparator_cagr": 0.08793927271276702,
+    "gap": 0.00779443507485067,
+    "threshold": 0.0
+  },
+  "drawdown_leg": {
+    "candidate_max_drawdown": -0.15276264281208762,
+    "comparator_max_drawdown": -0.19168290499167728,
+    "gain": 0.03892026217958966,
+    "required_gain": 0.02
+  },
+  "turnover_leg": {
+    "candidate_turnover": 36.05251030423824,
+    "comparator_turnover": 21.501190476190473,
+    "ratio": 1.676768100080844,
+    "limit": 1.5
+  },
+  "outcome": "DOES_NOT_SUPPORT_HYPOTHESIS",
+  "identity_hash": "fcd75cbb1779863a6f4a84a0018002fa35a35638a0f06b863efaae0ff788921d",
+  "decided_by": "turnover gate: candidate turnover is 1.677x the comparator, over the pre-registered 1.5x limit. Both the return leg and the drawdown leg passed."
+}

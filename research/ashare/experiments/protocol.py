@@ -338,6 +338,55 @@ def _parse_criterion(criteria: str, marker: str) -> float | None:
         return None
 
 
+@dataclass(frozen=True)
+class TurnoverGate:
+    """失败判据里的 turnover 门控。
+
+    `present=False`：判据里**没有** turnover 门控。这个实验不关心换手，
+    照常给结论。`present=True, threshold=None`：判据里**有**门控
+    但读不懂，必须 `INVALID_RUN`——说不清的判据不得执行。
+
+    这两个状态必须分开。旧实现把它们合成一个 `None`，
+    于是"读不懂"被当成"没有门控"，门控被静默跳过了整整两个实验
+    （实验 B 与实验 C）。一个不执行的门控比没有门控更糟：
+    没有门控时读者会问"换手多少"，有假门控时读者不问。"""
+
+    present: bool = False
+    threshold: float | None = None
+
+
+NO_TURNOVER_GATE = TurnoverGate()
+
+
+def _parse_turnover_ratio_gate(criteria: str) -> TurnoverGate:
+    """解析失败判据里的 `turnover<=1.5x comparator`。
+
+    为什么不能复用 `_parse_criterion`：那条门控的形状是**比率**
+    （`1.5x comparator`），不是绝对水平。`float("1.5x comparator")`
+    必然失败，于是它一直落进"读不懂"这一格，而旧实现把这一格
+    当成"没有门控"——这正是那条门控被悄悄跳过的直接原因。
+
+    尾部的 `x` 是冗余的（`comparator` 已经说明是比率），所以
+    `1.5x comparator` 与 `1.5 comparator` 都接受；大小写不敏感，
+    因为这是人手写的判据，不是机器生成的。
+
+    刻意要求 `comparator` 这个字面量出现：写成 `turnover<=1.5` 时，
+    它指绝对换手还是比率是说不清的，而说不清的判据不得执行。
+    不在两种读法里挑一个——挑了就等于替登记者补充他没写的东西。"""
+    if "turnover<=" not in criteria:
+        return NO_TURNOVER_GATE
+    fragment = criteria.split("turnover<=", 1)[1].split(";", 1)[0].lower()
+    if "comparator" not in fragment:
+        return TurnoverGate(present=True)
+    head = fragment.split("comparator", 1)[0].strip()
+    if head.endswith("x"):
+        head = head[:-1]
+    try:
+        return TurnoverGate(present=True, threshold=float(head))
+    except ValueError:
+        return TurnoverGate(present=True)
+
+
 def outcome_for(
     *,
     candidate_cagr: float | None,
@@ -345,6 +394,8 @@ def outcome_for(
     candidate_max_drawdown: float | None,
     comparator_max_drawdown: float | None,
     spec: ExperimentSpec,
+    candidate_turnover: float | None = None,
+    comparator_turnover: float | None = None,
 ) -> str:
     """按**预先登记**的判据给出结论。判据不在本函数里，在 spec 里。
 
@@ -385,6 +436,26 @@ def outcome_for(
     drawdown_gain = _parse_criterion(spec.predeclared_success_criteria, "drawdown_improvement>=")
     if "drawdown_improvement>=" in spec.predeclared_success_criteria and drawdown_gain is None:
         return "INVALID_RUN"
+    # turnover 门控。放在判据解析这一段而不是结论判定的那一段：
+    # 门控读不懂时结论必须给不出来，而它读不懂这件事与收益腿是否通过
+    # 毫无关系——顺序放反会让一个换手超限的实验先被收益腿判定成
+    # "支持"，再被 turnover 否决，于是同一条门控有两种生效方式。
+    turnover_gate = _parse_turnover_ratio_gate(spec.predeclared_failure_criteria)
+    if turnover_gate.present:
+        if turnover_gate.threshold is None:
+            return "INVALID_RUN"
+        if candidate_turnover is None or comparator_turnover is None:
+            # 登记了门控却没提供数字：这是 INVALID_RUN，不是
+            # INSUFFICIENT_DATA——缺的是判据所需的输入，
+            # 不是数据本身不够。混成一类会让"runner 忘了传参数"
+            # 看起来像一次诚实的"数据不够"。
+            return "INVALID_RUN"
+        if comparator_turnover <= 0:
+            return "INVALID_RUN"
+        if candidate_turnover > turnover_gate.threshold * comparator_turnover:
+            # 超限即否证。1.5x 是预先登记的，不是事后决定的。
+            # 判它支持假设等于把成本当收益。
+            return "DOES_NOT_SUPPORT_HYPOTHESIS"
     assert candidate_cagr is not None and comparator_cagr is not None
     assert candidate_max_drawdown is not None and comparator_max_drawdown is not None
     if candidate_max_drawdown <= drawdown_floor:
@@ -445,8 +516,21 @@ class ExperimentLedger:
         *,
         evidence_hash: str | None = None,
         reason: str = "",
+        code_sha: str | None = None,
     ) -> dict[str, Any]:
         """登记一次实验结果。同一 spec 重复记录同一结论是幂等的。
+
+        `code_sha` 是**产生这条结论的代码**的摘要，不是 spec 的一部分。
+        spec 描述"要验证什么"，code_sha 描述"实际跑了什么"。
+        只登记前者时，同一份规格可以对应两套完全不同的代码——
+        实验 B 实测到的正是那样：修复前的 runner 用"区间首尾差"
+        冒充趋势判据，与冻结目标差 467 个单元，却与修复后的 runner
+        共享同一个 spec_hash。没有 code_sha，读者无法知道一条结论
+        是不是由一个复现校验根本没通过的 runner 产出的。
+
+        刻意允许 `None`：既有记录没有这个字段，而为兼容把默认值
+        写成占位串会让"没申报代码版本"看起来像"版本为空"。
+        缺这个字段的记录仍然可读，只是不可追溯。
 
         `outcome` 必须是 `EXPERIMENT_OUTCOMES` 之一。未登记的结论值
         （例如把 `SUPPORTS_HYPOTHESIS` 拼错）必须被拒绝，而不是被存下来——
@@ -475,6 +559,7 @@ class ExperimentLedger:
             "outcome": outcome,
             "reason": reason,
             "evidence_hash": evidence_hash,
+            "code_sha": code_sha,
             "module_version": EXPERIMENT_MODULE_VERSION,
         }
         self._append(record)

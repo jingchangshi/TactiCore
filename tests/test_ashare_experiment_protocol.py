@@ -66,7 +66,13 @@ def make_spec(**overrides) -> ExperimentSpec:
         "benchmarks": ("equal_weight_universe", "csi300"),
         "champion": "score-1.0.0",
         "predeclared_success_criteria": "cagr>=0.02;max_drawdown>-0.35",
-        "predeclared_failure_criteria": "max_drawdown>-0.35;turnover<=1.5x comparator",
+        # 刻意**不**在默认 fixture 里登记 turnover 门控。
+        # EP34 系列要求"登记了门控就必须提供 turnover 数字"，
+        # 若默认值带着门控，那么每一条只测收益腿或回撤腿的既有测试
+        # 都会被迫补传 turnover，否则变成 INVALID_RUN——
+        # 于是这些测试的失败原因从"被测的那条规则"漂移成"忘了传参数"。
+        # 关心门控的测试自己声明它（EP34 系列），其余测试不受影响。
+        "predeclared_failure_criteria": "max_drawdown>-0.35",
         "random_seed": 20261022,
     }
     fields.update(overrides)
@@ -916,3 +922,194 @@ def test_EP33_a_cap_of_one_must_reproduce_the_uncapped_strategy_exactly():
         f"cap=1.0 必须恒等：未加帽 {uncapped} vs cap=1.0 {capped_at_one}。"
         "不一致说明投影在改动权重，cap=0.30 的结论里混进了投影误差"
     )
+
+
+# --- 预先登记的 turnover 门控 -----------------------------------------------
+#
+# 这一组来自实验 B 在 2026-10-22 撞出的三个真实缺陷。
+
+
+def test_EP34_a_registered_turnover_gate_is_enforced_not_ignored():
+    """登记了 `turnover<=1.5x comparator` 却超限时，必须否证。
+
+    实测缺陷：`outcome_for` 只解析 `cagr>=`、`drawdown_improvement>=`、
+    `max_drawdown>` 三个 marker，`turnover<=` 从来不在其中。
+    两个 runner（实验 B 与实验 C）都登记了一条**自己绝不会被执行**的
+    门控，而 `outcome_for` 依旧给出结论。
+
+    这是预注册里最坏的失效方式：门控看起来在（判据串里写着它），
+    读代码也知道它在，但它不执行。一个不执行的门控比没有门控更糟——
+    没有门控时读者会问"换手多少"，有假门控时读者不问。
+
+    判据形状是**比率**（`1.5x comparator`）而不是绝对水平，
+    所以它不能被 `_parse_criterion` 解析——那是这条门控一直被
+    悄悄跳过的直接原因。这里用 2.4 倍，远超 1.5x。"""
+    spec = make_spec(
+        predeclared_failure_criteria="max_drawdown>-0.35;turnover<=1.5x comparator"
+    )
+    outcome = outcome_for(
+        spec=spec,
+        candidate_cagr=0.10,
+        comparator_cagr=0.03,
+        candidate_max_drawdown=-0.20,
+        comparator_max_drawdown=-0.30,
+        candidate_turnover=24.0,
+        comparator_turnover=10.0,
+    )
+    assert outcome == "DOES_NOT_SUPPORT_HYPOTHESIS", (
+        f"换手 2.4x 超过登记的 1.5x 门控却得到 {outcome}；"
+        "一个不执行的门控比没有门控更糟"
+    )
+
+
+def test_EP34B_a_turnover_gate_within_the_limit_does_not_block():
+    """门控的对照：换手在限内时结论只由收益腿与回撤腿决定。
+
+    没有这条，EP34 会退化成"任何 turnover 输入都否证"，
+    于是门控变成一个恒真的否决器——那同样不是门控，那是随机数。
+    1.2x 在 1.5x 限内，且收益腿与回撤腿都过。"""
+    spec = make_spec()
+    outcome = outcome_for(
+        spec=spec,
+        candidate_cagr=0.10,
+        comparator_cagr=0.03,
+        candidate_max_drawdown=-0.10,
+        comparator_max_drawdown=-0.30,
+        candidate_turnover=12.0,
+        comparator_turnover=10.0,
+    )
+    assert outcome == "SUPPORTS_HYPOTHESIS", (
+        f"换手 1.2x 在 1.5x 限内却得到 {outcome}；门控不该是否决器"
+    )
+
+
+def test_EP34C_missing_turnover_numbers_with_a_registered_gate_refuse_to_conclude():
+    """登记了 turnover 门控却不传 turnover 数字，必须 `INVALID_RUN`。
+
+    与 EP34 是同一缺陷的另一半：runner 漏传 turnover 时，
+    旧实现照样给出 `SUPPORTS_HYPOTHESIS`——
+    一个没被检查过的门控被当成了通过。
+
+    返回 `INVALID_RUN` 而不是 `INSUFFICIENT_DATA`：缺的是**判据所需的
+    输入**，不是数据本身不够。混成一类会让"runner 忘了传参数"
+    看起来像一次诚实的"数据不够"。"""
+    spec = make_spec(
+        predeclared_failure_criteria="max_drawdown>-0.35;turnover<=1.5x comparator"
+    )
+    assert (
+        outcome_for(
+            spec=spec,
+            candidate_cagr=0.10,
+            comparator_cagr=0.03,
+            candidate_max_drawdown=-0.20,
+            comparator_max_drawdown=-0.30,
+        )
+        == "INVALID_RUN"
+    ), "登记了 turnover 门控却不提供 turnover，结论不可信"
+
+
+def test_EP34D_an_unparseable_turnover_threshold_is_not_read_as_no_limit():
+    """`turnover<=abc` 必须 `INVALID_RUN`，不能读成"没有上限"。
+
+    读成"没有上限"比读成一个宽松的数字更危险：宽松的数字至少还挡一点，
+    没有上限则换手可以任意高，而结论仍写着"支持假设"。"""
+    spec = make_spec(predeclared_failure_criteria="max_drawdown>-0.35;turnover<=abc")
+    assert (
+        outcome_for(
+            spec=spec,
+            candidate_cagr=0.10,
+            comparator_cagr=0.03,
+            candidate_max_drawdown=-0.20,
+            comparator_max_drawdown=-0.30,
+            candidate_turnover=24.0,
+            comparator_turnover=10.0,
+        )
+        == "INVALID_RUN"
+    ), "turnover 阈值读不懂时必须拒绝给结论"
+
+
+def test_EP34E_a_turnover_gate_without_the_word_comparator_is_unparseable():
+    """`turnover<=1.5`（没有 `comparator`）必须 `INVALID_RUN`。
+
+    门控的语义是"与基准的比率"。写成绝对水平时，它到底指
+    绝对换手还是比率是说不清的，而说不清的判据不得执行。
+    刻意不在两种读法里挑一个——挑了就等于替登记者补充他没写的东西。"""
+    spec = make_spec(predeclared_failure_criteria="max_drawdown>-0.35;turnover<=1.5")
+    assert (
+        outcome_for(
+            spec=spec,
+            candidate_cagr=0.10,
+            comparator_cagr=0.03,
+            candidate_max_drawdown=-0.20,
+            comparator_max_drawdown=-0.30,
+            candidate_turnover=24.0,
+            comparator_turnover=10.0,
+        )
+        == "INVALID_RUN"
+    ), "缺 comparator 的 turnover 判据说不清，必须拒绝"
+
+
+def test_EP34F_an_experiment_without_a_turnover_gate_needs_no_turnover_numbers():
+    """没登记 turnover 门控的实验不因此失效。
+
+    防止 EP34C 过度纠正：不是每个实验都关心换手
+    （例如纯配置实验的 turnover 恒为 1.0）。强行要求 turnover
+    会让大量既有实验变成 `INVALID_RUN`，于是这个返回值失去意义——
+    满街都是 INVALID_RUN 时没人认真读它。"""
+    spec = make_spec(predeclared_failure_criteria="max_drawdown>-0.35")
+    assert (
+        outcome_for(
+            spec=spec,
+            candidate_cagr=0.10,
+            comparator_cagr=0.03,
+            candidate_max_drawdown=-0.20,
+            comparator_max_drawdown=-0.30,
+        )
+        == "SUPPORTS_HYPOTHESIS"
+    ), "没有 turnover 门控的实验不该被 turnover 拖成 INVALID_RUN"
+
+
+def test_EP35_a_ledger_entry_records_the_code_that_produced_it():
+    """台账条目必须能追溯产生它的代码，不能只有 spec。
+
+    实测缺陷：实验 B 的 ledger 条目 spec_hash 与修复后的 runner
+    完全一致（`1868eebd…`），但修复前的 runner 用的趋势判据是
+    "区间首尾差"而不是 S2_R1 的"价格高于 200 有效观测均值"，
+    与冻结目标有 467 个单元不同。两条记录共享一个 spec_hash，
+    于是**同一份规格对应两套不同的代码**，而台账无法区分。
+
+    `spec.digest()` 刻意不含 code_sha：规格描述"要验证什么"，
+    代码描述"实际跑了什么"。只登记前者，读者无法知道一条结论
+    是不是由一个复现校验根本没通过的 runner 产出的。"""
+    ledger = ExperimentLedger(path=str(Path("/tmp") / "ep35_ledger.jsonl"))
+    record = ledger.record(
+        make_spec(),
+        "DOES_NOT_SUPPORT_HYPOTHESIS",
+        evidence_hash="b" * 64,
+        reason="turnover gate broken",
+        code_sha="c" * 64,
+    )
+    assert record.get("code_sha") == "c" * 64, (
+        f"台账条目缺 code_sha，无法追溯产生它的代码；实际字段 {sorted(record)}"
+    )
+
+
+def test_EP36_a_runner_aborts_when_its_reproduction_gate_fails():
+    """复现校验未通过的 runner 必须中止，不得继续写台账。
+
+    实测缺陷：实验 B 的第一次运行中
+    `s2_r1_reproduction_matches_frozen_targets=False`
+    （复现序列与冻结目标有 467 个单元不同），但 runner 仍然继续
+    算出指标、仍然调用 `ledger.record(...)`。台账于是收到一条
+    **基线本身就是错的**的比较结论。
+
+    复现校验的意义在于"基线对不对"，不在于"要不要写文件"。
+    校验失败还继续写，等于把一条可疑结论存成永久记录，
+    而三个月后没人会记得当时校验是红的。
+
+    测的是 runner 暴露的守卫函数本身，而不是用源码字符串去猜。"""
+    from research.experiments.run_s2_r2_trend_risk_budget import require_reproduction
+
+    with pytest.raises(ExperimentProtocolError, match="复现"):
+        require_reproduction(False, "S2_R1_REPRODUCTION")
+    assert require_reproduction(True, "S2_R1_REPRODUCTION") is None

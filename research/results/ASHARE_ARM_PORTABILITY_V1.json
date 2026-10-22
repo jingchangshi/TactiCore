@@ -1,0 +1,83 @@
+{
+  "artifacts_modified": [],
+  "classification": "COMPATIBLE_WITH_CAVEAT",
+  "reasons": [
+    "bundle 读取、VectorBT、RQAlpha 与跨引擎自比在本架构全部通过",
+    "存在实测成本差 0.00172%（约 1.2997496856574584 元）：链路可用，但两个引擎不可互换使用"
+  ],
+  "scope": "单架构可用性实测。不给出 NUMERICALLY_EQUIVALENT：跨架构数值等价需要第二个架构的对照运行，本诊断未执行。",
+  "vps_note": "本诊断在本机（aarch64）执行，未访问 Oracle VPS。VPS 侧结论必须由 VPS 上的对应运行产生，不得由本文件推断。",
+  "probes": {
+    "environment": {
+      "machine": "aarch64",
+      "architecture": "64bit",
+      "platform": "Linux-6.8.0-1049-oracle-aarch64-with-glibc2.35",
+      "python_version": "3.11.15",
+      "python_implementation": "CPython",
+      "is_aarch64": true,
+      "blas_lapack": {
+        "available": true,
+        "blas": "openblas64",
+        "lapack": "dep281472816241488"
+      }
+    },
+    "packages": {
+      "numpy": "1.26.4",
+      "pandas": "2.3.3",
+      "scipy": "1.17.1",
+      "vectorbt": "0.28.5",
+      "rqalpha": "6.3.0",
+      "numba": "0.67.0",
+      "llvmlite": "0.49.0"
+    },
+    "runtime_limits": {
+      "cpu_count": 4,
+      "memory": {
+        "available": true,
+        "total_bytes": 25145233408,
+        "total_gib": 23.42
+      },
+      "disk_total_gib": 193.63
+    },
+    "bundle_read": {
+      "status": "PASSED",
+      "trading_days": 5,
+      "symbols": [
+        "510300.XSHG",
+        "510500.XSHG"
+      ],
+      "price_rows": 5,
+      "nan_cells": 0
+    },
+    "vectorbt": {
+      "status": "PASSED",
+      "equity_points": 5,
+      "all_finite": true,
+      "final_equity": 76360.62854049375,
+      "trade_count": 1
+    },
+    "rqalpha": {
+      "status": "PASSED",
+      "rqalpha_version": "6.3.0",
+      "equity_points": 5,
+      "final_equity": 76359.4458,
+      "replayed_days": 1,
+      "order_events": 1
+    },
+    "cross_engine": {
+      "status": "PASSED",
+      "total_return_difference": 0.0003208253579238818,
+      "threshold": 0.005,
+      "trade_count_agree": true
+    },
+    "cost_caveat": {
+      "status": "MEASURED",
+      "initial_cash": 75776.53,
+      "vectorbt_total_return": 0.008464079273327707,
+      "rqalpha_total_return": 0.008446926868939997,
+      "gap_yuan": 1.2997496856574584,
+      "gap_return_points": 1.7152404387710263e-05,
+      "attribution": "RQAlpha 关闭印花税与最低佣金（成本低估）+ 一手取整使成交额小于目标额；详见 WP2.4 execution_audit 的差异表与 fee_mapping.unmapped"
+    }
+  }
+}

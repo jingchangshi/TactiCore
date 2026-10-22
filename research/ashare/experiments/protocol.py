@@ -312,6 +312,32 @@ def assert_consistent_costs(specs: Sequence[ExperimentSpec]) -> None:
         )
 
 
+def _parse_criterion(criteria: str, marker: str) -> float | None:
+    """从预先登记的判据文本中取出 `marker` 后面的数字。
+
+    读不出来返回 `None`，由调用方统一转成 `INVALID_RUN`。
+    刻意**不**在这里抛异常：三条判据路径（成功、失败、以及未来新增的）
+    必须只有一种失败方式，调用方才能用一个分支覆盖全部。
+    也刻意不把空串读成 0.0——那会让 `cagr>=` 变成"任意非负收益即支持"，
+    而一条没写完整的判据不该变成最宽松的判据。
+
+    `split(marker, 1)` 的 maxsplit=1 是有意的：marker 出现第二次时，
+    不限次数的 `split(marker)[1]` 会截在第二个 marker 前，于是一条
+    "cagr>=0.02;cagr>=0.05" 这种自相矛盾的判据被**静默**解析成 0.02。
+    截住之后它变成不可解析，返回 `None` → `INVALID_RUN`。
+    任务书要求"判据说不清就拒绝给结论"，两个阈值正是说不清。
+
+    这里没有 `.strip()`：`float()` 自己就吃掉首尾空白（含 `\\t`、NBSP），
+    加一层会让读者以为空白是需要处理的边界情况，而它不是。"""
+    if marker not in criteria:
+        return None
+    fragment = criteria.split(marker, 1)[1].split(";", 1)[0]
+    try:
+        return float(fragment)
+    except ValueError:
+        return None
+
+
 def outcome_for(
     *,
     candidate_cagr: float | None,
@@ -340,19 +366,37 @@ def outcome_for(
     # 判据以文本预先登记，本函数只做**可复核**的解释，不做自由裁量。
     # 若判据文本无法被解析成明确规则，返回 INVALID_RUN 而不是猜一个规则：
     # 一个说不清判据的实验，其结论无法被独立审查。
-    criteria = spec.predeclared_success_criteria
-    if "cagr>=" not in criteria:
+    #
+    # 解析必须对**两条**判据都失败才返回 INVALID_RUN。只保护成功判据的
+    # `split(...)[1]` 会在失败判据读不懂时抛 IndexError/ValueError——
+    # EP30 系列测试实测到的正是那样。一个未捕获的异常会让调用方以为
+    # "程序崩了"，于是它去修程序，而该修的是判据。
+    threshold = _parse_criterion(spec.predeclared_success_criteria, "cagr>=")
+    drawdown_floor = _parse_criterion(spec.predeclared_failure_criteria, "max_drawdown>")
+    if threshold is None or drawdown_floor is None:
         return "INVALID_RUN"
-    threshold = float(criteria.split("cagr>=")[1].split(";")[0])
-    drawdown_floor = float(
-        spec.predeclared_failure_criteria.split("max_drawdown>")[1].split(";")[0]
-    )
+    # 第二个目标：回撤**改善幅度**。任务书实验 C 要求评价两个不同目标，
+    # 只支持"收益差多少"的语法无法把"是否改善风险和回撤"记成一个结论，
+    # 于是它只能退化成一句没人会复核的备注。
+    #
+    # 它出现与否都合法：不写 `drawdown_improvement>=` 的实验不因此失效
+    # （例如纯收益实验），但写了就必须能解析。半途放弃解析会让一个
+    # "只看收益的回撤实验"通过——那正是任务书不让做的事。
+    drawdown_gain = _parse_criterion(spec.predeclared_success_criteria, "drawdown_improvement>=")
+    if "drawdown_improvement>=" in spec.predeclared_success_criteria and drawdown_gain is None:
+        return "INVALID_RUN"
     assert candidate_cagr is not None and comparator_cagr is not None
     assert candidate_max_drawdown is not None and comparator_max_drawdown is not None
     if candidate_max_drawdown <= drawdown_floor:
         return "DOES_NOT_SUPPORT_HYPOTHESIS"
     if candidate_cagr >= comparator_cagr + threshold:
-        return "SUPPORTS_HYPOTHESIS"
+        # 收益腿过了。第二个目标（回撤改善幅度）单独判：
+        # 过则支持，不过则否证——不是"分不出差别"。回撤是负数，
+        # 所以"改善"是向上比较（-0.10 优于 -0.30）。
+        gained = candidate_max_drawdown - comparator_max_drawdown
+        if drawdown_gain is None or gained >= drawdown_gain:
+            return "SUPPORTS_HYPOTHESIS"
+        return "DOES_NOT_SUPPORT_HYPOTHESIS"
     if candidate_cagr <= comparator_cagr - threshold:
         return "DOES_NOT_SUPPORT_HYPOTHESIS"
     return "NO_SIGNIFICANT_DIFFERENCE"

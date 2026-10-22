@@ -553,3 +553,195 @@ def test_EP29_the_spec_hash_is_stable_across_processes():
     "没有显著差异"——一个听起来像结论的废话。"""
     with pytest.raises(ExperimentProtocolError, match="比较族"):
         spec_hash(make_spec(comparison_family=("CHAMPION",)).to_dict())
+
+
+def test_EP30_an_unparseable_failure_criterion_also_refuses_to_conclude():
+    """EP17 只覆盖了**成功**判据读不懂的情形。失败判据读不懂同样必须拒绝。
+
+    实测：`predeclared_failure_criteria="turnover<=1.5x comparator"`
+    （没有 `max_drawdown>`）会让 `outcome_for` 抛
+    `IndexError: list index out of range`。
+
+    这不是调用方写错字段的问题：`INVALID_RUN` 是承诺过的返回值
+    （EP17 的 docstring 与 `EXPERIMENT_OUTCOMES` 都有它），
+    而一个未捕获的 IndexError 会让调用方把"判据说不清"
+    当成"程序崩了"——于是它去修程序，而不是去修判据。"""
+    spec = make_spec(predeclared_failure_criteria="turnover<=1.5x comparator")
+    outcome = outcome_for(
+        spec=spec,
+        candidate_cagr=0.10,
+        comparator_cagr=0.03,
+        candidate_max_drawdown=-0.20,
+        comparator_max_drawdown=-0.30,
+    )
+    assert outcome == "INVALID_RUN"
+
+
+def test_EP30B_an_empty_threshold_is_not_a_zero_threshold():
+    """`cagr>=` 后面没有数字，必须报 `INVALID_RUN`，不能读成 0。
+
+    实测它抛 `ValueError: could not convert string to float: ''`。
+    读成 0 会更糟：任何非负收益都会"支持假设"，
+    于是一条没写完整的判据变成了最宽松的判据——
+    而这正是预注册要防的那种事后放松。"""
+    for criteria in ("cagr>=;max_drawdown>-0.35", "cagr>=abc;max_drawdown>-0.35"):
+        spec = make_spec(predeclared_success_criteria=criteria)
+        assert (
+            outcome_for(
+                spec=spec,
+                candidate_cagr=0.10,
+                comparator_cagr=0.03,
+                candidate_max_drawdown=-0.20,
+                comparator_max_drawdown=-0.30,
+            )
+            == "INVALID_RUN"
+        ), f"{criteria!r} 无法解析出阈值时必须拒绝给结论"
+
+
+def test_EP30C_the_criteria_parser_rejects_a_non_numeric_drawdown_floor():
+    """回撤门控同样不能把乱码读成一个数字。
+
+    失败判据里的 `max_drawdown>` 后面跟着 `abc` 时，
+    实测抛 `ValueError`。它必须与 EP30/EP30B 一致地落到
+    `INVALID_RUN`——否则同一个函数有两种崩溃方式，
+    调用方无法用一个 except 覆盖。"""
+    spec = make_spec(predeclared_failure_criteria="max_drawdown>abc;turnover<=1.5x")
+    assert (
+        outcome_for(
+            spec=spec,
+            candidate_cagr=0.10,
+            comparator_cagr=0.03,
+            candidate_max_drawdown=-0.20,
+            comparator_max_drawdown=-0.30,
+        )
+        == "INVALID_RUN"
+    )
+
+
+def test_EP30D_a_criterion_that_names_the_same_marker_twice_in_one_field_is_refused():
+    """同一个字段里出现两次 `cagr>=`，必须报 `INVALID_RUN`。
+
+    这是变异测试逼出来的：去掉 `split(marker, 1)` 的 maxsplit=1 之后，
+    `"cagr>=0.02 cagr>=0.05"` 会被静默解析成 0.02——两个阈值里选了
+    较小的那个，而"选了哪个"没有任何记录。事后要宣布成功时，
+    宽松的那个阈值就是可用的那一个；这正是预登记要堵住的形状。
+
+    注意分隔符必须是**空白**而不是 `;`：用 `;` 时 `.split(";", 1)[0]`
+    自己就截断了，那条输入根本走不到 maxsplit 的分支。
+    第一次写这条测试时我用了 `;`，它失败了——那说明我对这个变异的
+    作用域判断错了，而不是模块错了。模块是对的，错的是我的测试。"""
+    spec = make_spec(predeclared_success_criteria="cagr>=0.02 cagr>=0.05;max_drawdown>-0.35")
+    assert (
+        outcome_for(
+            spec=spec,
+            candidate_cagr=0.10,
+            comparator_cagr=0.03,
+            candidate_max_drawdown=-0.20,
+            comparator_max_drawdown=-0.30,
+        )
+        == "INVALID_RUN"
+    )
+
+
+def test_EP31_the_drawdown_improvement_criterion_is_expressible():
+    """任务书实验 C 要求评价**两个**不同目标，其中之一是回撤。
+
+    `outcome_for` 原来的判据语法只能表达"候选 CAGR 超过对照多少"
+    与"候选回撤的绝对下限"。它**无法**表达"回撤改善至少 X"——
+    于是"是否改善风险和回撤"这个问题只能被降级成一句备注，
+    而不是一个能被台账记录的结论。一个无法被登记的结论
+    三个月后与没人看过是一样的。
+
+    `drawdown_improvement>=X` 让第二个目标成为一等公民。"""
+    spec = make_spec(
+        predeclared_success_criteria="drawdown_improvement>=0.02;cagr>=0.0",
+        predeclared_failure_criteria="max_drawdown>-0.35",
+    )
+    kwargs = dict(
+        candidate_cagr=0.031,
+        comparator_cagr=0.030,
+        candidate_max_drawdown=-0.15,
+        comparator_max_drawdown=-0.30,
+    )
+    assert outcome_for(spec=spec, **kwargs) == "SUPPORTS_HYPOTHESIS"
+    # 回撤没有改善到宣称的幅度，则假设不成立——即使收益完全没让。
+    assert (
+        outcome_for(spec=spec, **dict(kwargs, candidate_max_drawdown=-0.29))
+        == "DOES_NOT_SUPPORT_HYPOTHESIS"
+    )
+    # 回撤倒退（变得更差）同样是否证，不是"没有差别"。
+    assert (
+        outcome_for(spec=spec, **dict(kwargs, candidate_max_drawdown=-0.40))
+        == "DOES_NOT_SUPPORT_HYPOTHESIS"
+    )
+    # 收益腿没过而回撤大幅改善：仍不得记为支持。
+    # 这是任务书"不能因为回撤下降就声称预测 alpha 提高"的直接形式。
+    assert (
+        outcome_for(spec=spec, **dict(kwargs, candidate_cagr=0.020))
+        == "DOES_NOT_SUPPORT_HYPOTHESIS"
+    )
+
+
+def test_EP31B_a_drawdown_gain_that_gives_back_return_is_refused():
+    """回撤改善而收益被让掉，必须判否。
+
+    这正是任务书"不能因为回撤下降就声称预测 alpha 提高"的
+    另一面：只报"回撤改善了 15 个点"而不报收益让掉多少，
+    读者无法判断这是风险特征变化还是一次真实的改进。
+    两个目标都要过，缺一个即否。"""
+    spec = make_spec(
+        predeclared_success_criteria="drawdown_improvement>=0.02;cagr>=0.02",
+        predeclared_failure_criteria="max_drawdown>-0.35",
+    )
+    assert (
+        outcome_for(
+            spec=spec,
+            candidate_cagr=0.005,
+            comparator_cagr=0.030,
+            candidate_max_drawdown=-0.10,
+            comparator_max_drawdown=-0.30,
+        )
+        == "DOES_NOT_SUPPORT_HYPOTHESIS"
+    ), "回撤改善 20 个点但收益让掉到判据以下，不得记为支持"
+
+
+def test_EP31C_a_drawdown_gain_within_noise_is_not_support():
+    """回撤只好了 0.001 而判据要求 0.02，必须判否。
+
+    变异测试要防的形状：把 `gained < drawdown_gain` 改成
+    `gained <= 0`，这条就会绿——于是"几乎没有改善"被记成支持。"""
+    spec = make_spec(
+        predeclared_success_criteria="drawdown_improvement>=0.02;cagr>=0.0",
+        predeclared_failure_criteria="max_drawdown>-0.35",
+    )
+    assert (
+        outcome_for(
+            spec=spec,
+            candidate_cagr=0.031,
+            comparator_cagr=0.030,
+            candidate_max_drawdown=-0.299,
+            comparator_max_drawdown=-0.300,
+        )
+        == "DOES_NOT_SUPPORT_HYPOTHESIS"
+    )
+
+
+def test_EP31D_an_unparseable_drawdown_gain_is_not_silently_ignored():
+    """`drawdown_improvement>=` 后面读不出数字时，必须 INVALID_RUN。
+
+    不能因为它"只是第二个目标"就跳过：跳过的结果是一个
+    只看收益的回撤实验，而那正是任务书不让做的事。"""
+    spec = make_spec(
+        predeclared_success_criteria="drawdown_improvement>=;cagr>=0.0",
+        predeclared_failure_criteria="max_drawdown>-0.35",
+    )
+    assert (
+        outcome_for(
+            spec=spec,
+            candidate_cagr=0.10,
+            comparator_cagr=0.03,
+            candidate_max_drawdown=-0.10,
+            comparator_max_drawdown=-0.30,
+        )
+        == "INVALID_RUN"
+    )

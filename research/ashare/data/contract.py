@@ -120,8 +120,7 @@ class SnapshotManifest:
                 return entry
         available = ", ".join(entry.dataset for entry in self.datasets)
         raise SnapshotContractError(
-            f"数据集 {name!r} 不在 manifest 中（可用: {available}）；"
-            "不得用别的数据集冒充"
+            f"数据集 {name!r} 不在 manifest 中（可用: {available}）；不得用别的数据集冒充"
         )
 
 
@@ -171,9 +170,7 @@ def _require_iso_date(value: object, *, label: str) -> str:
     """
     text = _require_str(value, label=label)
     if len(text) != 8 or not text.isdigit():
-        raise SnapshotContractError(
-            f"{label} 必须是 8 位 YYYYMMDD 数字，得到 {text!r}"
-        )
+        raise SnapshotContractError(f"{label} 必须是 8 位 YYYYMMDD 数字，得到 {text!r}")
     try:
         return f"{text[:4]}-{text[4:6]}-{text[6:]}"
     except (ValueError, IndexError) as error:
@@ -201,14 +198,13 @@ def verify_snapshot_manifest(
             f"不支持的 schema_version {schema_version!r}（本模块支持 "
             f"{SUPPORTED_EXPORT_SCHEMA_VERSION!r}）；升级读取方之前不得加载"
         )
-    fingerprint = _require_digest(
-        manifest["source_db_fingerprint"], label="source_db_fingerprint"
-    )
+    fingerprint = _require_digest(manifest["source_db_fingerprint"], label="source_db_fingerprint")
 
     as_of_text = _require_str(manifest["as_of_trade_date"], label="as_of_trade_date")
     as_of_date = normalize_signal_date(
-        parse_iso_date(_require_iso_date(as_of_text, label="as_of_trade_date"),
-                       label="as_of_trade_date")
+        parse_iso_date(
+            _require_iso_date(as_of_text, label="as_of_trade_date"), label="as_of_trade_date"
+        )
     )
 
     raw_datasets = manifest["dataset_manifest"]
@@ -221,9 +217,7 @@ def verify_snapshot_manifest(
         entry = _require_mapping(raw, label=f"dataset_manifest[{index}]")
         absent = [field for field in REQUIRED_DATASET_FIELDS if field not in entry]
         if absent:
-            raise SnapshotContractError(
-                f"dataset_manifest[{index}] 缺少字段: {', '.join(absent)}"
-            )
+            raise SnapshotContractError(f"dataset_manifest[{index}] 缺少字段: {', '.join(absent)}")
         name = _require_str(entry["dataset"], label=f"dataset_manifest[{index}].dataset")
         if name in seen:
             raise SnapshotContractError(f"数据集 {name!r} 在 manifest 中重复出现")
@@ -290,9 +284,7 @@ def verify_snapshot_manifest(
     content_hashes: dict[str, str] = {}
     for file_name, digest in content_hashes_raw.items():
         _require_str(file_name, label="content_hashes 键")
-        content_hashes[file_name] = _require_digest(
-            digest, label=f"content_hashes[{file_name}]"
-        )
+        content_hashes[file_name] = _require_digest(digest, label=f"content_hashes[{file_name}]")
 
     # manifest 声明的每个文件都必须出现在 content_hashes 中，反之亦然。
     # 对不上说明有数据集被加了或删了，按旧清单读取会漏文件或读错文件。
@@ -351,9 +343,7 @@ def verify_snapshot_content(manifest: SnapshotManifest) -> None:
     for entry in manifest.datasets:
         path = manifest.snapshot_dir / entry.file
         if not path.is_file():
-            raise SnapshotContractError(
-                f"manifest 声明了 {entry.file} 但快照目录中不存在该文件"
-            )
+            raise SnapshotContractError(f"manifest 声明了 {entry.file} 但快照目录中不存在该文件")
         actual = sha256_file(path)
         expected = manifest.content_hashes[entry.file]
         if actual != expected:

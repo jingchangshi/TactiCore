@@ -184,9 +184,9 @@ def test_AA01_a_security_listed_after_as_of_gets_no_positive_target(frames) -> N
 
 def test_AA02_pre_listing_price_rows_are_dropped_and_recorded(frames) -> None:
     """早于上市日的价格必须被置为 NaN，且这一动作必须写进 notes。"""
-    assert LATE_LISTED in frames.excluded or any(
-        LATE_LISTED in note for note in frames.notes
-    ), "丢弃上市前行必须在 notes 或 excluded 中留下痕迹"
+    assert LATE_LISTED in frames.excluded or any(LATE_LISTED in note for note in frames.notes), (
+        "丢弃上市前行必须在 notes 或 excluded 中留下痕迹"
+    )
     pre = frames.prices.loc[frames.prices.index < pd.Timestamp("2026-01-08"), LATE_LISTED]
     assert pre.isna().all(), f"上市日之前的价格必须是 NaN: {pre.to_dict()}"
 
@@ -197,9 +197,7 @@ def test_AA03_a_security_without_an_identity_record_has_no_lifetime(frames) -> N
     # 没有 lifetime 的 symbol 在 mask 里必然全 False。
     for symbol in frames.prices.columns:
         if symbol not in frames.lifetimes:
-            assert not frames.tradability_mask[symbol].any(), (
-                f"{symbol} 没有 lifetime 却可交易"
-            )
+            assert not frames.tradability_mask[symbol].any(), f"{symbol} 没有 lifetime 却可交易"
 
 
 def test_AA04_a_suspended_day_is_not_tradable(frames) -> None:
@@ -288,9 +286,10 @@ def test_AA11_a_required_column_absent_is_refused(snapshot: Path) -> None:
     lines = target.read_text(encoding="utf-8").splitlines()
     header = lines[0].split(",")
     close_index = header.index("close")
-    lines = [",".join(
-        [value for i, value in enumerate(line.split(",")) if i != close_index]
-    ) for line in lines]
+    lines = [
+        ",".join([value for i, value in enumerate(line.split(",")) if i != close_index])
+        for line in lines
+    ]
     target.write_text("\n".join(lines) + "\n", encoding="utf-8")
     _rehash(snapshot)
     with pytest.raises(SnapshotContractError, match="close"):

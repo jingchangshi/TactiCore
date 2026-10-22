@@ -231,8 +231,7 @@ def load_research_frames(
     etf_prices, etf_symbols = _pivot_prices(manifest, "fund_daily_bars")
     if equity_prices.empty and etf_prices.empty:
         raise SnapshotContractError(
-            "快照中没有任何行情（daily_bars 与 fund_daily_bars 均为空）；"
-            "无法构造价格矩阵"
+            "快照中没有任何行情（daily_bars 与 fund_daily_bars 均为空）；无法构造价格矩阵"
         )
 
     # 资产身份：优先 stock_basic，ETF 从 fund_basic 补充。

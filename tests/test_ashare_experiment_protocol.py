@@ -944,9 +944,7 @@ def test_EP34_a_registered_turnover_gate_is_enforced_not_ignored():
     判据形状是**比率**（`1.5x comparator`）而不是绝对水平，
     所以它不能被 `_parse_criterion` 解析——那是这条门控一直被
     悄悄跳过的直接原因。这里用 2.4 倍，远超 1.5x。"""
-    spec = make_spec(
-        predeclared_failure_criteria="max_drawdown>-0.35;turnover<=1.5x comparator"
-    )
+    spec = make_spec(predeclared_failure_criteria="max_drawdown>-0.35;turnover<=1.5x comparator")
     outcome = outcome_for(
         spec=spec,
         candidate_cagr=0.10,
@@ -957,8 +955,7 @@ def test_EP34_a_registered_turnover_gate_is_enforced_not_ignored():
         comparator_turnover=10.0,
     )
     assert outcome == "DOES_NOT_SUPPORT_HYPOTHESIS", (
-        f"换手 2.4x 超过登记的 1.5x 门控却得到 {outcome}；"
-        "一个不执行的门控比没有门控更糟"
+        f"换手 2.4x 超过登记的 1.5x 门控却得到 {outcome}；一个不执行的门控比没有门控更糟"
     )
 
 
@@ -993,9 +990,7 @@ def test_EP34C_missing_turnover_numbers_with_a_registered_gate_refuse_to_conclud
     返回 `INVALID_RUN` 而不是 `INSUFFICIENT_DATA`：缺的是**判据所需的
     输入**，不是数据本身不够。混成一类会让"runner 忘了传参数"
     看起来像一次诚实的"数据不够"。"""
-    spec = make_spec(
-        predeclared_failure_criteria="max_drawdown>-0.35;turnover<=1.5x comparator"
-    )
+    spec = make_spec(predeclared_failure_criteria="max_drawdown>-0.35;turnover<=1.5x comparator")
     assert (
         outcome_for(
             spec=spec,

@@ -459,9 +459,7 @@ def main() -> None:
         "comparison_family": comparison.to_dict(orient="records"),
         "s2_r1_reproduction_matches_frozen_targets": reproduction_ok,
         "reproduction_tolerance": {
-            "stored_decimal_places": stored_decimal_places(
-                RESULTS / "s2_v2_frozen_targets.csv"
-            ),
+            "stored_decimal_places": stored_decimal_places(RESULTS / "s2_v2_frozen_targets.csv"),
             "note": (
                 "容差由冻结文件的小数位数决定（半末位），不由比较代码决定。"
                 "该文件写 8 位小数，所以半末位是 5e-9。"

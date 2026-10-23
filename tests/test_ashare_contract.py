@@ -314,6 +314,38 @@ def test_AA13_sha256_file_matches_the_exporter(frames) -> None:
     assert sha256_file(path) == entry.sha256
 
 
+def test_AA14_an_unparseable_listing_date_excludes_instead_of_fabricating(snapshot: Path) -> None:
+    """上市日不可解析必须排除该证券，**不得**回退成"永远已上市"。
+
+    这里防的是一次具体的事故：`list_date` 解析失败时曾被回退到 1900-01-01，
+    于是该证券在上市日之前也变得可交易——而 notes 里一个字都不提。
+    既产生错误结果，又销毁了它自己的证据。这条测试把上市前那一行钉死。
+    """
+    target = snapshot / "stock_basic.csv"
+    text = target.read_text(encoding="utf-8")
+    # 600001.SH 的 list_date 20260108 -> 月份 13，不可解析。
+    assert "20260108" in text, "fixture 必须包含这只后上市证券的上市日"
+    target.write_text(text.replace("20260108", "20261301"), encoding="utf-8")
+    _rehash(snapshot)  # 先让篡改合法化，才能测到适配器而不是哈希不符
+
+    frames = load_research_frames(snapshot)
+
+    assert LATE_LISTED in frames.excluded, (
+        f"上市日不可解析必须显式排除，实际 excluded={frames.excluded}"
+    )
+    assert "list_date" in frames.excluded[LATE_LISTED], (
+        f"排除原因必须指名 list_date: {frames.excluded[LATE_LISTED]}"
+    )
+    # 关键断言：回退到 1900-01-01 会让这三行全部变成可交易。
+    pre_listing = frames.tradability_mask.loc[
+        frames.tradability_mask.index < pd.Timestamp("2026-01-08"), LATE_LISTED
+    ]
+    assert not pre_listing.any(), (
+        f"{LATE_LISTED} 的上市日不可解析，却在上市前可交易: {pre_listing.to_dict()}"
+    )
+    assert not frames.tradability_mask[LATE_LISTED].any(), "上市日未知的证券在任何日期都不得可交易"
+
+
 def _rehash(snapshot: Path) -> None:
     """把 manifest 的 content_hashes 与 dataset_manifest 重算为当前文件内容。
 

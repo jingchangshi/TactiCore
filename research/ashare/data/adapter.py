@@ -169,6 +169,9 @@ def _build_lifetimes(
 
     listed: dict[str, pd.Timestamp] = {}
     delisted: dict[str, pd.Timestamp | None] = {}
+    #: 上市日不可解析的证券及其原始值。**不给生命周期**：上市日未知时无法判断
+    #: 哪些价格行早于上市，把它们当"已上市"会让上市前的价格变成可交易。
+    unparseable_listing: dict[str, str] = {}
     for row in rows:
         symbol = (row.get("ts_code") or "").strip()
         if not symbol:
@@ -176,18 +179,19 @@ def _build_lifetimes(
         list_text = (row.get("list_date") or "").strip()
         if list_text:
             try:
-                listed[symbol] = pd.Timestamp(
-                    f"{list_text[:4]}-{list_text[4:6]}-{list_text[6:]}"
-                ).normalize()
-            except (ValueError, IndexError):
-                listed[symbol] = pd.Timestamp("1900-01-01")
+                listed[symbol] = _parse_yyyymmdd(list_text, label=f"{dataset}.list_date[{symbol}]")
+            except SnapshotContractError:
+                # 早先这里回退到 1900-01-01，等于"永远已上市"：上市前的价格行
+                # 全部变成可交易，而 notes 里一个字都不提——既错又静默。
+                # 现在改为不给生命周期，由 excluded 显式排除。
+                unparseable_listing[symbol] = list_text
         delist_text = (row.get("delist_date") or "").strip()
         if delist_text:
             try:
-                delisted[symbol] = pd.Timestamp(
-                    f"{delist_text[:4]}-{delist_text[4:6]}-{delist_text[6:]}"
-                ).normalize()
-            except (ValueError, IndexError):
+                delisted[symbol] = _parse_yyyymmdd(
+                    delist_text, label=f"{dataset}.delist_date[{symbol}]"
+                )
+            except SnapshotContractError:
                 # 退市日不可解析时按"未退市"处理，并在调用方可见的 notes 里记一笔。
                 delisted[symbol] = None
         else:
@@ -196,6 +200,12 @@ def _build_lifetimes(
     lifetimes: dict[str, AssetLifetime] = {}
     excluded: dict[str, str] = {}
     for symbol in symbols:
+        if symbol in unparseable_listing:
+            excluded[symbol] = (
+                f"unparseable list_date {unparseable_listing[symbol]!r} in {dataset}; "
+                "listing date unknown, so no target may be tradable"
+            )
+            continue
         if symbol not in listed:
             excluded[symbol] = f"no identity record in {dataset}"
             continue

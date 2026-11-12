@@ -662,3 +662,13 @@
   （governance closeout），working tree clean。
 - 重开条件：仅当推送后 CI 失败、后续同链重现出现 mismatch，或真实前瞻 cycle 暴露具体
   Foundation correctness 缺陷时；"再验证一次"本身不构成重开理由。
+
+## RL-052 所有者授权：仓库外月度编排器与有界迁移研究 Goal
+- 状态：CLOSED（授权记录；不是研究结论）
+- 日期：2026-11-12。授权人：仓库所有者（用户），原话要点：前瞻周期要按月可靠执行；迁移研究应尽早启动而不是等到 2026-11-30；同意豁免"禁止调度器"；DECISION 提交同时推送到远程。
+- 授权 1（豁免）：Foundation V1 文本"禁止调度器、daemon、通知"的适用范围是本仓库内。允许在仓库**外**（AShareInvestor `scripts/forward-cycle/`）放一个只调用冻结 CLI 的编排器，按月末交易日触发 EXACT_2026_09_30_DECISION_RUNBOOK 的各步；不得修改本仓库任何文件语义；失败即停、不重试写入、不回填；DECISION 提交同时推送。2026-09-30 与 2026-10-30 两个窗口已错过，**永久不回填**（观测数 0，前瞻时钟自首个真实 DECISION 起算）。
+- 授权 2（有界 Goal）：`ACCOUNT_INVESTABLE_ALLOCATION_TRANSFER_V1`，范围仅限验证趋势/风险状态倾斜在本账户可买品种集、约 6.9 万元规模、真实费率与整手约束下是否成立。引用 RL-043（S8A 反证）、RL-036；重开理由：资产池契约变化（QDII 溢价不可买，新增 512890/511360），不是同一问题改名。协议必须先于任何结果提交（预注册）；新文件仅放 `research/batches/transfer_v1/`、`data/transfer_v1/`、`research/results/ACCOUNT_*_V1.*`。
+- 仍然禁止：修改 S2_R1/S4C_R1 的 manifest、activation、冻结目标、策略/可交易性/RQAlpha 适配器源码、冻结身份内 runner；覆盖 `data/canonical/`；搜索融合权重；给 S4C 加上限；把本研究结果称为 S2/S4C 的版本。
+- 结论边界：本条不授权任何候选提升或生产使用；S2_R1、S4C_R1 仍非生产候选。
+- 证据：AShareInvestor `docs/design-20261111/30_DECISIONS_20261111.md`、`31_TRANSFER_RESEARCH_GOAL.md`；`scripts/forward-cycle/README.md`。
+- 重开条件：编排器写入了违反协议的记录；或迁移研究越出 §1 边界。

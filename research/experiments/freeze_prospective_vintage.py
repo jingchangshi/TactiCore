@@ -21,6 +21,7 @@ import tempfile
 from argparse import ArgumentParser
 from collections.abc import Mapping
 from dataclasses import replace
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +37,7 @@ from research.experiments.prospective_evidence import (
     sha256_file,
     sha256_frozen_repository_text,
     verify_canonical_vintage_location,
+    verify_signal_day_seal,
 )
 from tacticore.data.prices import load_price_csv
 from tacticore.data.tushare import (
@@ -138,6 +140,56 @@ def freeze_vintage(
     )
     if dataset.prices.index.max().normalize() != as_of_day:
         raise ValueError("--as-of 必须是该快照实际覆盖到的 canonical 价格观测日")
+
+    # 价格仍截止于 as-of；只额外读取当时已公布的月末交易所日历。
+    month_end = as_of_day + pd.offsets.MonthEnd(0)
+    if as_of_day < month_end:
+        start = as_of_day + pd.Timedelta(days=1)
+        expected_dates = pd.date_range(start, month_end, freq="D")
+        extensions: dict[str, pd.Series] = {}
+        requests = list(dataset.provenance["calendar_requests"])
+        for exchange in ("SSE", "SZSE"):
+            request = {
+                "exchange": exchange,
+                "start_date": start.strftime("%Y%m%d"),
+                "end_date": month_end.strftime("%Y%m%d"),
+                "fields": "exchange,cal_date,is_open,pretrade_date",
+            }
+            frame = api.trade_cal(**request)  # type: ignore[attr-defined]
+            if frame is None or not {"exchange", "cal_date", "is_open"}.issubset(frame.columns):
+                raise ValueError(f"trade_cal({exchange}) 月末日历缺少数据或字段")
+            if not frame["exchange"].eq(exchange).all():
+                raise ValueError(f"trade_cal({exchange}) 返回其他交易所")
+            dates = pd.to_datetime(frame["cal_date"], format="%Y%m%d", errors="raise")
+            states = pd.to_numeric(frame["is_open"], errors="raise")
+            if dates.duplicated().any() or set(dates) != set(expected_dates):
+                raise ValueError(f"trade_cal({exchange}) 未逐日覆盖自然月末")
+            if not states.isin([0, 1]).all():
+                raise ValueError(f"trade_cal({exchange}) 包含无效开市状态")
+            extensions[exchange.lower() + "_open"] = pd.Series(
+                states.to_numpy(dtype=int), index=pd.DatetimeIndex(dates)
+            )
+            requests.append(request)
+        extension = pd.DataFrame(extensions).sort_index()
+        if extension.any(axis=None):
+            raise ValueError("--as-of 不是自然月最后一个 canonical 开市日")
+        calendar = pd.concat([dataset.calendar, extension])
+        calendar.index.name = "date"
+        provenance = {
+            **dataset.provenance,
+            "calendar_requests": requests,
+            # 原有 download_timestamp 保持价格下载的权威时间；日历另行记录。
+            "calendar_extension_download_timestamp": (
+                downloaded_at or datetime.now(timezone.utc).isoformat()
+            ),
+        }
+        verify_signal_day_seal(
+            signal_date=as_of_day,
+            download_timestamp=provenance["download_timestamp"],
+            decision_seal_time=provenance["calendar_extension_download_timestamp"],
+            calendar=calendar,
+        )
+        dataset = replace(dataset, calendar=calendar, provenance=provenance)
 
     canonical_parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=".staging-", dir=canonical_parent))

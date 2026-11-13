@@ -386,6 +386,129 @@ def test_mocked_tushare_snapshot_publishes_and_feeds_both_decisions(tmp_path: Pa
     assert s4c.decision_record_count(s4c.canonical_observations_path(root)) == 1
 
 
+class _MonthEndApi(MockTushareApi):
+    def __init__(self, *, missing: bool = False, future_open: bool = False) -> None:
+        super().__init__(as_of="2026-10-30")
+        self.missing = missing
+        self.future_open = future_open
+        self.requests: list[dict[str, Any]] = []
+
+    def trade_cal(self, **kwargs: Any) -> pd.DataFrame:
+        self.requests.append(kwargs.copy())
+        if kwargs["start_date"] == "20261031":
+            if self.missing:
+                return pd.DataFrame(columns=["exchange", "cal_date", "is_open", "pretrade_date"])
+            return pd.DataFrame(
+                [
+                    {
+                        "exchange": kwargs["exchange"],
+                        "cal_date": "20261031",
+                        "is_open": int(self.future_open),
+                        "pretrade_date": "20261030",
+                    }
+                ]
+            )
+        return super().trade_cal(**kwargs)
+
+
+@pytest.mark.parametrize("candidate_id", ["S2_R1", "S4C_R1"])
+def test_snapshot_extends_calendar_not_prices_for_weekend_month_end(
+    tmp_path: Path, candidate_id: str
+) -> None:
+    root = _repo(tmp_path, candidate_id)
+    api = _MonthEndApi()
+    vintage = freeze.freeze_vintage(
+        api,
+        candidate_id=candidate_id,
+        as_of="2026-10-30",
+        root=root,
+        downloaded_at="2026-10-30T07:30:00+00:00",
+    )
+    prices = pd.read_csv(vintage / "etf_adjusted_close.csv", index_col=0, parse_dates=True)
+    calendar = pd.read_csv(vintage / "trading_calendar.csv", index_col=0, parse_dates=True)
+    provenance = json.loads((vintage / "provenance.json").read_text())
+    assert prices.index.max() == pd.Timestamp("2026-10-30")
+    assert calendar.index.max() == pd.Timestamp("2026-10-31")
+    assert not calendar.loc["2026-10-31"].any()
+    assert provenance["end_date"] == "20261030"
+    assert all(
+        r["end_date"] == "20261030"
+        for symbol in provenance["symbols"]
+        for r in symbol["request_parameters"].values()
+    )
+    assert [r for r in provenance["calendar_requests"] if r["end_date"] == "20261031"] == [
+        r for r in api.requests if r["start_date"] == "20261031"
+    ]
+    if candidate_id == "S2_R1":
+        s2.validate_month_end_review(calendar, "2026-10-30")
+        write_observations_header(
+            root / freeze.CANDIDATES[candidate_id] / "observations.csv", s2.RECORD_FIELDS
+        )
+        record = s2.run_decision(
+            "2026-10-30", root=root, decision_seal_time="2026-10-30T08:00:00+00:00"
+        )
+    else:
+        manifest = freeze.candidate_manifest(freeze.CANDIDATES[candidate_id], root)
+        s4c.validate_month_end(calendar, "2026-10-30", manifest)
+        write_observations_header(
+            root / freeze.CANDIDATES[candidate_id] / "observations.csv", s4c.RECORD_FIELDS
+        )
+        record = s4c.run_decision(
+            "2026-10-30", root=root, decision_seal_time="2026-10-30T08:00:00+00:00"
+        )
+    assert record["record_type"] == "decision"
+
+
+@pytest.mark.parametrize("before_close", [True, False])
+def test_calendar_timestamp_cannot_replace_price_download_time(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, before_close: bool
+) -> None:
+    root = _repo(tmp_path)
+    price_time = "2026-10-30T06:59:00+00:00" if before_close else "2026-10-30T07:30:00+00:00"
+    original_download = freeze.download_tushare_dataset
+
+    def download(*args: Any, **kwargs: Any) -> Any:
+        kwargs["downloaded_at"] = price_time
+        return original_download(*args, **kwargs)
+
+    class Clock:
+        @staticmethod
+        def now(tz: Any) -> Any:
+            return pd.Timestamp("2026-10-30T08:00:00+00:00").to_pydatetime()
+
+    monkeypatch.setattr(freeze, "download_tushare_dataset", download)
+    monkeypatch.setattr(freeze, "datetime", Clock)
+    if before_close:
+        with pytest.raises(ValueError, match="早于 signal_close"):
+            freeze.freeze_vintage(
+                _MonthEndApi(), candidate_id="S2_R1", as_of="2026-10-30", root=root
+            )
+        assert not (root / "research/shadow/s2_r1/vintages/2026-10-30").exists()
+    else:
+        vintage = freeze.freeze_vintage(
+            _MonthEndApi(), candidate_id="S2_R1", as_of="2026-10-30", root=root
+        )
+        provenance = json.loads((vintage / "provenance.json").read_text())
+        assert provenance["download_timestamp"] == price_time
+        assert provenance["calendar_extension_download_timestamp"] == "2026-10-30T08:00:00+00:00"
+
+
+@pytest.mark.parametrize("api", [_MonthEndApi(missing=True), _MonthEndApi(future_open=True)])
+def test_snapshot_rejects_incomplete_or_later_open_calendar_before_publish(
+    tmp_path: Path, api: _MonthEndApi
+) -> None:
+    root = _repo(tmp_path)
+    with pytest.raises(ValueError, match="逐日覆盖|最后一个 canonical"):
+        freeze.freeze_vintage(
+            api,
+            candidate_id="S2_R1",
+            as_of="2026-10-30",
+            root=root,
+            downloaded_at="2026-10-30T07:30:00+00:00",
+        )
+    assert not (root / "research/shadow/s2_r1/vintages/2026-10-30").exists()
+
+
 def test_failed_mocked_snapshot_leaves_no_canonical_vintage(tmp_path: Path) -> None:
     """snapshot 失败不得留下 staging 或半成品 canonical vintage。"""
     root = _repo(tmp_path)

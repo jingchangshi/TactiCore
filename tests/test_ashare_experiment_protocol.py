@@ -227,6 +227,15 @@ def test_EP11_the_two_cost_models_differ_by_a_factor_of_four():
     assert frozen == pytest.approx(mapped * 4), f"预期 4 倍差，实际 {frozen / mapped}"
 
 
+def test_named_finance_cost_matches_engine_mapping():
+    from research.ashare.data.fee_mapping import map_fees_to_vectorbt
+
+    model = CostModel.named("fees-2.0.0/etf")
+    mapping = map_fees_to_vectorbt(asset_class="ETF")
+    assert model.fees == mapping.parameters["fees"]
+    assert model.slippage == mapping.parameters["slippage"]
+
+
 def test_EP12_an_unknown_cost_model_label_is_refused():
     """未知口径即拒绝。默认成一个"差不多"的值会让成本无声地改变。"""
     with pytest.raises(ExperimentProtocolError, match="未知费用口径"):

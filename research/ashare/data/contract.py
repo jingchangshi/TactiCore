@@ -96,6 +96,7 @@ class SnapshotManifest:
     """已验证的 manifest 视图。字段名与 JSON 一致，便于人工对照。"""
 
     snapshot_id: str
+    snapshot_id_algorithm: str
     schema_version: str
     as_of_trade_date: str
     as_of_date: Any  # pd.Timestamp, 上海时区归一化
@@ -298,8 +299,48 @@ def verify_snapshot_manifest(
             f"（仅 manifest: {only_manifest}; 仅 hashes: {only_hashes}）"
         )
 
+    algorithm = manifest.get("snapshot_id_algorithm", "legacy-source-v1")
+    if algorithm not in ("legacy-source-v1", "content-hashes-v1", "dataset-manifest-v2"):
+        raise SnapshotContractError(f"不支持的 snapshot_id_algorithm: {algorithm!r}")
+    identity: dict[str, Any] = {
+        "schema_version": schema_version,
+        "as_of": as_of_text,
+        "source": fingerprint,
+    }
+    if algorithm in ("content-hashes-v1", "dataset-manifest-v2"):
+        identity["content_hashes"] = dict(sorted(content_hashes.items()))
+    if algorithm == "dataset-manifest-v2":
+        identity["datasets"] = [
+            [entry.dataset, entry.table, entry.file, entry.sha256, entry.rows, list(entry.columns),
+             entry.time_column, entry.as_of_filtered, entry.availability, entry.as_of_filter_note,
+             raw.get("missing_note")]
+            for entry, raw in sorted(zip(datasets, raw_datasets), key=lambda pair: pair[0].dataset)
+        ]
+        identity["quality"] = {
+            "status": status,
+            "missing_datasets": sorted(missing_datasets),
+            "reasons": sorted(reasons),
+            "as_of_requested": quality.get("as_of_requested"),
+            "as_of_resolved": quality.get("as_of_resolved"),
+            "data_cutoff": data_cutoff,
+        }
+        identity["code_mapping_version"] = _require_str(manifest["code_mapping_version"], label="code_mapping_version")
+        for key in ("adjustment_policy", "availability_semantics"):
+            fields = _require_mapping(manifest[key], label=key)
+            identity[key] = [[_require_str(k, label=key), _require_str(v, label=key)]
+                             for k, v in sorted(fields.items())]
+    expected_id = hashlib.sha256(
+        json.dumps(identity, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    if snapshot_id != expected_id:
+        raise SnapshotContractError("snapshot_id 与声明的快照身份不一致")
+    for entry in datasets:
+        if entry.sha256 != content_hashes[entry.file]:
+            raise SnapshotContractError(f"{entry.file} 在 dataset_manifest 与 content_hashes 中的哈希不一致")
+
     return SnapshotManifest(
         snapshot_id=snapshot_id,
+        snapshot_id_algorithm=algorithm,
         schema_version=schema_version,
         as_of_trade_date=as_of_text,
         as_of_date=as_of_date,

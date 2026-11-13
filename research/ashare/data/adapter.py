@@ -41,8 +41,7 @@ REQUIRED_SHARE_COLUMNS = ("ts_code", "trade_date", "fd_share")
 REQUIRED_LIMIT_COLUMNS = ("ts_code", "trade_date", "up_limit", "down_limit")
 REQUIRED_SUSPEND_COLUMNS = ("ts_code", "trade_date")
 
-#: 价格类数据集。equities 与 ETFs 分属两个数据集，绝不合并成一个价格矩阵：
-#: 两者的资产身份、复权口径与份额口径都不同，合并会让"同一策略"的假设失效。
+#: 股票和 ETF 分属不同数据集；读取后按证券代码合并，价格均保持原始口径。
 PRICE_DATASETS = {
     "daily_bars": "equity",
     "fund_daily_bars": "etf",
@@ -226,7 +225,9 @@ def load_research_frames(
 
     失败即抛 `SnapshotContractError`。任何校验不通过都不会返回部分结果。
     """
-    manifest = load_snapshot_manifest(snapshot_dir, verify_content=verify_content)
+    if not verify_content:
+        raise SnapshotContractError("研究帧必须验证文件完整性；verify_content=False 仅用于浏览 manifest")
+    manifest = load_snapshot_manifest(snapshot_dir, verify_content=True)
 
     if manifest.quality_status == "DEGRADED" and manifest.missing_datasets:
         raise SnapshotContractError(
@@ -235,7 +236,11 @@ def load_research_frames(
             "缺数据的快照不得用于产生前瞻证据，请改用完整导出"
         )
 
+    if any(reason.startswith(("allow_missing_bars:", "missing_as_of_bars:")) for reason in manifest.reasons):
+        raise SnapshotContractError("快照在 as-of 日缺少行情（allow_missing_bars / missing_as_of_bars）；不得用于研究")
+
     notes: list[str] = [f"{reason}" for reason in manifest.reasons]
+    notes.append("prices are RAW close values; adjustment factors are not applied")
 
     equity_prices, equity_symbols = _pivot_prices(manifest, "daily_bars")
     etf_prices, etf_symbols = _pivot_prices(manifest, "fund_daily_bars")
@@ -243,6 +248,10 @@ def load_research_frames(
         raise SnapshotContractError(
             "快照中没有任何行情（daily_bars 与 fund_daily_bars 均为空）；无法构造价格矩阵"
         )
+    as_of = pd.Timestamp(manifest.as_of_trade_date)
+    for dataset, frame in (("daily_bars", equity_prices), ("fund_daily_bars", etf_prices)):
+        if as_of not in frame.index or not frame.loc[as_of].notna().any():
+            raise SnapshotContractError(f"{dataset} 在 as-of 日没有收盘价，无法用于研究")
 
     # 资产身份：优先 stock_basic，ETF 从 fund_basic 补充。
     lifetimes, excluded = _build_lifetimes(manifest, equity_symbols, dataset="stock_basic")

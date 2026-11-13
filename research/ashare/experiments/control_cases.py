@@ -10,8 +10,7 @@
 2. **单 ETF 买入持有**：第一日满仓、之后不动。终值必须等于
    `初始资金 × 末价/首价`，误差只来自滑点与佣金。
 3. **固定权重多资产低频再平衡**：两资产各 50%，按固定间隔再平衡。
-   终值必须落在两个单资产买入持有之间（再平衡的效果必然介于其间或在其一，
-   取决于相关性，但**不能**跑出两者构成的区间之外——若跑出，说明记账有错）。
+   用构造价格和订单记录验证非调仓日保持持仓。
 4. **股票池评分驱动组合**：按给定分数取前 N 名等权。用于验证
    `validate_execution_targets` 的拦截，不验证收益。
 
@@ -78,10 +77,8 @@ def case_cash() -> ControlCase:
 def case_single_etf_buy_and_hold() -> ControlCase:
     """案例 2：单 ETF 买入持有。终值 = 初始资金 × 末价/首价，扣除一次性成本。
 
-    目标权重必须**每个交易日都**是 1.0，不是只有第一天。
-    `run_target_weights` 用 `size_type="targetpercent"`：某一天权重缺失或为 0
-    表示"把仓位调到 0"，于是"第一天满仓、之后不写"会被执行成
-    "第一天买入、第二天卖出"。买入持有的语义是持续保持该目标。
+    此案例每天提交 1.0 的目标；未提交目标应使用 NaN，0.0 则是清仓指令。
+    单资产满仓时每天重申目标不会改变买入持有的经济敞口。
     """
     closes = list(np.linspace(4.000, 4.800, len(DATES)))
     prices = _flat([("510300.SH", closes)])
@@ -100,11 +97,11 @@ def case_single_etf_buy_and_hold() -> ControlCase:
 
 def case_fixed_weight_rebalance() -> ControlCase:
     """案例 3：两资产各 50%，每 5 个交易日再平衡。"""
-    # 让两个资产走势相反但不完全镜像：再平衡的收益必然介于两者之间。
+    # 单资产买入持有区间仅适用于此处构造的单调价格，不是一般再平衡定理。
     up = list(np.linspace(10.0, 12.0, len(DATES)))
     down = list(np.linspace(20.0, 18.0, len(DATES)))
     prices = _flat([("600000.SH", up), ("600001.SH", down)])
-    targets = pd.DataFrame(0.0, index=DATES, columns=prices.columns)
+    targets = pd.DataFrame(float("nan"), index=DATES, columns=prices.columns)
     for position in range(0, len(DATES), 5):
         targets.iloc[position] = 0.5
     return ControlCase(
@@ -116,7 +113,7 @@ def case_fixed_weight_rebalance() -> ControlCase:
         expected_final_equity=None,
         expected_max_drawdown=None,
         tolerance=1e-9,
-        proves="多资产记账的权重守恒：再平衡收益不能跑出成分资产收益区间之外",
+        proves="非调仓日保持持仓；调仓日重新提交两资产各 50% 的目标",
     )
 
 

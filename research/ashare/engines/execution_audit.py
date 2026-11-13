@@ -408,17 +408,11 @@ def turnover_attribution(analyser: dict[str, Any]) -> pd.DataFrame:
 
 
 def corporate_action_coverage(prices: pd.DataFrame) -> tuple[pd.DataFrame, str | None]:
-    """检查是否存在**无法由本快照重建**的公司行动。
-
-    bundle 的复权因子与快照的复权口径若不一致，两套账的差异无法归因到费用。
-    本函数只报告事实，不尝试重建：重建不了就 `DATA_INSUFFICIENT`。
-    """
+    """统计价格缺失；仅凭价格无法验证公司行动及复权口径。"""
     gaps = prices.isna().sum()
-    if int(gaps.sum()) == 0:
-        return pd.DataFrame({"symbol": prices.columns, "missing_prices": 0}), None
     return (
         pd.DataFrame({"symbol": prices.columns, "missing_prices": gaps.to_numpy()}),
-        None,
+        "仅有价格数据，无法检查公司行动或核对复权口径；价格完整不代表公司行动覆盖完整",
     )
 
 

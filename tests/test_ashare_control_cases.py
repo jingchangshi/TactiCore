@@ -146,10 +146,7 @@ def test_CC04_buy_and_hold_has_zero_drawdown_on_a_rising_series() -> None:
 def test_CC03b_buy_and_hold_actually_holds_the_position() -> None:
     """买入持有必须**全程持仓**，只产生一次成交。
 
-    这条测试是为一个真实发生过的错误写的：目标权重只在第一天写 1.0，
-    `size_type="targetpercent"` 把"之后没有目标"当成"调到 0"，
-    于是买入持有被执行成"第一天买、第二天卖"，权益曲线从此走平。
-    终值检查能发现它，但这条测试把原因直接钉住：成交次数必须是 1。
+    本测试验证没有中途平仓，并保持完整敞口。
     """
     case = next(c for c in all_cases() if c.name == "single_etf_buy_and_hold")
     result = _run(case)
@@ -170,10 +167,7 @@ def test_CC03b_buy_and_hold_actually_holds_the_position() -> None:
 
 
 def test_CC05_rebalanced_result_stays_inside_the_constituent_range() -> None:
-    """再平衡收益必须落在两个成分资产买入持有构成的区间内。
-
-    这是权重守恒检查：跑出区间之外意味着有资产被重复计价、漏计或权重和不为 1。
-    """
+    """构造的单调价格下，再平衡终值落在两个成分资产的终值之间。"""
     case = next(c for c in all_cases() if c.name == "fixed_weight_rebalance")
     result = _run(case)
     final = float(result.equity.iloc[-1])
@@ -191,11 +185,16 @@ def test_CC05_rebalanced_result_stays_inside_the_constituent_range() -> None:
 
 
 def test_CC06_rebalance_targets_sum_to_one() -> None:
-    """再平衡日的目标权重和必须为 1（满仓），非再平衡日为 0（保持不动）。"""
+    """调仓日满仓，其他日期不提交订单并保持持仓。"""
     case = next(c for c in all_cases() if c.name == "fixed_weight_rebalance")
-    sums = case.targets.sum(axis=1)
-    observed = sorted(float(value) for value in sums.unique())
-    assert set(observed) <= {0.0, 1.0}, f"目标权重和只能是 0 或 1，实际 {observed}"
+    execution_dates = DATES[::5]
+    assert case.targets.loc[execution_dates].eq(0.5).all().all()
+    assert case.targets.drop(execution_dates).isna().all().all()
+    result = _run(case)
+    orders = result.portfolio.orders.records_readable
+    assert set(orders["Timestamp"]).issubset(set(execution_dates))
+    assert not orders.empty
+    assert (result.portfolio.gross_exposure() > 0.99).all()
 
 
 # --------------------------------------------------------------------------------------
@@ -260,12 +259,13 @@ def test_CC11_the_minimum_commission_threshold_is_stated_not_assumed() -> None:
     difference = next(d for d in mapping.unmapped if d.item == "commission_min_cents")
     assert ETF_COMMISSION_MIN_CENTS == 500
     assert "5 元" in difference.finance_mcp or "500" in difference.finance_mcp
-    # 该资金量下单笔佣金必须高于最低佣金，否则映射在此失效。
-    single_trade_commission_cents = INITIAL_CASH * ETF_COMMISSION_RATE * 100
-    assert single_trade_commission_cents > ETF_COMMISSION_MIN_CENTS, (
-        f"单笔佣金 {single_trade_commission_cents} 分应高于最低佣金 "
-        f"{ETF_COMMISSION_MIN_CENTS} 分，否则最低佣金开始主导成本"
-    )
+    # 账户总额高于门槛不代表拆分后的每笔成交额也高于门槛。
+    assert INITIAL_CASH * ETF_COMMISSION_RATE > ETF_COMMISSION_MIN_CENTS / 100
+    assert (INITIAL_CASH / 4) * ETF_COMMISSION_RATE < ETF_COMMISSION_MIN_CENTS / 100
+    for engine_mapping in (mapping, map_fees_to_rqalpha(asset_class="ETF")):
+        minimum = next(d for d in engine_mapping.unmapped if "min" in d.item)
+        assert "单笔成交额" in minimum.impact
+        assert "账户总额" in minimum.impact
 
 
 def test_CC12_the_mapping_report_is_complete_enough_to_archive() -> None:

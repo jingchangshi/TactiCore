@@ -35,6 +35,7 @@ from research.ashare.candidates.registry import (
     identity_hash,
     validate_manifest,
 )
+from research.ashare.data.fee_mapping import ETF_COMMISSION_RATE, ETF_SLIPPAGE_RATE_PER_SIDE
 
 EXPERIMENT_MODULE_VERSION = "ashare-experiment-protocol-1.0.0"
 
@@ -90,8 +91,8 @@ SPEC_IDENTITY_FIELDS = (
 COST_MODELS: Mapping[str, dict[str, Any]] = {
     # FinanceMCP `fees-2.0.0` 权威映射（research/ashare/data/fee_mapping.py）。
     "fees-2.0.0/etf": {
-        "fees": 0.00025,
-        "slippage": 0.0005,
+        "fees": ETF_COMMISSION_RATE,
+        "slippage": ETF_SLIPPAGE_RATE_PER_SIDE,
         "authority": "FinanceMCP src/portfolio/rules.ts DEFAULT_FEE_RULES",
         "note": "ETF 佣金万 2.5，无印花税、无过户费，滑点万 5。",
     },

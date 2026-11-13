@@ -285,7 +285,8 @@ def test_EA10_both_engines_agree_on_trade_count_for_a_frozen_schedule(bundle_win
         comparison.at["trade_count", "rqalpha"]
     ), f"成交笔数不一致: {comparison.to_dict()}"
     assert result["unexplained"] is None, result["unexplained"]
-    assert result["insufficient"] is None, result["insufficient"]
+    assert result["insufficient"] == "DATA_INSUFFICIENT"
+    assert "无法检查公司行动" in result["coverage_reason"]
 
 
 def test_EA11_turnover_is_reconstructed_from_real_fills_not_asserted(bundle_window) -> None:
@@ -362,12 +363,20 @@ def test_EA14_the_material_thresholds_are_tight_enough_to_matter() -> None:
     assert 0 < MATERIAL_RETURN_DIFFERENCE < 0.05
 
 
-def test_EA15_the_minimum_commission_does_not_bind_at_this_capital() -> None:
-    """该资金量下单笔佣金必须高于最低佣金，否则映射在该区间失效。"""
-    single_trade = 75_776.53 * ETF_COMMISSION_RATE
-    assert single_trade > ETF_COMMISSION_MIN_CENTS / 100.0, (
-        f"单笔佣金 {single_trade:.2f} 元应高于最低佣金 {ETF_COMMISSION_MIN_CENTS / 100.0:.2f} 元"
-    )
+def test_price_completeness_cannot_establish_corporate_action_coverage() -> None:
+    from research.ashare.engines.execution_audit import corporate_action_coverage
+
+    for values, missing in (([10.0, 11.0], 0), ([10.0, float("nan")], 1)):
+        coverage, reason = corporate_action_coverage(pd.DataFrame({"A": values}))
+        assert coverage.loc[0, "missing_prices"] == missing
+        assert reason is not None and "无法检查公司行动" in reason
+
+
+def test_EA15_minimum_commission_depends_on_each_trade() -> None:
+    """账户总额不能代替单笔成交额。"""
+    minimum = ETF_COMMISSION_MIN_CENTS / 100.0
+    assert 75_776.53 * ETF_COMMISSION_RATE > minimum
+    assert (75_776.53 / 4) * ETF_COMMISSION_RATE < minimum
     mapping = map_fees_to_vectorbt(asset_class="ETF")
     assert "commission_min_cents" in {item.item for item in mapping.unmapped}
 

@@ -22,7 +22,7 @@
 
 ## 成熟/已知：不应从零验证存在性
 
-time-series momentum、cross-sectional momentum、industry momentum、value、value+momentum、1/N 与经典优化方法已有外部基础。TactiCore 只能问它们是否转移到限定的可交易中国/全球 ETF 域，而不是重发现异常。
+time-series momentum、cross-sectional momentum、industry momentum、value、value+momentum、1/N 与经典优化方法已有外部基础。既有研究主要关注限定的可交易中国/全球 ETF 域；未来也可研究个股等其他明确的可交易域，但应检验外部结论在目标域的迁移，而不是重发现成熟异常。
 
 ## 成熟方法与上游
 
@@ -44,7 +44,7 @@ S1、S3A、S3B、S3C、S4A、S8A 与 S10A 的具体问题已关闭，不能换�
 
 ## 未来选择规则
 
-只从 registry 的 remaining local gaps 选择，并优先高相关性、证据质量、经济正交、低实现自由度与能区分机制的设计。不得按历史 CAGR、叙事或“最兴奋的想法”选择；不得把成熟策略称为 Discovery Batch。
+优先从 registry 的 remaining local gaps 选择；扩展领域如无条目，先依研究规则完成有界外部证据审计并登记，再选择未关闭的本地问题。优先高相关性、证据质量、经济正交、低实现自由度与能区分机制的设计。不得按历史 CAGR、叙事或“最兴奋的想法”选择；不得把成熟策略称为 Discovery Batch。
 
 ## 代表性来源
 

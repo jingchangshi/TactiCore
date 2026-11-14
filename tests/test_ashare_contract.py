@@ -410,7 +410,10 @@ def test_v2_identity_binds_dataset_mapping_and_quality(snapshot: Path) -> None:
 def test_legacy_missing_as_of_category_is_refused(snapshot: Path) -> None:
     target = snapshot / "fund_daily_bars.csv"
     lines = target.read_text(encoding="utf-8").splitlines()
-    target.write_text("\n".join(line for line in lines if ",20260107," not in line) + "\n", encoding="utf-8")
+    target.write_text(
+        "\n".join(line for line in lines if ",20260107," not in line) + "\n",
+        encoding="utf-8",
+    )
     _rehash(snapshot)
     assert load_snapshot_manifest(snapshot).snapshot_id_algorithm == "legacy-source-v1"
     with pytest.raises(SnapshotContractError, match="fund_daily_bars 在 as-of 日没有收盘价"):
@@ -441,16 +444,23 @@ def test_missing_as_of_category_is_refused(snapshot: Path, dataset: str) -> None
 def test_content_bound_export_checks_actual_as_of_prices(snapshot: Path, dataset: str) -> None:
     target = snapshot / f"{dataset}.csv"
     lines = target.read_text(encoding="utf-8").splitlines()
-    target.write_text("\n".join(line for line in lines if ",20260107," not in line) + "\n", encoding="utf-8")
+    target.write_text(
+        "\n".join(line for line in lines if ",20260107," not in line) + "\n",
+        encoding="utf-8",
+    )
     _rehash(snapshot)
     path = snapshot / "manifest.json"
     raw = json.loads(path.read_text(encoding="utf-8"))
     raw["snapshot_id_algorithm"] = "content-hashes-v1"
     identity = {
-        "schema_version": raw["schema_version"], "as_of": raw["as_of_trade_date"],
-        "source": raw["source_db_fingerprint"], "content_hashes": dict(sorted(raw["content_hashes"].items())),
+        "schema_version": raw["schema_version"],
+        "as_of": raw["as_of_trade_date"],
+        "source": raw["source_db_fingerprint"],
+        "content_hashes": dict(sorted(raw["content_hashes"].items())),
     }
-    raw["snapshot_id"] = hashlib.sha256(json.dumps(identity, separators=(",", ":")).encode()).hexdigest()
+    raw["snapshot_id"] = hashlib.sha256(
+        json.dumps(identity, separators=(",", ":")).encode()
+    ).hexdigest()
     path.write_text(json.dumps(raw), encoding="utf-8")
     with pytest.raises(SnapshotContractError, match=f"{dataset} 在 as-of 日没有收盘价"):
         load_research_frames(snapshot)

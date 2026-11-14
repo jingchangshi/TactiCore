@@ -311,10 +311,22 @@ def verify_snapshot_manifest(
         identity["content_hashes"] = dict(sorted(content_hashes.items()))
     if algorithm == "dataset-manifest-v2":
         identity["datasets"] = [
-            [entry.dataset, entry.table, entry.file, entry.sha256, entry.rows, list(entry.columns),
-             entry.time_column, entry.as_of_filtered, entry.availability, entry.as_of_filter_note,
-             raw.get("missing_note")]
-            for entry, raw in sorted(zip(datasets, raw_datasets), key=lambda pair: pair[0].dataset)
+            [
+                entry.dataset,
+                entry.table,
+                entry.file,
+                entry.sha256,
+                entry.rows,
+                list(entry.columns),
+                entry.time_column,
+                entry.as_of_filtered,
+                entry.availability,
+                entry.as_of_filter_note,
+                raw.get("missing_note"),
+            ]
+            for entry, raw in sorted(
+                zip(datasets, raw_datasets, strict=True), key=lambda pair: pair[0].dataset
+            )
         ]
         identity["quality"] = {
             "status": status,
@@ -324,11 +336,15 @@ def verify_snapshot_manifest(
             "as_of_resolved": quality.get("as_of_resolved"),
             "data_cutoff": data_cutoff,
         }
-        identity["code_mapping_version"] = _require_str(manifest["code_mapping_version"], label="code_mapping_version")
+        identity["code_mapping_version"] = _require_str(
+            manifest["code_mapping_version"], label="code_mapping_version"
+        )
         for key in ("adjustment_policy", "availability_semantics"):
             fields = _require_mapping(manifest[key], label=key)
-            identity[key] = [[_require_str(k, label=key), _require_str(v, label=key)]
-                             for k, v in sorted(fields.items())]
+            identity[key] = [
+                [_require_str(k, label=key), _require_str(v, label=key)]
+                for k, v in sorted(fields.items())
+            ]
     expected_id = hashlib.sha256(
         json.dumps(identity, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
@@ -336,7 +352,9 @@ def verify_snapshot_manifest(
         raise SnapshotContractError("snapshot_id 与声明的快照身份不一致")
     for entry in datasets:
         if entry.sha256 != content_hashes[entry.file]:
-            raise SnapshotContractError(f"{entry.file} 在 dataset_manifest 与 content_hashes 中的哈希不一致")
+            raise SnapshotContractError(
+                f"{entry.file} 在 dataset_manifest 与 content_hashes 中的哈希不一致"
+            )
 
     return SnapshotManifest(
         snapshot_id=snapshot_id,

@@ -226,7 +226,9 @@ def load_research_frames(
     失败即抛 `SnapshotContractError`。任何校验不通过都不会返回部分结果。
     """
     if not verify_content:
-        raise SnapshotContractError("研究帧必须验证文件完整性；verify_content=False 仅用于浏览 manifest")
+        raise SnapshotContractError(
+            "研究帧必须验证文件完整性；verify_content=False 仅用于浏览 manifest"
+        )
     manifest = load_snapshot_manifest(snapshot_dir, verify_content=True)
 
     if manifest.quality_status == "DEGRADED" and manifest.missing_datasets:
@@ -236,8 +238,13 @@ def load_research_frames(
             "缺数据的快照不得用于产生前瞻证据，请改用完整导出"
         )
 
-    if any(reason.startswith(("allow_missing_bars:", "missing_as_of_bars:")) for reason in manifest.reasons):
-        raise SnapshotContractError("快照在 as-of 日缺少行情（allow_missing_bars / missing_as_of_bars）；不得用于研究")
+    if any(
+        reason.startswith(("allow_missing_bars:", "missing_as_of_bars:"))
+        for reason in manifest.reasons
+    ):
+        raise SnapshotContractError(
+            "快照在 as-of 日缺少行情（allow_missing_bars / missing_as_of_bars）；不得用于研究"
+        )
 
     notes: list[str] = [f"{reason}" for reason in manifest.reasons]
     notes.append("prices are RAW close values; adjustment factors are not applied")

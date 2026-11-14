@@ -219,6 +219,7 @@ def adjudicate(
     data_gate_passed: bool,
     fixed_point_converged: bool,
     samples_aligned: bool,
+    allocation_executed: bool = True,
     other_rejections_explained: bool = False,
 ) -> Adjudication:
     """三选一结论：ADOPT_SHADOW / REJECT / INCONCLUSIVE。
@@ -268,6 +269,8 @@ def adjudicate(
         blockers.append("BAND_FEEDBACK_NOT_CONVERGED")
     if not samples_aligned:
         blockers.append("SAMPLES_NOT_ALIGNED")
+    if not allocation_executed:
+        blockers.append("ALLOCATION_NOT_EXECUTED")
     if not metrics_complete:
         blockers.append("METRICS_INCOMPLETE")
     if turnover_ratio is None:
@@ -439,6 +442,17 @@ def _data_gate_passed(*runs: ArmRun) -> bool:
     return True
 
 
+def _allocation_executed(run: ArmRun, config: TransferConfig) -> bool:
+    """每个正基准袖子至少有一笔提交订单；整袖未建仓不能当作“已检验”。"""
+    for asset in config.assets:
+        if asset.base_weight <= 0:
+            continue
+        rows = run.orders.loc[run.orders["symbol"] == asset.symbol]
+        if rows.empty or not bool(rows["submitted"].any()):
+            return False
+    return True
+
+
 def run_pair(
     *,
     prices: pd.DataFrame,
@@ -474,6 +488,7 @@ def run_pair(
     a2 = replace(a2, metrics=metrics_from_result(a2.result, a2.orders, "A2"))
     assert a0.metrics is not None and a2.metrics is not None
     aligned = _samples_aligned(a0, a2)
+    allocation_executed = _allocation_executed(a0, config) and _allocation_executed(a2, config)
     adjudication = adjudicate(
         a0.metrics,
         a2.metrics,
@@ -482,6 +497,7 @@ def run_pair(
         data_gate_passed=_data_gate_passed(a0, a2),
         fixed_point_converged=a0.converged and a2.converged,
         samples_aligned=aligned,
+        allocation_executed=allocation_executed,
         other_rejections_explained=False,
     )
     return {

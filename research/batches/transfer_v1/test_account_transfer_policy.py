@@ -104,15 +104,14 @@ def test_frozen_mapping_matches_owner_decision() -> None:
         {
             "512890.SS": 0.125,
             "515450.SS": 0.125,
-            "511360.SS": 0.10,
-            "511010.SS": 0.10,
+            "511360.SS": 0.15,
             "518880.SS": 0.10,
         }
     )
-    assert policy.FROZEN_CONFIG.cash_weight == pytest.approx(0.45)
+    assert policy.FROZEN_CONFIG.cash_weight == pytest.approx(0.50)
     bands = {asset.symbol: asset.band for asset in policy.FROZEN_CONFIG.assets}
     assert bands["512890.SS"] == bands["515450.SS"] == 0.05
-    assert bands["511360.SS"] == bands["511010.SS"] == 0.05
+    assert bands["511360.SS"] == 0.05
     assert bands["518880.SS"] == 0.03
 
 
@@ -230,7 +229,7 @@ def test_a2_target_path_keeps_cash_from_upper_increments() -> None:
     )
     targets = policy.target_path(decisions, policy.FROZEN_CONFIG, confirmed)
     assert targets.loc[decisions[1], "518880.SS"] == pytest.approx(0.11)
-    assert targets.loc[decisions[1]].sum() == pytest.approx(0.56)
+    assert targets.loc[decisions[1]].sum() == pytest.approx(0.51)
     cash = policy.FROZEN_CONFIG.cash_weight - 0.01
     assert targets.loc[decisions[1]].sum() + cash == pytest.approx(1.0)
 
@@ -322,8 +321,8 @@ def test_schedule_first_build_filters_bonds_and_keeps_nan_months() -> None:
         {
             "512890.SS": 1.0,
             "515450.SS": 2.0,
-            "511360.SS": 100.0,
-            "511010.SS": 110.0,
+            # 一手 2 万元高于 15% 目标，用于验证整手过滤。
+            "511360.SS": 200.0,
             "518880.SS": 5.0,
         },
     )
@@ -344,8 +343,7 @@ def test_schedule_first_build_filters_bonds_and_keeps_nan_months() -> None:
     assert not pd.isna(row[("BUY", "515450.SS")])
     assert not pd.isna(row[("BUY", "518880.SS")])
     assert pd.isna(row[("BUY", "511360.SS")])
-    assert pd.isna(row[("BUY", "511010.SS")])
-    bond_filters = records.loc[records["symbol"].isin(["511360.SS", "511010.SS"])]
+    bond_filters = records.loc[records["symbol"].eq("511360.SS")]
     assert set(bond_filters["reason"]) == {"below_one_lot"}
     later = schedule.index[1:]
     if len(later):
@@ -555,6 +553,23 @@ def test_adjudication_rejects_when_threshold_fails_and_gates_pass() -> None:
         samples_aligned=True,
     )
     assert adjudication.verdict == "REJECT"
+
+
+def test_adjudication_blocks_when_a_whole_positive_sleeve_never_trades() -> None:
+    a0 = _metrics()
+    a2 = _metrics(cagr=0.04, max_drawdown=0.195, cvar_5pct=0.024, turnover_total=2.2)
+    adjudication = runner.adjudicate(
+        a0,
+        a2,
+        protocol_committed=True,
+        min_commission_modelled=True,
+        data_gate_passed=True,
+        fixed_point_converged=True,
+        samples_aligned=True,
+        allocation_executed=False,
+    )
+    assert adjudication.verdict == "INCONCLUSIVE"
+    assert "ALLOCATION_NOT_EXECUTED" in adjudication.blockers
 
 
 def test_adjudication_adopts_shadow_only_after_all_gates() -> None:

@@ -34,7 +34,7 @@ ORDER_SELL = "SELL"
 ORDER_BUY = "BUY"
 
 PROTOCOL_STATUS = (
-    "FROZEN_PROTOCOL_V1 / AMENDMENT_1_MAIN_END_20260831 / DATA_AUDIT_PASS / "
+    "FROZEN_PROTOCOL_V1 / AMENDMENT_2_BOND_15_SINGLE / DATA_AUDIT_PASS / "
     "RUNNER_VALIDATED_PRE_RESULT / NO_PRODUCTION_AUTHORIZATION"
 )
 INITIAL_CASH = 68_826.0
@@ -131,15 +131,14 @@ class TransferConfig:
         return {asset.symbol: asset for asset in self.assets}
 
 
-#: 2026-11-14 研究执行器冻结映射；不是账户现行政策，也不表示协议已提交。
-#: 核心 25% = 512890/515450 各 12.5%；债券 20% = 511360/511010 各 10%；
-#: 黄金 10% = 518880；海外 0；卫星 0；其余 45% 为现金。
+#: 2026-11-14 研究执行器冻结映射（AMENDMENT_2）；不是账户现行政策。
+#: 核心 25% = 512890/515450 各 12.5%；债券 15% = 511360；
+#: 黄金 10% = 518880；海外 0；卫星 0；其余 50% 为现金。
 FROZEN_CONFIG = TransferConfig(
     assets=(
         AssetRule("512890.SS", "core", 0.125, "512890.XSHG", pd.Timestamp("2019-01-18"), CORE_BAND),
         AssetRule("515450.SS", "core", 0.125, "515450.XSHG", pd.Timestamp("2020-02-26"), CORE_BAND),
-        AssetRule("511360.SS", "bond", 0.10, "511360.XSHG", pd.Timestamp("2020-09-25"), BOND_BAND),
-        AssetRule("511010.SS", "bond", 0.10, "511010.XSHG", pd.Timestamp("2013-03-25"), BOND_BAND),
+        AssetRule("511360.SS", "bond", 0.15, "511360.XSHG", pd.Timestamp("2020-09-25"), BOND_BAND),
         AssetRule("518880.SS", "gold", 0.10, "518880.XSHG", pd.Timestamp("2013-07-29"), GOLD_BAND),
     )
 )

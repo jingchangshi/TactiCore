@@ -682,5 +682,5 @@
 - 执行：RQAlpha 6.3 原生回放，最低佣金 5 元、佣金 2.5bp、单边滑点 5bp；68,826 元初始现金；2020-10-01–2026-08-31；A0/A2 各 6/6 笔成交，0 现金/整手拒单，日程收敛。
 - 结果：A0 CAGR 4.9726%、最大回撤 6.0797%、CVaR5 0.6994%、年化换手 8.459%；A2 CAGR 5.1273%、最大回撤 6.1797%、CVaR5 0.7116%、年化换手 8.618%。风险改善为 −0.1000pp（MDD）与 −0.0123pp（CVaR），未达到 +2pp 预注册门槛，故 `REJECT`。CAGR 损失、换手与拒单条件均通过；主风险条件失败。
 - 结论边界：只否定本协议冻结的 A2 映射在该账户规模、资产池、成本和样本期内的历史表现；不证明趋势策略普遍无效，不构成前瞻证据或生产批准。A1 未运行且不可识别；2026-09/2026-10 未被 bundle 覆盖；海外 QDII 为 0。
-- 证据：[ACCOUNT_TRANSFER_V1 结果](ACCOUNT_TRANSFER_V1.md)、[结果 JSON](ACCOUNT_TRANSFER_V1.json)、[数据审计](ACCOUNT_TRANSFER_DATA_AUDIT_V1.json)。
+- 证据：[ACCOUNT_TRANSFER_V1 结果](../research/results/ACCOUNT_TRANSFER_V1.md)、[结果 JSON](../research/results/ACCOUNT_TRANSFER_V1.json)、[数据审计](../data/transfer_v1/snapshot_20261114T050648Z/ACCOUNT_TRANSFER_DATA_AUDIT_V1.json)。
 - 重开条件：新资产映射、新趋势/风险定义、不同账户规模或前瞻影子必须以新版本预注册；不得对同一版本调参重跑，不得把历史结果写成前瞻。

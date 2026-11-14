@@ -23,7 +23,7 @@ from research.ashare.engines.rqalpha_replay import (
 )
 from tacticore.data.tradability import UntradableTargetError
 
-_MAIN_END = pd.Timestamp("2026-10-31")
+_MAIN_END = pd.Timestamp("2026-08-31")
 _LISTED_DATE = pd.Timestamp("2010-01-01")
 
 

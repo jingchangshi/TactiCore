@@ -1,0 +1,374 @@
+{
+  "adjustment_type": "后复权（原始收盘价 × fund_adj 复权因子，将因子变化视为分红再投资）",
+  "audit_id": "ACCOUNT_TRANSFER_DATA_AUDIT_V1",
+  "audit_result_file": "ACCOUNT_TRANSFER_DATA_AUDIT_V1.json",
+  "code_mapping": [
+    {
+      "exchange": "SSE",
+      "requirement": "MAIN",
+      "role": "A 股核心（12.5%）",
+      "rqalpha": "512890.XSHG",
+      "tacticore": "512890.SS",
+      "tushare": "512890.SH"
+    },
+    {
+      "exchange": "SSE",
+      "requirement": "MAIN",
+      "role": "A 股核心（12.5%）",
+      "rqalpha": "515450.XSHG",
+      "tacticore": "515450.SS",
+      "tushare": "515450.SH"
+    },
+    {
+      "exchange": "SSE",
+      "requirement": "MAIN",
+      "role": "债券（约 10%）",
+      "rqalpha": "511360.XSHG",
+      "tacticore": "511360.SS",
+      "tushare": "511360.SH"
+    },
+    {
+      "exchange": "SSE",
+      "requirement": "ALTERNATE",
+      "role": "货币 ETF 备选",
+      "rqalpha": "511880.XSHG",
+      "tacticore": "511880.SS",
+      "tushare": "511880.SH"
+    },
+    {
+      "exchange": "SSE",
+      "requirement": "MAIN",
+      "role": "黄金（10%）",
+      "rqalpha": "518880.XSHG",
+      "tacticore": "518880.SS",
+      "tushare": "518880.SH"
+    },
+    {
+      "exchange": "SZSE",
+      "requirement": "ALTERNATE",
+      "role": "黄金备选",
+      "rqalpha": "159934.XSHE",
+      "tacticore": "159934.SZ",
+      "tushare": "159934.SZ"
+    },
+    {
+      "exchange": "SSE",
+      "requirement": "MAIN",
+      "role": "债券（约 10%）",
+      "rqalpha": "511010.XSHG",
+      "tacticore": "511010.SS",
+      "tushare": "511010.SH"
+    },
+    {
+      "exchange": "SSE",
+      "requirement": "LIFECYCLE",
+      "role": "海外 QDII 代表",
+      "rqalpha": "513100.XSHG",
+      "tacticore": "513100.SS",
+      "tushare": "513100.SH"
+    }
+  ],
+  "data_availability": "trade_date 收盘数据只在该交易日收盘后可得；未建立 PIT vintage",
+  "dataset": "ACCOUNT_INVESTABLE_ALLOCATION_TRANSFER_V1 数据审计快照",
+  "download_timestamp": "2026-11-14T05:06:49+00:00",
+  "end_date": "20261031",
+  "endpoints": {
+    "fund_adj": {
+      "fields": "ts_code,trade_date,adj_factor",
+      "file": "fund_adj.csv",
+      "rows": 21194
+    },
+    "fund_basic": {
+      "fields": "ts_code,name,management,fund_type,list_date,delist_date",
+      "file": "fund_basic.csv",
+      "rows": 8
+    },
+    "fund_daily": {
+      "fields": "ts_code,trade_date,close",
+      "file": "fund_daily.csv",
+      "rows": 21192
+    },
+    "trade_cal": {
+      "fields": "exchange,cal_date,is_open",
+      "file": "trade_cal.csv",
+      "open_days": {
+        "SSE": 3355,
+        "SZSE": 3355
+      },
+      "request_fields": "exchange,cal_date,is_open,pretrade_date",
+      "rows": 5052,
+      "wide_file": "trading_calendar.csv"
+    }
+  },
+  "environment": {
+    "pandas": "2.3.3",
+    "python": "3.11.15",
+    "rqalpha": "6.3.0",
+    "rqalpha_bundle": {
+      "exists": true,
+      "path": "/home/jcshi/.rqalpha/bundle/instruments.pk",
+      "sha256": "79b701d2c195ecc27e87e3bb8600bb9a987f530c330243482c973c8259022eee"
+    },
+    "rqalpha_lifecycle_cross_check": "NOT_PERFORMED_BY_THIS_TOOL",
+    "tushare": "1.4.29"
+  },
+  "files": {
+    "etf_adjusted_close.csv": {
+      "rows": 3304,
+      "sha256": "aed887b7e846af909d09187e3b671bb2154bc5ee6a842f146b2c879595963af3"
+    },
+    "trading_calendar.csv": {
+      "rows": 5052,
+      "sha256": "d8ee027a544c068e0b33c1d0d1563c26fee2218c11a4647a97ce4c86d15342e6"
+    }
+  },
+  "missing_and_lifecycle_audit": {
+    "159934.SZ": {
+      "active_end": "2026-10-31",
+      "active_start": "2013-12-16",
+      "claim_match": true,
+      "expected_open_days": 3129,
+      "first_200_valid_observation_date": "2014-10-13",
+      "metadata_delist_date": null,
+      "metadata_list_date": "2013-12-16",
+      "missing_adj_dates": [],
+      "missing_daily_dates": [],
+      "warmup_200_by_main_start": true
+    },
+    "511010.SH": {
+      "active_end": "2026-10-31",
+      "active_start": "2013-03-25",
+      "claim_match": true,
+      "expected_open_days": 3304,
+      "first_200_valid_observation_date": "2014-01-20",
+      "metadata_delist_date": null,
+      "metadata_list_date": "2013-03-25",
+      "missing_adj_dates": [],
+      "missing_daily_dates": [],
+      "warmup_200_by_main_start": true
+    },
+    "511360.SH": {
+      "active_end": "2026-10-31",
+      "active_start": "2020-09-25",
+      "claim_match": true,
+      "expected_open_days": 1474,
+      "first_200_valid_observation_date": "2021-07-26",
+      "metadata_delist_date": null,
+      "metadata_list_date": "2020-09-25",
+      "missing_adj_dates": [],
+      "missing_daily_dates": [],
+      "warmup_200_by_main_start": false
+    },
+    "511880.SH": {
+      "active_end": "2026-10-31",
+      "active_start": "2013-04-18",
+      "claim_match": true,
+      "expected_open_days": 3288,
+      "first_200_valid_observation_date": "2014-02-18",
+      "metadata_delist_date": null,
+      "metadata_list_date": "2013-04-18",
+      "missing_adj_dates": [],
+      "missing_daily_dates": [],
+      "warmup_200_by_main_start": true
+    },
+    "512890.SH": {
+      "active_end": "2026-10-31",
+      "active_start": "2019-01-18",
+      "claim_match": true,
+      "expected_open_days": 1885,
+      "first_200_valid_observation_date": "2019-11-15",
+      "metadata_delist_date": null,
+      "metadata_list_date": "2019-01-18",
+      "missing_adj_dates": [],
+      "missing_daily_dates": [
+        "2021-10-22"
+      ],
+      "warmup_200_by_main_start": true
+    },
+    "513100.SH": {
+      "active_end": "2026-10-31",
+      "active_start": "2013-05-15",
+      "claim_match": null,
+      "expected_open_days": 3272,
+      "first_200_valid_observation_date": "2014-03-12",
+      "metadata_delist_date": null,
+      "metadata_list_date": "2013-05-15",
+      "missing_adj_dates": [],
+      "missing_daily_dates": [
+        "2022-01-13"
+      ],
+      "warmup_200_by_main_start": true
+    },
+    "515450.SH": {
+      "active_end": "2026-10-31",
+      "active_start": "2020-02-26",
+      "claim_match": true,
+      "expected_open_days": 1620,
+      "first_200_valid_observation_date": "2020-12-17",
+      "metadata_delist_date": null,
+      "metadata_list_date": "2020-02-26",
+      "missing_adj_dates": [],
+      "missing_daily_dates": [],
+      "warmup_200_by_main_start": false
+    },
+    "518880.SH": {
+      "active_end": "2026-10-31",
+      "active_start": "2013-07-29",
+      "claim_match": true,
+      "expected_open_days": 3222,
+      "first_200_valid_observation_date": "2014-05-26",
+      "metadata_delist_date": null,
+      "metadata_list_date": "2013-07-29",
+      "missing_adj_dates": [],
+      "missing_daily_dates": [],
+      "warmup_200_by_main_start": true
+    }
+  },
+  "missing_value_policy": "缺失保持空白；不前向填充、不插值、不置零、不猜测。",
+  "protocol": {
+    "path": "research/batches/transfer_v1/PROTOCOL_V1.md",
+    "status": "DRAFT_NOT_COMMITTED / NO_BACKTEST",
+    "title": "ACCOUNT_INVESTABLE_ALLOCATION_TRANSFER_V1"
+  },
+  "raw_files": {
+    "fund_adj.csv": {
+      "rows": 21194,
+      "sha256": "d8b14d7d5eb5dea991dffe4715fe5dd6388b1e940d3e3ef8d128167792030579"
+    },
+    "fund_basic.csv": {
+      "rows": 8,
+      "sha256": "c270568114048fb4372de9b0ac2995110c27ad83974ea59bd7a17df6c5df79d8"
+    },
+    "fund_daily.csv": {
+      "rows": 21192,
+      "sha256": "43bff0dd845c751444a9be1368c48c07b53b50678b643681d71a75b265cebea6"
+    },
+    "trade_cal.csv": {
+      "rows": 10104,
+      "sha256": "42d85fad43a107457159d46cbf64de429ce26fe2c5a9a9bf12aa6c46c79748f9"
+    }
+  },
+  "scope_notes": [
+    "只审计 PROTOCOL_V1.md §4.1 点名的 8 个代码；'513100 等 QDII' 其余品种未审计；未执行 RQAlpha lifecycle 交叉验证；未冻结 A0/A2 规则，数据 PASS 不等于协议可回测。",
+    "长期敏感性代理未授权；Tushare 不提供 historical revision/vintage 可得时间，本快照不是 PIT vintage。",
+    "执行日缺价须停止；信号日缺价按基准目标且清零确认计数；需由 runner 实施，审计不验证可交易性。",
+    "PROTOCOL_V1.md 仍为 DRAFT_NOT_COMMITTED / NO_BACKTEST；本结果不改变该状态。"
+  ],
+  "source": "Tushare Pro",
+  "start_date": "20130101",
+  "symbols": [
+    {
+      "metadata": {
+        "conflict": false,
+        "delist_date": null,
+        "fund_type": "股票型",
+        "list_date": "20190118",
+        "management": "华泰柏瑞基金管理有限公司",
+        "name": "华泰柏瑞中证红利低波动ETF",
+        "statuses": [
+          "L"
+        ]
+      },
+      "tushare_code": "512890.SH"
+    },
+    {
+      "metadata": {
+        "conflict": false,
+        "delist_date": null,
+        "fund_type": "股票型",
+        "list_date": "20200226",
+        "management": "南方基金管理股份有限公司",
+        "name": "南方标普中国A股大盘红利低波50ETF",
+        "statuses": [
+          "L"
+        ]
+      },
+      "tushare_code": "515450.SH"
+    },
+    {
+      "metadata": {
+        "conflict": false,
+        "delist_date": null,
+        "fund_type": "债券型",
+        "list_date": "20200925",
+        "management": "海富通基金管理有限公司",
+        "name": "海富通中证短融ETF",
+        "statuses": [
+          "L"
+        ]
+      },
+      "tushare_code": "511360.SH"
+    },
+    {
+      "metadata": {
+        "conflict": false,
+        "delist_date": null,
+        "fund_type": "货币型",
+        "list_date": "20130418",
+        "management": "银华基金管理股份有限公司",
+        "name": "银华货币ETF-A",
+        "statuses": [
+          "L"
+        ]
+      },
+      "tushare_code": "511880.SH"
+    },
+    {
+      "metadata": {
+        "conflict": false,
+        "delist_date": null,
+        "fund_type": "其他",
+        "list_date": "20130729",
+        "management": "华安基金管理有限公司",
+        "name": "华安易富黄金ETF",
+        "statuses": [
+          "L"
+        ]
+      },
+      "tushare_code": "518880.SH"
+    },
+    {
+      "metadata": {
+        "conflict": false,
+        "delist_date": null,
+        "fund_type": "其他",
+        "list_date": "20131216",
+        "management": "易方达基金管理有限公司",
+        "name": "易方达黄金ETF",
+        "statuses": [
+          "L"
+        ]
+      },
+      "tushare_code": "159934.SZ"
+    },
+    {
+      "metadata": {
+        "conflict": false,
+        "delist_date": null,
+        "fund_type": "债券型",
+        "list_date": "20130325",
+        "management": "国泰基金管理有限公司",
+        "name": "国泰上证5年期国债ETF",
+        "statuses": [
+          "L"
+        ]
+      },
+      "tushare_code": "511010.SH"
+    },
+    {
+      "metadata": {
+        "conflict": false,
+        "delist_date": null,
+        "fund_type": "股票型",
+        "list_date": "20130515",
+        "management": "国泰基金管理有限公司",
+        "name": "国泰纳斯达克100ETF(QDII)",
+        "statuses": [
+          "L"
+        ]
+      },
+      "tushare_code": "513100.SH"
+    }
+  ],
+  "token_handling": "TUSHARE_TOKEN 只从环境变量读取；不打印、不写入任何产物。"
+}

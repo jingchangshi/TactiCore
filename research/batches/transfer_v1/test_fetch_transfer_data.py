@@ -23,6 +23,7 @@ class FakeTushare:
         list_dates: dict[str, str] | None = None,
         missing_daily: dict[str, tuple[str, ...]] | None = None,
         extra_daily: dict[str, tuple[str, ...]] | None = None,
+        retain_adj: bool = False,
     ) -> None:
         self.specs = {spec.tushare_code: spec for spec in ftd.ASSETS}
         self.list_dates = {
@@ -33,6 +34,7 @@ class FakeTushare:
         }
         self.missing_daily = missing_daily or {}
         self.extra_daily = extra_daily or {}
+        self.retain_adj = retain_adj
 
     def _open_dates(self, start: str, end: str) -> pd.DatetimeIndex:
         dates = pd.date_range(pd.Timestamp(start), pd.Timestamp(end), freq="D")
@@ -95,6 +97,10 @@ class FakeTushare:
     def fund_adj(self, **kwargs: Any) -> pd.DataFrame:
         code = kwargs["ts_code"]
         dates = self._dates(code, kwargs["start_date"], kwargs["end_date"])
+        if self.retain_adj:
+            dates = dates.union(
+                pd.DatetimeIndex([pd.Timestamp(x) for x in self.missing_daily.get(code, ())])
+            )
         frame = pd.DataFrame(
             {"ts_code": code, "trade_date": dates.strftime("%Y%m%d"), "adj_factor": 2.0}
         )
@@ -158,6 +164,72 @@ def test_missing_day_is_no_backtest_and_remains_blank(
     adjusted = pd.read_csv(tmp_path / "snap/etf_adjusted_close.csv", index_col="date")
     value = adjusted.loc["2024-01-04", "512890.SS"]
     assert pd.isna(value)
+
+
+@pytest.mark.parametrize("code", ["512890.SH", "513100.SH"])
+def test_isolated_missing_daily_with_factor_warns_without_filling(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, code: str
+) -> None:
+    monkeypatch.setattr(ftd, "WARMUP", 3)
+    result = ftd.run_audit(
+        FakeTushare(missing_daily={code: ("20240201",)}, retain_adj=True),
+        output_dir=tmp_path / "snap",
+        start_date="20240101",
+        end_date="20241231",
+        downloaded_at=FIXED_TIME,
+    )
+    assert result["decision"] == "PASS"
+    assert any(
+        w["code"] == "SUSPECTED_SUSPENSION_UNVERIFIED" and w["asset"] == code
+        for w in result["warnings"]
+    )
+    symbol = next(s.symbol for s in ftd.ASSETS if s.tushare_code == code)
+    prices = pd.read_csv(tmp_path / "snap/etf_adjusted_close.csv", index_col="date")
+    assert pd.isna(prices.loc["2024-02-01", symbol])
+
+
+def test_consecutive_missing_main_is_blocker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ftd, "WARMUP", 3)
+    result = ftd.run_audit(
+        FakeTushare(missing_daily={"512890.SH": ("20240201", "20240202")}, retain_adj=True),
+        output_dir=tmp_path / "snap",
+        start_date="20240101",
+        end_date="20241231",
+        downloaded_at=FIXED_TIME,
+    )
+    assert result["decision"] == "NO_BACKTEST"
+    assert any(b["code"] == "MISSING_DAILY_OBSERVATIONS" for b in result["blockers"])
+
+
+def test_non_main_blocker_does_not_block_main(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result = _run(tmp_path, monkeypatch, FakeTushare(missing_daily={"513100.SH": ("20240104",)}))
+    assert result["decision"] == "PASS"
+    assert any(b["asset"] == "513100.SH" for b in result["blockers"])
+    assert (
+        next(a for a in result["assets"] if a["tushare_code"] == "513100.SH")["status"]
+        == "NO_BACKTEST"
+    )
+
+
+def test_non_main_invalid_rows_are_reported_without_blocking(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class DuplicateApi(FakeTushare):
+        def fund_daily(self, **kwargs: Any) -> pd.DataFrame:
+            frame = super().fund_daily(**kwargs)
+            if kwargs["ts_code"] == "513100.SH" and not frame.empty:
+                return pd.concat([frame, frame.iloc[[0]]], ignore_index=True)
+            return frame
+
+    result = _run(tmp_path, monkeypatch, DuplicateApi())
+    assert result["decision"] == "PASS"
+    assert any(
+        b["asset"] == "513100.SH" and b["code"] == "ASSET_AUDIT_FAILED" for b in result["blockers"]
+    )
 
 
 def test_claim_mismatch_is_no_backtest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

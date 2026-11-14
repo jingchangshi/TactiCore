@@ -60,6 +60,7 @@ MISSING_POLICY = "缺失保持空白；不前向填充、不插值、不置零�
 SCOPE_NOTES = (
     "只审计 PROTOCOL_V1.md §4.1 点名的 8 个代码；'513100 等 QDII' 其余品种未审计；未执行 RQAlpha lifecycle 交叉验证；未冻结 A0/A2 规则，数据 PASS 不等于协议可回测。",
     "长期敏感性代理未授权；Tushare 不提供 historical revision/vintage 可得时间，本快照不是 PIT vintage。",
+    "执行日缺价须停止；信号日缺价按基准目标且清零确认计数；需由 runner 实施，审计不验证可交易性。",
     "PROTOCOL_V1.md 仍为 DRAFT_NOT_COMMITTED / NO_BACKTEST；本结果不改变该状态。",
 )
 
@@ -221,7 +222,7 @@ def _adjust(spec: AssetSpec, daily: pd.DataFrame, adj: pd.DataFrame, blockers: l
 def _audit_asset(
     spec: AssetSpec, meta: dict[str, Any] | None, daily: pd.DataFrame, adj: pd.DataFrame,
     calendar: pd.DataFrame, adjusted: pd.Series, start: pd.Timestamp, end: pd.Timestamp,
-    blockers: list[dict[str, Any]],
+    blockers: list[dict[str, Any]], warnings: list[dict[str, Any]],
 ) -> dict[str, Any]:
     claim: pd.Timestamp | None = _optional(spec.claim)
     list_date: pd.Timestamp | None = _optional(meta["list_date"]) if meta else None
@@ -264,16 +265,26 @@ def _audit_asset(
     outside = sorted({item for item in set(daily_dates).union(adj_dates)
                       if (list_date is not None and item < list_date)
                       or (delist_date is not None and item > delist_date)})
-    not_open = sorted(set(daily_dates).union(adj_dates).difference(calendar.index))
+    not_open = sorted(set(daily_dates).union(adj_dates).difference(
+        calendar.index[calendar[f"{spec.exchange.lower()}_open"] == 1]))
+    # Conservative bound: exactly one absent daily row, with a valid factor, <= 1% of active days.
+    position = expected.get_indexer(pd.DatetimeIndex(missing_daily))[0] if len(missing_daily) == 1 else -1
+    suspected = (len(missing_daily) == 1 and len(expected) >= 100
+                 and 0 < position < len(expected) - 1
+                 and expected[position - 1] in daily_dates and expected[position + 1] in daily_dates
+                 and missing_daily[0] in adj_dates and missing_daily[0] not in set(daily_obs["date"]))
+    if suspected:
+        _issue(warnings, "SUSPECTED_SUSPENSION_UNVERIFIED",
+               f"疑似停牌，未经核实：{_iso(missing_daily[0])}；缺价保持空白", spec.tushare_code)
     invalid = sorted(set(daily_obs.loc[daily_obs["value"].isna() | (daily_obs["value"] <= 0), "date"])
                      .union(adj_obs.loc[adj_obs["value"].isna() | (adj_obs["value"] <= 0), "date"]))
     checks = (
         ("MISSING_ENDPOINT_DATA", daily.empty, "fund_daily 无数据"),
         ("MISSING_ENDPOINT_DATA", adj.empty, "fund_adj 无数据"),
-        ("MISSING_DAILY_OBSERVATIONS", bool(missing_daily and not daily.empty), f"缺失 {len(missing_daily)} 个交易日"),
+        ("MISSING_DAILY_OBSERVATIONS", bool(missing_daily and not daily.empty and not suspected), f"缺失 {len(missing_daily)} 个交易日"),
         ("MISSING_ADJ_OBSERVATIONS", bool(missing_adj and not adj.empty), f"缺失 {len(missing_adj)} 个交易日"),
         ("DAILY_WITHOUT_ADJ", bool(set(daily_dates).difference(adj_dates)), "日线缺少复权因子"),
-        ("ADJ_WITHOUT_DAILY", bool(set(adj_dates).difference(daily_dates)), "复权因子缺少日线"),
+        ("ADJ_WITHOUT_DAILY", bool(set(adj_dates).difference(daily_dates) - (set(missing_daily) if suspected else set())), "复权因子缺少日线"),
         ("OBSERVATION_OUTSIDE_LIFECYCLE", bool(outside), "存在上市前/退市后观测"),
         ("OBSERVATION_ON_NON_TRADING_DAY", bool(not_open), "存在交易所非交易日观测"),
         ("INVALID_OBSERVATION_VALUE", bool(invalid), "存在非正或非数值观测"),
@@ -341,14 +352,26 @@ def run_audit(
         _issue(warnings, "RQALPHA_BUNDLE_NOT_FOUND", "未找到 RQAlpha bundle")
     daily_frames, adj_frames, adjusted, records = [], [], {}, []
     for spec in ASSETS:
-        daily = _fetch_series(api, spec, "fund_daily", DAILY_FIELDS, 5000, start_date, end_date)
-        adj = _fetch_series(api, spec, "fund_adj", ADJ_FIELDS, 2000, start_date, end_date)
-        series = _adjust(spec, daily, adj, blockers)
+        daily = pd.DataFrame(columns=DAILY_FIELDS.split(","))
+        adj = pd.DataFrame(columns=ADJ_FIELDS.split(","))
+        try:
+            daily = _fetch_series(api, spec, "fund_daily", DAILY_FIELDS, 5000, start_date, end_date)
+            adj = _fetch_series(api, spec, "fund_adj", ADJ_FIELDS, 2000, start_date, end_date)
+            series = _adjust(spec, daily, adj, blockers)
+            record = _audit_asset(spec, _metadata(basic, spec), daily, adj, calendar,
+                                  series, start, end, blockers, warnings)
+        except (AuditError, ValueError, TypeError) as exc:
+            _issue(blockers, "ASSET_AUDIT_FAILED", type(exc).__name__, spec.tushare_code)
+            daily = pd.DataFrame(columns=DAILY_FIELDS.split(","))
+            adj = pd.DataFrame(columns=ADJ_FIELDS.split(","))
+            series = pd.Series(dtype=float, name=spec.symbol)
+            record = {"tushare_code": spec.tushare_code, "requirement": spec.requirement,
+                      "status": "NO_BACKTEST", "metadata": None,
+                      "lifecycle": {"first_200_valid_observation_date": None}}
         daily_frames.append(daily)
         adj_frames.append(adj)
         adjusted[spec.symbol] = series
-        records.append(_audit_asset(spec, _metadata(basic, spec), daily, adj, calendar,
-                                    series, start, end, blockers))
+        records.append(record)
     prices = pd.concat(adjusted.values(), axis=1).sort_index()
     prices.index.name = "date"
     raw_basic = basic.loc[basic["ts_code"].isin([spec.tushare_code for spec in ASSETS])]
@@ -360,7 +383,8 @@ def run_audit(
         _issue(blockers, "INSUFFICIENT_WARMUP", "主研究资产不足 200 个有效复权观测")
     elif max(warmups) > MAIN_START:
         _issue(warnings, "MAIN_WINDOW_WARMUP_DELAYED", f"共同 200 日观测最早为 {max(warmups)}")
-    decision = "PASS" if not blockers else "NO_BACKTEST"
+    main_codes = {s.tushare_code for s in ASSETS if s.requirement == "MAIN"}
+    decision = "NO_BACKTEST" if any(b["asset"] is None or b["asset"] in main_codes for b in blockers) else "PASS"
     protocol = {"title": PROTOCOL_TITLE, "path": PROTOCOL_PATH,
                 "status": "DRAFT_NOT_COMMITTED / NO_BACKTEST"}
     provenance = {

@@ -362,8 +362,6 @@ def run_audit(
                                   series, start, end, blockers, warnings)
         except (AuditError, ValueError, TypeError) as exc:
             _issue(blockers, "ASSET_AUDIT_FAILED", type(exc).__name__, spec.tushare_code)
-            daily = pd.DataFrame(columns=DAILY_FIELDS.split(","))
-            adj = pd.DataFrame(columns=ADJ_FIELDS.split(","))
             series = pd.Series(dtype=float, name=spec.symbol)
             record = {"tushare_code": spec.tushare_code, "requirement": spec.requirement,
                       "status": "NO_BACKTEST", "metadata": None,
@@ -375,8 +373,8 @@ def run_audit(
     prices = pd.concat(adjusted.values(), axis=1).sort_index()
     prices.index.name = "date"
     raw_basic = basic.loc[basic["ts_code"].isin([spec.tushare_code for spec in ASSETS])]
-    raw_daily = pd.concat(daily_frames, ignore_index=True)
-    raw_adj = pd.concat(adj_frames, ignore_index=True)
+    raw_daily = pd.concat([f for f in daily_frames if not f.empty], ignore_index=True) if any(not f.empty for f in daily_frames) else pd.DataFrame(columns=DAILY_FIELDS.split(","))
+    raw_adj = pd.concat([f for f in adj_frames if not f.empty], ignore_index=True) if any(not f.empty for f in adj_frames) else pd.DataFrame(columns=ADJ_FIELDS.split(","))
     warmups = [r["lifecycle"]["first_200_valid_observation_date"]
                for r in records if r["requirement"] == "MAIN"]
     if any(value is None for value in warmups):
@@ -414,7 +412,7 @@ def run_audit(
     result = {
         "audit_id": AUDIT_ID, "protocol": protocol, "decision": decision,
         "decision_code": f"{AUDIT_ID}_{decision}",
-        "decision_scope": "仅数据完整性/代码映射/生命周期；PASS 不代表协议可回测或生产批准。",
+        "decision_scope": "MAIN 资产及全局输入错误决定结论；其他资产 blocker 单独保留。PASS 不代表协议可回测或生产批准。",
         "generated_at": generated_at,
         "request": {"source": SOURCE, "start_date": start_date, "end_date": end_date,
                     "endpoints": ["fund_basic", "fund_daily", "fund_adj", "trade_cal"]},

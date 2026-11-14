@@ -1,10 +1,12 @@
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import pytest
 
+import tacticore.data.tushare as tushare
 from tacticore.data.tushare import (
     ADJUSTMENT_TYPE,
     adjust_fund_close,
@@ -136,6 +138,83 @@ def test_download_rejects_configured_listing_date_mismatch() -> None:
             "20240103",
             downloaded_at="2024-01-04T00:00:00+00:00",
         )
+
+
+@pytest.mark.parametrize(
+    "problem",
+    [
+        "missing_one",
+        "missing_both",
+        "duplicate",
+        "extra",
+        "wrong_exchange",
+        "null_exchange",
+        "missing_exchange",
+        "fractional",
+        "null_state",
+        "invalid_date",
+    ],
+)
+def test_calendar_rejects_incomplete_or_invalid_exchange_data(problem: str) -> None:
+    class BrokenCalendar(FakeTushareApi):
+        def trade_cal(self, **kwargs: Any) -> pd.DataFrame:
+            frame = super().trade_cal(**kwargs)
+            if problem == "missing_both" or (
+                problem == "missing_one" and kwargs["exchange"] == "SSE"
+            ):
+                return frame.iloc[:1]
+            if kwargs["exchange"] != "SSE":
+                return frame
+            if problem == "duplicate":
+                return pd.concat([frame, frame.iloc[:1]], ignore_index=True)
+            if problem == "extra":
+                frame.loc[1, "cal_date"] = "20240104"
+            elif problem == "wrong_exchange":
+                frame.loc[0, "exchange"] = "SZSE"
+            elif problem == "null_exchange":
+                frame.loc[0, "exchange"] = None
+            elif problem == "missing_exchange":
+                return frame.drop(columns="exchange")
+            elif problem == "fractional":
+                frame["is_open"] = [0.5, 1.0]
+            elif problem == "null_state":
+                frame.loc[0, "is_open"] = None
+            elif problem == "invalid_date":
+                frame.loc[0, "cal_date"] = "2024010x"
+            return frame
+
+    with pytest.raises(ValueError):
+        download_tushare_dataset(BrokenCalendar(), _universe(), "20240102", "20240103")
+
+
+def test_download_timestamp_is_after_all_price_and_factor_requests(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[str] = []
+    completion = datetime(2024, 1, 3, 7, 0, 0, 123456, tzinfo=timezone.utc)
+
+    class Api(FakeTushareApi):
+        def fund_daily(self, **kwargs: Any) -> pd.DataFrame:
+            events.append("daily")
+            return super().fund_daily(**kwargs)
+
+        def fund_adj(self, **kwargs: Any) -> pd.DataFrame:
+            events.append("adjustment")
+            return super().fund_adj(**kwargs)
+
+    class Clock:
+        @staticmethod
+        def now(tz: Any) -> datetime:
+            assert tz == timezone.utc
+            assert events == ["daily", "adjustment"]
+            return completion
+
+    monkeypatch.setattr(tushare, "datetime", Clock)
+    # Request date parsing still uses strptime.
+    monkeypatch.setattr(Clock, "strptime", staticmethod(datetime.strptime), raising=False)
+    dataset = download_tushare_dataset(Api(), _universe(), "20240102", "20240103")
+    assert dataset.provenance["download_timestamp"] == completion.isoformat()
+    assert dataset.provenance["symbols"][0]["download_timestamp"] == completion.isoformat()
 
 
 def test_download_rejects_invalid_request_dates() -> None:

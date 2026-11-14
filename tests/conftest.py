@@ -428,12 +428,15 @@ class MockTushareApi:
             index=extension_index,
         )
         self.full_prices = pd.concat([self.prices, self.extension])
+        calendar_extension = pd.date_range(
+            self.calendar.index.max() + pd.Timedelta(days=1), self.as_of, freq="D"
+        )
         open_extension = pd.DataFrame(
             {
-                "sse_open": [1] * len(extension_index),
-                "szse_open": [1] * len(extension_index),
+                "sse_open": (calendar_extension.dayofweek < 5).astype(int),
+                "szse_open": (calendar_extension.dayofweek < 5).astype(int),
             },
-            index=extension_index,
+            index=calendar_extension,
         )
         self.full_calendar = pd.concat([self.calendar.astype(int), open_extension])
 

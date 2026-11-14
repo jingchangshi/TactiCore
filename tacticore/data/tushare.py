@@ -87,6 +87,7 @@ def adjust_fund_close(daily: pd.DataFrame, adjustments: pd.DataFrame) -> pd.Seri
 
 def _load_calendar(api: Any, start_date: str, end_date: str) -> pd.DataFrame:
     calendars: dict[str, pd.Series] = {}
+    expected_dates = pd.date_range(start_date, end_date, freq="D")
     for exchange in ("SSE", "SZSE"):
         frame = api.trade_cal(
             exchange=exchange,
@@ -96,20 +97,23 @@ def _load_calendar(api: Any, start_date: str, end_date: str) -> pd.DataFrame:
         )
         if frame is None:
             raise RuntimeError(f"trade_cal({exchange}) 未返回数据")
-        _require_columns(frame, {"cal_date", "is_open"}, "trade_cal")
-        if frame["cal_date"].duplicated().any():
-            raise ValueError(f"trade_cal({exchange}) 返回重复日期")
-        dates = pd.to_datetime(frame["cal_date"], format="%Y%m%d")
+        _require_columns(frame, {"exchange", "cal_date", "is_open"}, "trade_cal")
+        if not frame["exchange"].eq(exchange).fillna(False).all():
+            raise ValueError(f"trade_cal({exchange}) 返回其他或缺失交易所")
+        if not frame["cal_date"].astype("string").str.fullmatch(r"\d{8}").fillna(False).all():
+            raise ValueError(f"trade_cal({exchange}) 包含无效日期")
+        dates = pd.to_datetime(frame["cal_date"], format="%Y%m%d", errors="raise")
+        if dates.duplicated().any() or set(dates) != set(expected_dates):
+            raise ValueError(f"trade_cal({exchange}) 未在请求区间逐日覆盖或包含重复日期")
+        states = pd.to_numeric(frame["is_open"], errors="raise")
+        if not states.isin([0, 1]).all():
+            raise ValueError(f"trade_cal({exchange}) 包含非 0/1 状态")
         calendars[exchange.lower() + "_open"] = pd.Series(
-            pd.to_numeric(frame["is_open"], errors="raise").astype(int).to_numpy(),
-            index=dates,
-            dtype=int,
+            states.to_numpy(dtype=int), index=pd.DatetimeIndex(dates), dtype=int
         )
 
-    calendar = pd.DataFrame(calendars).fillna(0).astype(int).sort_index()
+    calendar = pd.DataFrame(calendars).sort_index()
     calendar.index.name = "date"
-    if calendar.empty or not calendar.isin([0, 1]).all().all():
-        raise ValueError("交易日历为空或包含非 0/1 状态")
     return calendar
 
 
@@ -155,7 +159,6 @@ def download_tushare_dataset(
     adjusted_series: dict[str, pd.Series] = {}
     records: list[dict[str, Any]] = []
     quality_by_symbol: dict[str, dict[str, Any]] = {}
-    timestamp = downloaded_at or datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     for row in universe.itertuples(index=False):
         symbol = str(row.symbol)
         tushare_symbol = str(row.tushare_symbol)
@@ -247,7 +250,6 @@ def download_tushare_dataset(
                 },
                 "adjustment_type": ADJUSTMENT_TYPE,
                 "data_timestamp": adjusted.index.max().date().isoformat(),
-                "download_timestamp": timestamp,
                 "rows": len(adjusted),
                 "first_observation": adjusted.index.min().date().isoformat(),
                 "metadata": {
@@ -259,6 +261,10 @@ def download_tushare_dataset(
                 },
             }
         )
+
+    timestamp = downloaded_at or datetime.now(timezone.utc).isoformat()
+    for record in records:
+        record["download_timestamp"] = timestamp
 
     prices = pd.concat(adjusted_series.values(), axis=1).sort_index()
     prices.index.name = "date"

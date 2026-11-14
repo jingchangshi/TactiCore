@@ -16,6 +16,7 @@ import csv
 import hashlib
 import json
 import math
+import os
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -507,6 +508,31 @@ def compute_vintage_hash(vintage_dir: Path) -> str:
             f"{name}:{sha256_file(vintage_path / name)}\n" for name in REQUIRED_VINTAGE_FILES
         ).encode()
     ).hexdigest()
+
+
+def validate_s2_signal_targets(
+    prices: pd.DataFrame,
+    as_of: pd.Timestamp,
+    targets: Mapping[str, float],
+    frozen_universe: FrozenUniverse,
+) -> None:
+    """S2 信号日正目标的已知条件；不推断执行日或成交。"""
+    from tacticore.data.tradability import AssetLifetime, active_at, price_available_at
+
+    for symbol, weight in targets.items():
+        if weight <= 0:
+            continue
+        listed = frozen_universe.list_dates.get(str(symbol))
+        lifetime = AssetLifetime(str(symbol), pd.Timestamp(listed)) if listed else None
+        if (
+            lifetime is None
+            or not active_at(lifetime, as_of)
+            or not price_available_at(prices, str(symbol), as_of)
+        ):
+            raise ValueError(
+                f"signal_date={as_of.date()} 正目标 {symbol} 缺少有效价格或有效生命周期；"
+                "as-of 数据不足，停止封存，不得回填"
+            )
 
 
 def load_prospective_vintage(
@@ -1399,5 +1425,54 @@ def append_event_row(record: Mapping[str, str], *, path: Path, fields: Sequence[
         raise ValueError("record 字段集合与冻结 observation schema 不一致")
     existing = read_event_rows(path, field_names)
     verify_no_duplicate_event(existing, record)
+    record_path = Path(path)
+    lexical_path = Path(os.path.abspath(record_path))
+    resolved_path = record_path.resolve()
+    s2_suffix = ("research", "shadow", "s2_r1", "observations.csv")
+    official_path = next(
+        (p for p in (resolved_path, lexical_path) if p.parts[-4:] == s2_suffix), None
+    )
+    if official_path is not None:
+        if lexical_path.is_symlink():
+            raise ValueError("S2 canonical observations 不允许是符号链接")
+        if record.get("candidate_id") != "S2_R1":
+            raise ValueError("S2 canonical observations 的 candidate_id 必须是 S2_R1")
+    if official_path is not None and record.get("record_type") == "decision":
+        # 只保护官方新 decision 追加，不改变历史 vintage 的读取/复验。
+        from research.experiments import run_s2_r1_shadow as s2
+
+        root = official_path.parent.parents[2]
+        manifest = s2.load_manifest(root / s2.MANIFEST_RELATIVE_PATH)
+        s2.verify_candidate(manifest, root, verify_framework=False)
+        signal = parse_iso_date(record["signal_date"], label="signal_date")
+        vintage_path = s2.canonical_vintage_dir(root, signal)
+        verify_canonical_vintage_location(
+            vintage_path, signal, canonical_parent=root / s2.VINTAGE_PARENT_RELATIVE_PATH
+        )
+        vintage = s2.load_prospective_inputs(vintage_path, manifest, as_of=signal, root=root)
+        s2.verify_decision_row(record, manifest=manifest, expected_symbols=vintage.prices.columns)
+        if record["historical_manifest_hash"] != sha256_frozen_repository_text(
+            root / s2.MANIFEST_RELATIVE_PATH
+        ):
+            raise ValueError("decision 与 candidate manifest hash 不一致")
+        verify_signal_day_seal(
+            signal_date=signal,
+            download_timestamp=vintage.provenance.download_timestamp,
+            decision_seal_time=record["record_generated_at"],
+            calendar=vintage.raw_calendar,
+        )
+        if vintage.vintage_hash != record["prospective_data_hash"]:
+            raise ValueError("decision 与 signal-date vintage hash 不一致")
+        targets = parse_weight_vector(
+            record["desired_targets"],
+            expected_symbols=vintage.prices.columns,
+            label="desired_targets",
+        )
+        expected = s2.build_month_end_targets(
+            vintage.prices, s2.load_trend_config(root / "config/strategy.toml")
+        )
+        if signal not in expected.index or targets != expected.loc[signal].to_dict():
+            raise ValueError("decision 目标与冻结 S2 策略及 signal-date vintage 不一致")
+        validate_s2_signal_targets(vintage.prices, signal, targets, load_frozen_universe(root))
     with Path(path).open("a", encoding="utf-8", newline="") as handle:
         csv.DictWriter(handle, fieldnames=list(field_names)).writerow(dict(record))

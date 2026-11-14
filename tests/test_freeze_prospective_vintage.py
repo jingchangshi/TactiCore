@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -149,6 +150,171 @@ def _mutate_provenance(vintage_dir: Path, mutate: Any) -> None:
     path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
+
+
+@pytest.mark.parametrize("bad_price", [float("nan"), 0.0, float("inf")])
+def test_s2_missing_fallback_blocks_existing_vintage_decision(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bad_price: float
+) -> None:
+    root = _repo(tmp_path)
+    _frozen_vintage(root)
+    observations = write_observations_header(s2.canonical_observations_path(root), s2.RECORD_FIELDS)
+    before = observations.read_bytes()
+    original_load = s2.load_prospective_inputs
+
+    def synthetic(*args: Any, **kwargs: Any) -> Any:
+        vintage = original_load(*args, **kwargs)
+        prices = vintage.prices.copy()
+        config = s2.load_trend_config(root / "config/strategy.toml")
+        prices.loc[AS_OF, list(config.risk_symbols)] = 0.01
+        prices.loc[AS_OF, config.fallback_symbol] = bad_price
+        assert s2.build_month_end_targets(prices, config).loc[AS_OF, config.fallback_symbol] > 0
+        return replace(vintage, prices=prices)
+
+    monkeypatch.setattr(s2, "load_prospective_inputs", synthetic)
+    with pytest.raises(ValueError, match="511010.SS.*as-of 数据不足"):
+        s2.run_decision(AS_OF, root=root, decision_seal_time=SEAL)
+    assert observations.read_bytes() == before
+
+
+def test_s2_valid_fallback_decision_is_appended_unchanged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _repo(tmp_path)
+    _frozen_vintage(root)
+    observations = write_observations_header(s2.canonical_observations_path(root), s2.RECORD_FIELDS)
+    original_load = s2.load_prospective_inputs
+    expected: dict[str, float] = {}
+
+    def synthetic(*args: Any, **kwargs: Any) -> Any:
+        vintage = original_load(*args, **kwargs)
+        prices = vintage.prices.copy()
+        config = s2.load_trend_config(root / "config/strategy.toml")
+        prices.loc[AS_OF, list(config.risk_symbols)] = 0.01
+        target = s2.build_month_end_targets(prices, config).loc[AS_OF]
+        expected.update({str(symbol): float(weight) for symbol, weight in target.items()})
+        assert expected[config.fallback_symbol] > 0
+        return replace(vintage, prices=prices)
+
+    monkeypatch.setattr(s2, "load_prospective_inputs", synthetic)
+    record = s2.run_decision(AS_OF, root=root, decision_seal_time=SEAL)
+    assert json.loads(record["desired_targets"]) == expected
+    assert record["execution_status"] == s2.PENDING_EXECUTION_STATUS
+    assert s2.decision_record_count(observations) == 1
+
+
+def test_s2_target_lifecycle_and_valid_fallback(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    vintage = _load(root, _frozen_vintage(root))
+    prices = vintage.prices.copy()
+    config = s2.load_trend_config(root / "config/strategy.toml")
+    prices.loc[AS_OF, list(config.risk_symbols)] = 0.01
+    expected = s2.build_month_end_targets(prices, config).loc[AS_OF].copy()
+    assert expected[config.fallback_symbol] > 0
+    universe = pe.load_frozen_universe(root)
+    targets = {str(symbol): float(weight) for symbol, weight in expected.items()}
+    pe.validate_s2_signal_targets(prices, AS_OF, targets, universe)
+    pd.testing.assert_series_equal(expected, s2.build_month_end_targets(prices, config).loc[AS_OF])
+    inactive = replace(
+        universe, list_dates={**universe.list_dates, config.fallback_symbol: "20261001"}
+    )
+    with pytest.raises(ValueError, match="511010.SS.*生命周期"):
+        pe.validate_s2_signal_targets(prices, AS_OF, targets, inactive)
+
+
+def test_s2_observations_symlink_is_rejected(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    _frozen_vintage(root)
+    observations = s2.canonical_observations_path(root)
+    destination = write_observations_header(tmp_path / "alias.csv", s2.RECORD_FIELDS)
+    observations.symlink_to(destination)
+    before = destination.read_bytes()
+    with pytest.raises(ValueError, match="符号链接"):
+        s2.run_decision(AS_OF, root=root, decision_seal_time=SEAL)
+    assert destination.read_bytes() == before
+
+
+def test_s2_relative_root_keeps_decision_gate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _repo(tmp_path)
+    _frozen_vintage(root)
+    observations = write_observations_header(s2.canonical_observations_path(root), s2.RECORD_FIELDS)
+    before = observations.read_bytes()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        pe,
+        "validate_s2_signal_targets",
+        lambda *args: (_ for _ in ()).throw(ValueError("gate reached")),
+    )
+    with pytest.raises(ValueError, match="gate reached"):
+        s2.run_decision(AS_OF, root=Path("repo"), decision_seal_time=SEAL)
+    assert observations.read_bytes() == before
+
+
+def _direct_s2_decision(root: Path) -> dict[str, str]:
+    vintage_path = _frozen_vintage(root)
+    manifest = s2.load_manifest(root / s2.MANIFEST_RELATIVE_PATH)
+    vintage = s2.load_prospective_inputs(vintage_path, manifest, as_of=AS_OF, root=root)
+    record = s2.build_decision_record(
+        vintage.prices,
+        manifest,
+        as_of=AS_OF,
+        vintage_identifier=vintage_path.name,
+        prospective_data_hash=vintage.vintage_hash,
+        manifest_hash=s2.manifest_hash(root / s2.MANIFEST_RELATIVE_PATH),
+        decision_seal_time=SEAL,
+        root=root,
+    )
+    assert record is not None
+    return record
+
+
+@pytest.mark.parametrize("alias_kind", ["dotdot", "symlink"])
+def test_direct_s2_append_alias_cannot_bypass_gate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, alias_kind: str
+) -> None:
+    root = _repo(tmp_path)
+    record = _direct_s2_decision(root)
+    observations = write_observations_header(s2.canonical_observations_path(root), s2.RECORD_FIELDS)
+    before = observations.read_bytes()
+    if alias_kind == "dotdot":
+        alias = observations.parent / ".." / "s2_r1" / observations.name
+    else:
+        directory_alias = tmp_path / "shadow_alias"
+        directory_alias.symlink_to(observations.parent, target_is_directory=True)
+        alias = directory_alias / observations.name
+
+    def reject(*args: Any) -> None:
+        raise ValueError("gate reached")
+
+    monkeypatch.setattr(pe, "validate_s2_signal_targets", reject)
+    with pytest.raises(ValueError, match="gate reached"):
+        pe.append_event_row(record, path=alias, fields=s2.RECORD_FIELDS)
+    assert observations.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("candidate_id", "S4C_R1", "candidate_id"),
+        ("historical_manifest_hash", "0" * 64, "manifest hash"),
+        ("prospective_data_hash", "0" * 64, "vintage hash"),
+        ("record_generated_at", "2026-10-01T08:00:00+00:00", "不得回填"),
+        ("record_generated_at", "2026-09-30T07:10:00+00:00", "download_timestamp"),
+    ],
+)
+def test_direct_s2_append_rejects_bad_identity_and_timing(
+    tmp_path: Path, field: str, value: str, message: str
+) -> None:
+    root = _repo(tmp_path)
+    record = _direct_s2_decision(root)
+    observations = write_observations_header(s2.canonical_observations_path(root), s2.RECORD_FIELDS)
+    before = observations.read_bytes()
+    record[field] = value
+    with pytest.raises(ValueError, match=message):
+        pe.append_event_row(record, path=observations, fields=s2.RECORD_FIELDS)
+    assert observations.read_bytes() == before
 
 
 def test_intact_synthetic_vintage_passes_the_frozen_universe_gate(tmp_path: Path) -> None:

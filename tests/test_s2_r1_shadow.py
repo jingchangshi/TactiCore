@@ -90,6 +90,19 @@ def test_candidate_manifest_matches_frozen_repository_inputs() -> None:
     assert shadow.decision_record_count() == 0
 
 
+@pytest.mark.parametrize(
+    "candidate,container", [("s2_r1", "file_hashes"), ("s4c_r1", "frozen_identity_artifacts")]
+)
+def test_all_candidate_frozen_hashes(candidate: str, container: str) -> None:
+    root = shadow.ROOT
+    manifest = json.loads(
+        (root / f"research/shadow/{candidate}/candidate_manifest.json").read_text()
+    )
+    assert manifest[container]
+    for path, expected in manifest[container].items():
+        assert shadow.sha256_frozen_repository_text(root / path) == expected, path
+
+
 def test_frozen_repository_text_hash_is_newline_invariant_but_raw_hash_is_not(
     tmp_path: Path,
 ) -> None:

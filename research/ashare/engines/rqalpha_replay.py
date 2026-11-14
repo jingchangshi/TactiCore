@@ -41,6 +41,7 @@ class RQAlphaRunResult:
     `analyser` 是 RQAlpha 原生的 `sys_analyser` 结果（未加工）；
     `order_events` 是订阅到的原生订单事件；`replayed_dates` 是**实际**下单的日期。
     三者必须与 `schedule` 对得上，否则这次回放不能作为证据使用。
+    `min_commission` 是显式覆盖的最低佣金；None 表示沿用适配器默认值。
     """
 
     analyser: dict[str, Any]
@@ -48,6 +49,7 @@ class RQAlphaRunResult:
     replayed_dates: list[pd.Timestamp]
     rqalpha_version: str
     fee_mapping_report: str
+    min_commission: float | None = None
 
 
 def build_frozen_config(
@@ -163,6 +165,25 @@ def build_replay_callbacks(
     return init, handle_bar
 
 
+def apply_min_commission(config: dict[str, Any], value: float) -> float:
+    """写入 RQAlpha 6.3 实际读取的 `sys_transaction_cost.stock_min_commission`。
+
+    冻结适配器固定写 0；本函数只在调用方显式要求时覆盖，并核对
+    ETF 佣金倍率 0.3125（万 2.5）与单边滑点 5bp 未被静默改动。
+    """
+    transaction_cost = config.get("mod", {}).get("sys_transaction_cost")
+    if not isinstance(transaction_cost, dict) or "stock_min_commission" not in transaction_cost:
+        raise ValueError("RQAlpha config 缺少 mod.sys_transaction_cost.stock_min_commission")
+    transaction_cost["stock_min_commission"] = float(value)
+    multiplier = float(transaction_cost.get("stock_commission_multiplier", float("nan")))
+    if abs(multiplier - 0.3125) > 1e-12:
+        raise ValueError(f"ETF 佣金倍率不是 2.5bp 映射值: {multiplier} != 0.3125")
+    slippage = float(config.get("mod", {}).get("sys_simulation", {}).get("slippage", float("nan")))
+    if abs(slippage - 0.0005) > 1e-12:
+        raise ValueError(f"ETF 滑点不是单边 5bp: {slippage} != 0.0005")
+    return float(value)
+
+
 def replay_frozen_schedule(
     schedule: pd.DataFrame,
     mapping: dict[str, str],
@@ -173,12 +194,16 @@ def replay_frozen_schedule(
     bundle_path: str | Path,
     asset_class: str = "ETF",
     partial_fill_on_insufficient_cash: bool = False,
+    min_commission: float | None = None,
 ) -> RQAlphaRunResult:
     """把一个已冻结的目标日程交给 RQAlpha 原生执行，并原样收回证据。
 
     `schedule` 的索引是**候选执行日**，可以包含 NaN 行（"这一天不下单"）。
     真正会下单的日期 = 至少有一个非 NaN 权重的日期；这个集合必须与日程的
     执行日完全一致，否则说明有执行日被跳过，回测净值对应的就不是冻结目标。
+
+    `min_commission=None` 保持既有行为（适配器的 0，即不建模最低佣金）；
+    显式传入时覆盖为指定金额（本研究的 ETF 值为 5 元）。
     """
     from rqalpha import __version__ as rqalpha_version
     from rqalpha import run_func
@@ -214,6 +239,13 @@ def replay_frozen_schedule(
         bundle_path=bundle_path,
         partial_fill_on_insufficient_cash=partial_fill_on_insufficient_cash,
     )
+    applied_min_commission: float | None = None
+    if min_commission is not None:
+        applied_min_commission = apply_min_commission(config, min_commission)
+        report += (
+            f"\nreplay_override: sys_transaction_cost.stock_min_commission="
+            f"{applied_min_commission} 元；佣金 2.5bp、滑点单边 5bp 已核对"
+        )
     order_events: list[dict[str, Any]] = []
     replayed_dates: list[pd.Timestamp] = []
     init, handle_bar = build_replay_callbacks(schedule, mapping, order_events, replayed_dates)
@@ -244,6 +276,7 @@ def replay_frozen_schedule(
         replayed_dates=list(replayed_dates),
         rqalpha_version=rqalpha_version,
         fee_mapping_report=report,
+        min_commission=applied_min_commission,
     )
 
 
@@ -323,6 +356,7 @@ __all__ = [
     "RECORDED_EVENTS",
     "RQAlphaRunResult",
     "actual_weights",
+    "apply_min_commission",
     "build_frozen_config",
     "build_replay_callbacks",
     "native_summary",

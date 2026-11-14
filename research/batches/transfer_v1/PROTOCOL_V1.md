@@ -1,6 +1,8 @@
 # ACCOUNT_INVESTABLE_ALLOCATION_TRANSFER_V1 预注册协议
 
-状态：`DRAFT_NOT_COMMITTED / NO_BACKTEST / BLOCKED_SPECIFICATION_AND_DATA / A2_FIRST_END_TO_END / A1_RESEARCH_ONLY_UNIDENTIFIABLE / ASSET_MAP_OWNER_DECIDED`。日期：2026-11-14。研究编号为本协议标题，不是 S2/S4C 的版本，也不改变它们的冻结身份。本文只登记研究设计，不包含新实验结果、前瞻记录或生产授权。
+状态：`FROZEN_PROTOCOL_V1 / DATA_AUDIT_PASS / RUNNER_VALIDATED_PRE_RESULT / A2_FIRST_END_TO_END / A1_RESEARCH_ONLY_UNIDENTIFIABLE / ASSET_MAP_OWNER_DECIDED`。日期：2026-11-14。研究编号为本协议标题，不是 S2/S4C 的版本，也不改变它们的冻结身份。本文只登记研究设计，不包含新实验结果、前瞻记录或生产授权。
+
+冻结记录：数据快照为 `data/transfer_v1/snapshot_20261114T050648Z`（审计 `PASS`，512890/513100 各一个孤立缺失日标为待核实疑似停牌，不填充）。A0/A2 执行器与合成数据测试已通过；在首次真实回测前冻结本文件。数据审计通过不代表策略有效或允许生产使用。
 
 ## 1. 授权、问题与边界
 

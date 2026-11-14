@@ -672,3 +672,15 @@
 - 结论边界：本条不授权任何候选提升或生产使用；S2_R1、S4C_R1 仍非生产候选。
 - 证据：AShareInvestor `docs/design-20261111/30_DECISIONS_20261111.md`、`31_TRANSFER_RESEARCH_GOAL.md`；`scripts/forward-cycle/README.md`。
 - 重开条件：编排器写入了违反协议的记录；或迁移研究越出 §1 边界。
+
+## RL-053 ACCOUNT_INVESTABLE_ALLOCATION_TRANSFER_V1：A2 趋势倾斜历史配对裁决
+
+- 策略：A0 静态基座（核心 512890/515450 各 12.5%、债券 511360 15%、黄金 518880 10%、现金 50%）对 A2 同基座的 200 日趋势倾斜（±2% 滞回、连续两月末确认、单标的/袖子月度变化 ≤10pp）。
+- 状态：CLOSED（历史研究裁决：`REJECT`）。日期：2026-11-14。研究编号不是 S2/S4C 新版本，不改变其冻结身份。
+- 预注册：[PROTOCOL_V1.md](../research/batches/transfer_v1/PROTOCOL_V1.md)，SHA-256 `95e2a2b673cec030ffcc3980029a5e1697de465beb80dd9ea50ea27f96dfaa7a`；AMENDMENT_1 将主窗口终点改为 RQAlpha bundle 覆盖的 2026-08-31；AMENDMENT_2 将债券袖子从不可执行的 10%+10% 改为 511360 15% + 现金，均在任何有效裁决前记录。
+- 数据：`data/transfer_v1/snapshot_20261114T050648Z`，审计 `PASS`；512890 与 513100 各有一个孤立缺失日标为待核实疑似停牌，不填充。数据审计不构成 PIT vintage 或全市场质量保证。
+- 执行：RQAlpha 6.3 原生回放，最低佣金 5 元、佣金 2.5bp、单边滑点 5bp；68,826 元初始现金；2020-10-01–2026-08-31；A0/A2 各 6/6 笔成交，0 现金/整手拒单，日程收敛。
+- 结果：A0 CAGR 4.9726%、最大回撤 6.0797%、CVaR5 0.6994%、年化换手 8.459%；A2 CAGR 5.1273%、最大回撤 6.1797%、CVaR5 0.7116%、年化换手 8.618%。风险改善为 −0.1000pp（MDD）与 −0.0123pp（CVaR），未达到 +2pp 预注册门槛，故 `REJECT`。CAGR 损失、换手与拒单条件均通过；主风险条件失败。
+- 结论边界：只否定本协议冻结的 A2 映射在该账户规模、资产池、成本和样本期内的历史表现；不证明趋势策略普遍无效，不构成前瞻证据或生产批准。A1 未运行且不可识别；2026-09/2026-10 未被 bundle 覆盖；海外 QDII 为 0。
+- 证据：[ACCOUNT_TRANSFER_V1 结果](ACCOUNT_TRANSFER_V1.md)、[结果 JSON](ACCOUNT_TRANSFER_V1.json)、[数据审计](ACCOUNT_TRANSFER_DATA_AUDIT_V1.json)。
+- 重开条件：新资产映射、新趋势/风险定义、不同账户规模或前瞻影子必须以新版本预注册；不得对同一版本调参重跑，不得把历史结果写成前瞻。

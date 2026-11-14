@@ -8,6 +8,8 @@ S2 Research Candidate R1 保持 **`FROZEN / PROSPECTIVE_SHADOW_ACTIVE`**，且 P
 
 对两个活动候选的前瞻证据路径已完成一次跨候选结构审计（RL-046，见 [双候选前瞻审计 V1](../research/results/DUAL_CANDIDATE_PROSPECTIVE_AUDIT_V1.md)），并据此作出研究优先级决策 V3（RL-047，见 [研究优先级决策 V3](../research/results/RESEARCH_PRIORITY_DECISION_V3.md)），选定 `PROSPECTIVE_EVIDENCE_FOUNDATION_V1_FOR_S2_AND_S4C`。该审计只读、未实现任何修复、未下载任何数据。
 
+账户迁移研究 `ACCOUNT_INVESTABLE_ALLOCATION_TRANSFER_V1` 已完成历史配对裁决：A2 趋势倾斜对 A0 的主风险门槛未通过（最大回撤与 CVaR 均略差），结论 `REJECT`，见 [结果](../research/results/ACCOUNT_TRANSFER_V1.md) 与 RL-053。只否定该冻结映射在 2020-10–2026-08、约 6.9 万元账户、真实整手和费用约束下的历史表现；不是前瞻证据，不改变 S2/S4C 状态，也不构成生产批准。
+
 该 Foundation V1 的历史链完整保留：RL-048 曾宣布
 `PROSPECTIVE_FOUNDATION_READY_WITH_NONBLOCKING_LIMITATIONS`
 （[原始结果](../research/results/PROSPECTIVE_EVIDENCE_FOUNDATION_V1.md)）→ clean Linux CI 在

@@ -1,0 +1,113 @@
+{
+  "protocol_status": "FROZEN_PROTOCOL_V1 / AMENDMENT_2_BOND_15_SINGLE / DATA_AUDIT_PASS / RUNNER_VALIDATED_PRE_RESULT / NO_PRODUCTION_AUTHORIZATION",
+  "protocol_sha256": "95e2a2b673cec030ffcc3980029a5e1697de465beb80dd9ea50ea27f96dfaa7a",
+  "protocol_committed_claim": true,
+  "decision_scope": "研究执行器输出；不是生产批准，也不表示协议已通过。",
+  "frozen_config": {
+    "initial_cash": 68826.0,
+    "main_start": "2020-10-01",
+    "main_end": "2026-08-31",
+    "assets": [
+      {
+        "symbol": "512890.SS",
+        "sleeve": "core",
+        "base_weight": 0.125,
+        "rqalpha_symbol": "512890.XSHG"
+      },
+      {
+        "symbol": "515450.SS",
+        "sleeve": "core",
+        "base_weight": 0.125,
+        "rqalpha_symbol": "515450.XSHG"
+      },
+      {
+        "symbol": "511360.SS",
+        "sleeve": "bond",
+        "base_weight": 0.15,
+        "rqalpha_symbol": "511360.XSHG"
+      },
+      {
+        "symbol": "518880.SS",
+        "sleeve": "gold",
+        "base_weight": 0.1,
+        "rqalpha_symbol": "518880.XSHG"
+      }
+    ],
+    "method": "targets via frozen rules; all execution/accounting by RQAlpha"
+  },
+  "decision_count": 71,
+  "A0": {
+    "passes": 6,
+    "converged": true,
+    "min_commission": 5.0,
+    "order_rows": 6,
+    "metrics": {
+      "arm": "A0",
+      "cagr": 0.04972558192524312,
+      "max_drawdown": 0.06079715390893714,
+      "cvar_5pct": 0.006993628241902555,
+      "cvar_observations": 1431,
+      "turnover_total": 0.49839139287685086,
+      "turnover_annualized": 0.08458989602614767,
+      "mean_equity": 79262.64491040503,
+      "initial_equity": 68826.0,
+      "ending_equity": 91606.8552,
+      "trade_count": 6,
+      "commission": 30.0,
+      "order_passes": 6,
+      "order_rejections": 0,
+      "cash_rejections": 0,
+      "lot_rejections": 0,
+      "volume_rejections": 0,
+      "other_rejections": 0,
+      "filtered_below_one_lot": 0,
+      "filtered_below_min_buy": 0,
+      "filtered_other": 0
+    }
+  },
+  "A2": {
+    "passes": 5,
+    "converged": true,
+    "min_commission": 5.0,
+    "order_rows": 7,
+    "metrics": {
+      "arm": "A2",
+      "cagr": 0.05127318328010344,
+      "max_drawdown": 0.0617968110652376,
+      "cvar_5pct": 0.0071163365651671995,
+      "cvar_observations": 1431,
+      "turnover_total": 0.5077641995070422,
+      "turnover_annualized": 0.08618070347116503,
+      "mean_equity": 79372.27563331006,
+      "initial_equity": 68826.0,
+      "ending_equity": 92405.4557,
+      "trade_count": 6,
+      "commission": 30.0,
+      "order_passes": 7,
+      "order_rejections": 0,
+      "cash_rejections": 0,
+      "lot_rejections": 0,
+      "volume_rejections": 0,
+      "other_rejections": 0,
+      "filtered_below_one_lot": 0,
+      "filtered_below_min_buy": 0,
+      "filtered_other": 0
+    }
+  },
+  "adjudication": {
+    "verdict": "REJECT",
+    "blockers": [],
+    "checks": {
+      "metrics_complete": true,
+      "risk_improvement_ge_2pp": false,
+      "cagr_loss_le_0_5pp": true,
+      "turnover_ratio_le_1_5x": true,
+      "zero_cash_and_lot_rejections": true,
+      "other_rejections_explained": true
+    },
+    "risk_improvement_mdd": -0.0009996571563004597,
+    "risk_improvement_cvar": -0.00012270832326464424,
+    "cagr_loss": -0.0015476013548603174,
+    "turnover_ratio": 1.018806116566518
+  }
+}

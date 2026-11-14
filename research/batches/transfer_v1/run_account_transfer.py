@@ -12,13 +12,15 @@
 RQAlpha 原生承担。这里只做四件事：生成/校准冻结日程、读取原生结果、
 计算协议 §6 指标、按预注册门槛裁决。
 
-裁决默认是 `INCONCLUSIVE`：协议仍是 `DRAFT_NOT_COMMITTED / NO_BACKTEST`，
-且既有 RQAlpha 适配器关闭了最低佣金。任何结果都不得被写成研究通过。
+裁决默认是 `INCONCLUSIVE`：只有在协议已提交（调用方显式
+`--protocol-committed`）、最低佣金已建模、数据/整手门控通过且日程收敛时才可
+产生 REJECT / ADOPT_SHADOW。任何结果都不得被写成生产批准。
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 from collections.abc import Mapping, Sequence
@@ -515,10 +517,27 @@ def summarize(result: Mapping[str, Any]) -> dict[str, Any]:
     """把结果压成可审计 JSON；不隐藏 blockers 与未提交过滤。"""
     a0: ArmRun = result["A0"]
     a2: ArmRun = result["A2"]
+    protocol = Path(__file__).with_name("PROTOCOL_V1.md")
     return {
         "protocol_status": result["protocol_status"],
+        "protocol_sha256": hashlib.sha256(protocol.read_bytes()).hexdigest(),
         "protocol_committed_claim": result["protocol_committed_claim"],
         "decision_scope": result["decision_scope"],
+        "frozen_config": {
+            "initial_cash": FROZEN_CONFIG.initial_cash,
+            "main_start": FROZEN_CONFIG.main_start.date().isoformat(),
+            "main_end": FROZEN_CONFIG.main_end.date().isoformat(),
+            "assets": [
+                {
+                    "symbol": asset.symbol,
+                    "sleeve": asset.sleeve,
+                    "base_weight": asset.base_weight,
+                    "rqalpha_symbol": asset.rqalpha_symbol,
+                }
+                for asset in FROZEN_CONFIG.assets
+            ],
+            "method": "targets via frozen rules; all execution/accounting by RQAlpha",
+        },
         "decision_count": int(len(result["decisions"])),
         "A0": {
             "passes": a0.passes,

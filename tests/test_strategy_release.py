@@ -122,3 +122,13 @@ def test_reject_invalid_release(case):
         _rehash(value)
     with pytest.raises(ValueError):
         validate_strategy_release(value)
+
+
+def test_account_approved_release_validates_with_deterministic_hash():
+    value = copy.deepcopy(json.loads(FIXTURE.read_text(encoding="utf-8")))
+    value["research_status"] = "FROZEN"
+    value["production_admission"] = "APPROVED_FOR_ACCOUNT"
+    _rehash(value)
+    digest = validate_strategy_release(value)
+    assert digest == value["content_hash"]
+    assert len(digest) == 64

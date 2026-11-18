@@ -1,4 +1,4 @@
-"""Offline StrategyRelease validation; it does not grant production admission."""
+"""Offline StrategyRelease validation across NOT_APPROVED and APPROVED_FOR_ACCOUNT tiers."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from typing import Any
 _SHA = re.compile(r"[0-9a-f]{64}\Z")
 _KEY = re.compile(r"[A-Za-z][A-Za-z0-9_]*\Z")
 _STATUSES = {"DRAFT", "RESEARCH_PUBLISHED", "FROZEN", "PROSPECTIVE_SHADOW_ACTIVE", "REJECTED"}
+_ADMISSIONS = {"NOT_APPROVED", "APPROVED_FOR_ACCOUNT"}
 
 
 def _fail() -> None:
@@ -70,7 +71,8 @@ def validate_strategy_release(value: Any) -> str:
         root["schema_version"] != "strategy-release-1"
         or not isinstance(root["research_status"], str)
         or root["research_status"] not in _STATUSES
-        or root["production_admission"] != "NOT_APPROVED"
+        or not isinstance(root["production_admission"], str)
+        or root["production_admission"] not in _ADMISSIONS
     ):
         _fail()
     strategy = _object(root["strategy"], {"id", "version", "implementation_sha256"})

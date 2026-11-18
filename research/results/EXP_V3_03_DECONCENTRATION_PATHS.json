@@ -1,0 +1,1345 @@
+{
+  "experiment_id": "EXP-V3-03",
+  "strategy_id": "V3_CONCENTRATED_SECTOR_EXIT",
+  "snapshot_id": "ca43f6393393056d6b318bba792c3f6c70c7c5d786f72a7ec6beab366d5b5a78",
+  "primary_survivor_mode": "V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0",
+  "falsified_lagging_mode": "V3_4TRANCHE_LAGGING_L2_15_TO_15",
+  "lagging_l2_neg15_breaches": 4,
+  "preemptive_l2_neg15_breaches": 0,
+  "locked_l2_params": {
+    "l2_preemptive_trigger_drawdown_bps": "1200",
+    "l2_deconcentration_post_breaker_equity_bps": "0",
+    "l2_lock_trade_days": "15",
+    "rationale": "Under T-close signal -> T+1 execution from 70% single-sector concentration, lagging -15% -> 15% equity breaches -15% in both VectorBT and RQAlpha; preemptive -12% -> 0% equity for 15 trading days respects the T+1 gap buffer and holds all crash windows strictly above -15.0%."
+  },
+  "windows": [
+    {
+      "window_name": "512480_SEMI_2021_2022",
+      "etf_code": "512480.SH",
+      "start": "2021-08-02",
+      "end": "2022-10-31",
+      "asset_return": -0.4285,
+      "asset_max_drawdown": -0.4993,
+      "paths": {
+        "PASSIVE_HOLD_70": {
+          "path_mode": "PASSIVE_HOLD_70",
+          "total_return": -0.289,
+          "max_drawdown": -0.3399,
+          "breached_neg15pct": true,
+          "sharpe": -1.24,
+          "trigger_events": [],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2021-08-02..2022-10-31",
+            "total_return": -0.2906,
+            "max_drawdown": -0.3411,
+            "breached_neg15pct": true,
+            "order_rejects": 0
+          }
+        },
+        "DAY1_CUT_18": {
+          "path_mode": "DAY1_CUT_18",
+          "total_return": -0.0889,
+          "max_drawdown": -0.1189,
+          "breached_neg15pct": false,
+          "sharpe": -0.87,
+          "trigger_events": [
+            {
+              "date": "2021-08-03",
+              "reason": "DAY1_CUT_TO_18",
+              "tranches": 4
+            }
+          ],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2021-08-02..2022-10-31",
+            "total_return": -0.0833,
+            "max_drawdown": -0.1123,
+            "breached_neg15pct": false,
+            "order_rejects": 2
+          }
+        },
+        "V3_4TRANCHE_PURE": {
+          "path_mode": "V3_4TRANCHE_PURE",
+          "total_return": -0.1495,
+          "max_drawdown": -0.1775,
+          "breached_neg15pct": true,
+          "sharpe": -1.1,
+          "trigger_events": [
+            {
+              "date": "2021-09-02",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2021-10-11",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2021-11-02",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2021-11-23",
+              "reason": "RULE_B_REBOUND_8PCT",
+              "tranches": 1
+            }
+          ],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2021-08-02..2022-10-31",
+            "total_return": -0.1418,
+            "max_drawdown": -0.1676,
+            "breached_neg15pct": true,
+            "order_rejects": 3
+          }
+        },
+        "V3_4TRANCHE_LAGGING_L2_15_TO_15": {
+          "path_mode": "V3_4TRANCHE_LAGGING_L2_15_TO_15",
+          "total_return": -0.1474,
+          "max_drawdown": -0.1762,
+          "breached_neg15pct": true,
+          "sharpe": -1.13,
+          "trigger_events": [
+            {
+              "date": "2021-09-02",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2021-10-11",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2021-11-02",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2021-11-23",
+              "reason": "RULE_B_REBOUND_8PCT",
+              "tranches": 1
+            },
+            {
+              "date": "2022-04-07",
+              "reason": "L2_BREAKER_15PCT_TO_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-04-29",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-05-26",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-06-20",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-07-12",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-08-03",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-09-26",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-10-25",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            }
+          ],
+          "breaker_hits": 8,
+          "rqalpha_native": {
+            "window": "2021-08-02..2022-10-31",
+            "total_return": -0.1434,
+            "max_drawdown": -0.1665,
+            "breached_neg15pct": true,
+            "order_rejects": 2
+          }
+        },
+        "V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0": {
+          "path_mode": "V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0",
+          "total_return": -0.089,
+          "max_drawdown": -0.1252,
+          "breached_neg15pct": false,
+          "sharpe": -0.8,
+          "trigger_events": [
+            {
+              "date": "2021-09-02",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2021-09-17",
+              "reason": "L2_BREAKER_12PCT_TO_0PCT",
+              "tranches": 3
+            },
+            {
+              "date": "2021-10-20",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_12PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2021-11-15",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_12PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2021-12-21",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_12PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-03-07",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_12PCT",
+              "tranches": 0
+            }
+          ],
+          "breaker_hits": 5,
+          "rqalpha_native": {
+            "window": "2021-08-02..2022-10-31",
+            "total_return": -0.0826,
+            "max_drawdown": -0.1248,
+            "breached_neg15pct": false,
+            "order_rejects": 3
+          }
+        }
+      }
+    },
+    {
+      "window_name": "512480_SEMI_2023_2024",
+      "etf_code": "512480.SH",
+      "start": "2023-04-03",
+      "end": "2024-02-08",
+      "asset_return": -0.3541,
+      "asset_max_drawdown": -0.4755,
+      "paths": {
+        "PASSIVE_HOLD_70": {
+          "path_mode": "PASSIVE_HOLD_70",
+          "total_return": -0.2368,
+          "max_drawdown": -0.3293,
+          "breached_neg15pct": true,
+          "sharpe": -1.62,
+          "trigger_events": [],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2023-04-03..2024-02-08",
+            "total_return": -0.2382,
+            "max_drawdown": -0.3306,
+            "breached_neg15pct": true,
+            "order_rejects": 0
+          }
+        },
+        "DAY1_CUT_18": {
+          "path_mode": "DAY1_CUT_18",
+          "total_return": -0.0406,
+          "max_drawdown": -0.0851,
+          "breached_neg15pct": false,
+          "sharpe": -0.85,
+          "trigger_events": [
+            {
+              "date": "2023-04-04",
+              "reason": "DAY1_CUT_TO_18",
+              "tranches": 4
+            }
+          ],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2023-04-03..2024-02-08",
+            "total_return": -0.0341,
+            "max_drawdown": -0.0785,
+            "breached_neg15pct": false,
+            "order_rejects": 2
+          }
+        },
+        "V3_4TRANCHE_PURE": {
+          "path_mode": "V3_4TRANCHE_PURE",
+          "total_return": -0.1125,
+          "max_drawdown": -0.1717,
+          "breached_neg15pct": true,
+          "sharpe": -1.25,
+          "trigger_events": [
+            {
+              "date": "2023-05-05",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2023-05-08",
+              "reason": "RULE_C_DEFENSIVE_MA60",
+              "tranches": 2
+            },
+            {
+              "date": "2023-05-09",
+              "reason": "RULE_C_DEFENSIVE_MA60",
+              "tranches": 1
+            }
+          ],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2023-04-03..2024-02-08",
+            "total_return": -0.1015,
+            "max_drawdown": -0.1608,
+            "breached_neg15pct": true,
+            "order_rejects": 3
+          }
+        },
+        "V3_4TRANCHE_LAGGING_L2_15_TO_15": {
+          "path_mode": "V3_4TRANCHE_LAGGING_L2_15_TO_15",
+          "total_return": -0.1106,
+          "max_drawdown": -0.1696,
+          "breached_neg15pct": true,
+          "sharpe": -1.23,
+          "trigger_events": [
+            {
+              "date": "2023-05-05",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2023-05-08",
+              "reason": "RULE_C_DEFENSIVE_MA60",
+              "tranches": 2
+            },
+            {
+              "date": "2023-05-09",
+              "reason": "RULE_C_DEFENSIVE_MA60",
+              "tranches": 1
+            },
+            {
+              "date": "2024-01-15",
+              "reason": "L2_BREAKER_15PCT_TO_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2024-02-06",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            }
+          ],
+          "breaker_hits": 2,
+          "rqalpha_native": {
+            "window": "2023-04-03..2024-02-08",
+            "total_return": -0.0995,
+            "max_drawdown": -0.1592,
+            "breached_neg15pct": true,
+            "order_rejects": 3
+          }
+        },
+        "V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0": {
+          "path_mode": "V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0",
+          "total_return": -0.0621,
+          "max_drawdown": -0.1265,
+          "breached_neg15pct": false,
+          "sharpe": -0.71,
+          "trigger_events": [
+            {
+              "date": "2023-05-05",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2023-05-08",
+              "reason": "RULE_C_DEFENSIVE_MA60",
+              "tranches": 2
+            },
+            {
+              "date": "2023-05-09",
+              "reason": "RULE_C_DEFENSIVE_MA60",
+              "tranches": 1
+            },
+            {
+              "date": "2023-05-10",
+              "reason": "L2_BREAKER_12PCT_TO_0PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2023-08-29",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_12PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2023-09-20",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_12PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2023-10-20",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_12PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2023-11-13",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_12PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2023-12-05",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_12PCT",
+              "tranches": 0
+            }
+          ],
+          "breaker_hits": 6,
+          "rqalpha_native": {
+            "window": "2023-04-03..2024-02-08",
+            "total_return": -0.0495,
+            "max_drawdown": -0.122,
+            "breached_neg15pct": false,
+            "order_rejects": 2
+          }
+        }
+      }
+    },
+    {
+      "window_name": "515790_PV_2022_2023",
+      "etf_code": "515790.SH",
+      "start": "2022-08-15",
+      "end": "2023-12-29",
+      "asset_return": -0.5045,
+      "asset_max_drawdown": -0.5768,
+      "paths": {
+        "PASSIVE_HOLD_70": {
+          "path_mode": "PASSIVE_HOLD_70",
+          "total_return": -0.3433,
+          "max_drawdown": -0.401,
+          "breached_neg15pct": true,
+          "sharpe": -1.64,
+          "trigger_events": [],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2022-08-15..2023-12-29",
+            "total_return": -0.3444,
+            "max_drawdown": -0.4017,
+            "breached_neg15pct": true,
+            "order_rejects": 0
+          }
+        },
+        "DAY1_CUT_18": {
+          "path_mode": "DAY1_CUT_18",
+          "total_return": -0.0683,
+          "max_drawdown": -0.1071,
+          "breached_neg15pct": false,
+          "sharpe": -0.84,
+          "trigger_events": [
+            {
+              "date": "2022-08-16",
+              "reason": "DAY1_CUT_TO_18",
+              "tranches": 4
+            }
+          ],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2022-08-15..2023-12-29",
+            "total_return": -0.0607,
+            "max_drawdown": -0.0972,
+            "breached_neg15pct": false,
+            "order_rejects": 3
+          }
+        },
+        "V3_4TRANCHE_PURE": {
+          "path_mode": "V3_4TRANCHE_PURE",
+          "total_return": -0.1276,
+          "max_drawdown": -0.1736,
+          "breached_neg15pct": true,
+          "sharpe": -1.19,
+          "trigger_events": [
+            {
+              "date": "2022-09-02",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2022-09-06",
+              "reason": "RULE_C_DEFENSIVE_MA60",
+              "tranches": 2
+            },
+            {
+              "date": "2022-09-14",
+              "reason": "RULE_C_DEFENSIVE_MA60",
+              "tranches": 1
+            }
+          ],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2022-08-15..2023-12-29",
+            "total_return": -0.104,
+            "max_drawdown": -0.1502,
+            "breached_neg15pct": true,
+            "order_rejects": 4
+          }
+        },
+        "V3_4TRANCHE_LAGGING_L2_15_TO_15": {
+          "path_mode": "V3_4TRANCHE_LAGGING_L2_15_TO_15",
+          "total_return": -0.1203,
+          "max_drawdown": -0.1644,
+          "breached_neg15pct": true,
+          "sharpe": -1.13,
+          "trigger_events": [
+            {
+              "date": "2022-09-02",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2022-09-06",
+              "reason": "RULE_C_DEFENSIVE_MA60",
+              "tranches": 2
+            },
+            {
+              "date": "2022-09-14",
+              "reason": "RULE_C_DEFENSIVE_MA60",
+              "tranches": 1
+            },
+            {
+              "date": "2023-10-20",
+              "reason": "L2_BREAKER_15PCT_TO_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2023-11-23",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2023-12-15",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            }
+          ],
+          "breaker_hits": 3,
+          "rqalpha_native": {
+            "window": "2022-08-15..2023-12-29",
+            "total_return": -0.099,
+            "max_drawdown": -0.1435,
+            "breached_neg15pct": false,
+            "order_rejects": 4
+          }
+        },
+        "V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0": {
+          "path_mode": "V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0",
+          "total_return": -0.0805,
+          "max_drawdown": -0.1269,
+          "breached_neg15pct": false,
+          "sharpe": -0.87,
+          "trigger_events": [
+            {
+              "date": "2022-09-02",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2022-09-06",
+              "reason": "RULE_C_DEFENSIVE_MA60",
+              "tranches": 2
+            },
+            {
+              "date": "2022-09-14",
+              "reason": "RULE_C_DEFENSIVE_MA60",
+              "tranches": 1
+            },
+            {
+              "date": "2022-12-23",
+              "reason": "L2_BREAKER_12PCT_TO_0PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2023-01-17",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_12PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2023-02-15",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_12PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2023-03-09",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_12PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2023-03-31",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_12PCT",
+              "tranches": 0
+            }
+          ],
+          "breaker_hits": 5,
+          "rqalpha_native": {
+            "window": "2022-08-15..2023-12-29",
+            "total_return": -0.0671,
+            "max_drawdown": -0.1218,
+            "breached_neg15pct": false,
+            "order_rejects": 4
+          }
+        }
+      }
+    },
+    {
+      "window_name": "512170_MED_2021_2022",
+      "etf_code": "512170.SH",
+      "start": "2021-07-01",
+      "end": "2022-09-30",
+      "asset_return": -0.5089,
+      "asset_max_drawdown": -0.5404,
+      "paths": {
+        "PASSIVE_HOLD_70": {
+          "path_mode": "PASSIVE_HOLD_70",
+          "total_return": -0.3433,
+          "max_drawdown": -0.3641,
+          "breached_neg15pct": true,
+          "sharpe": -1.77,
+          "trigger_events": [],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2021-07-01..2022-09-30",
+            "total_return": -0.3456,
+            "max_drawdown": -0.3667,
+            "breached_neg15pct": true,
+            "order_rejects": 0
+          }
+        },
+        "DAY1_CUT_18": {
+          "path_mode": "DAY1_CUT_18",
+          "total_return": -0.124,
+          "max_drawdown": -0.1353,
+          "breached_neg15pct": false,
+          "sharpe": -1.31,
+          "trigger_events": [
+            {
+              "date": "2021-07-02",
+              "reason": "DAY1_CUT_TO_18",
+              "tranches": 4
+            }
+          ],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2021-07-01..2022-09-30",
+            "total_return": -0.0992,
+            "max_drawdown": -0.1118,
+            "breached_neg15pct": false,
+            "order_rejects": 3
+          }
+        },
+        "V3_4TRANCHE_PURE": {
+          "path_mode": "V3_4TRANCHE_PURE",
+          "total_return": -0.2173,
+          "max_drawdown": -0.2274,
+          "breached_neg15pct": true,
+          "sharpe": -1.56,
+          "trigger_events": [
+            {
+              "date": "2021-08-03",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2021-09-02",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2021-09-22",
+              "reason": "RULE_B_REBOUND_8PCT",
+              "tranches": 1
+            },
+            {
+              "date": "2021-11-02",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            }
+          ],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2021-07-01..2022-09-30",
+            "total_return": -0.2059,
+            "max_drawdown": -0.2158,
+            "breached_neg15pct": true,
+            "order_rejects": 2
+          }
+        },
+        "V3_4TRANCHE_LAGGING_L2_15_TO_15": {
+          "path_mode": "V3_4TRANCHE_LAGGING_L2_15_TO_15",
+          "total_return": -0.1877,
+          "max_drawdown": -0.1938,
+          "breached_neg15pct": true,
+          "sharpe": -1.58,
+          "trigger_events": [
+            {
+              "date": "2021-08-03",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2021-08-23",
+              "reason": "L2_BREAKER_15PCT_TO_15PCT",
+              "tranches": 3
+            },
+            {
+              "date": "2021-09-14",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2021-10-15",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2021-11-08",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2021-11-30",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2021-12-22",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-01-14",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-02-14",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-03-08",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-03-30",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-04-25",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-05-20",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-06-14",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-07-06",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-07-28",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-08-19",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            },
+            {
+              "date": "2022-09-13",
+              "reason": "L2_BREAKER_DEFENSIVE_LOCK_15PCT",
+              "tranches": 0
+            }
+          ],
+          "breaker_hits": 17,
+          "rqalpha_native": {
+            "window": "2021-07-01..2022-09-30",
+            "total_return": -0.1848,
+            "max_drawdown": -0.191,
+            "breached_neg15pct": true,
+            "order_rejects": 2
+          }
+        },
+        "V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0": {
+          "path_mode": "V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0",
+          "total_return": -0.0815,
+          "max_drawdown": -0.1285,
+          "breached_neg15pct": false,
+          "sharpe": -0.74,
+          "trigger_events": [
+            {
+              "date": "2021-07-28",
+              "reason": "L2_BREAKER_12PCT_TO_0PCT",
+              "tranches": 4
+            }
+          ],
+          "breaker_hits": 1,
+          "rqalpha_native": {
+            "window": "2021-07-01..2022-09-30",
+            "total_return": -0.066,
+            "max_drawdown": -0.1231,
+            "breached_neg15pct": false,
+            "order_rejects": 2
+          }
+        }
+      }
+    },
+    {
+      "window_name": "159558_CSI2000_2026",
+      "etf_code": "159558.SZ",
+      "start": "2026-01-05",
+      "end": "2026-11-13",
+      "asset_return": 0.2857,
+      "asset_max_drawdown": -0.5604,
+      "paths": {
+        "PASSIVE_HOLD_70": {
+          "path_mode": "PASSIVE_HOLD_70",
+          "total_return": 0.2072,
+          "max_drawdown": -0.4744,
+          "breached_neg15pct": true,
+          "sharpe": 0.72,
+          "trigger_events": [],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2026-01-05..2026-08-31 (partial, bundle cutoff 2026-08-31)",
+            "total_return": 0.5534,
+            "max_drawdown": -0.3314,
+            "breached_neg15pct": true,
+            "order_rejects": 0
+          }
+        },
+        "DAY1_CUT_18": {
+          "path_mode": "DAY1_CUT_18",
+          "total_return": 0.0878,
+          "max_drawdown": -0.1102,
+          "breached_neg15pct": false,
+          "sharpe": 0.95,
+          "trigger_events": [
+            {
+              "date": "2026-01-06",
+              "reason": "DAY1_CUT_TO_18",
+              "tranches": 4
+            }
+          ],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2026-01-05..2026-08-31 (partial, bundle cutoff 2026-08-31)",
+            "total_return": 0.1509,
+            "max_drawdown": -0.0755,
+            "breached_neg15pct": false,
+            "order_rejects": 2
+          }
+        },
+        "V3_4TRANCHE_PURE": {
+          "path_mode": "V3_4TRANCHE_PURE",
+          "total_return": 0.1215,
+          "max_drawdown": -0.1102,
+          "breached_neg15pct": false,
+          "sharpe": 1.0,
+          "trigger_events": [
+            {
+              "date": "2026-01-08",
+              "reason": "RULE_B_REBOUND_8PCT",
+              "tranches": 1
+            },
+            {
+              "date": "2026-01-19",
+              "reason": "RULE_B_REBOUND_8PCT",
+              "tranches": 1
+            },
+            {
+              "date": "2026-03-03",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2026-03-24",
+              "reason": "RULE_C_DEFENSIVE_MA60",
+              "tranches": 1
+            }
+          ],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2026-01-05..2026-08-31 (partial, bundle cutoff 2026-08-31)",
+            "total_return": 0.1868,
+            "max_drawdown": -0.087,
+            "breached_neg15pct": false,
+            "order_rejects": 2
+          }
+        },
+        "V3_4TRANCHE_LAGGING_L2_15_TO_15": {
+          "path_mode": "V3_4TRANCHE_LAGGING_L2_15_TO_15",
+          "total_return": 0.1215,
+          "max_drawdown": -0.1102,
+          "breached_neg15pct": false,
+          "sharpe": 1.0,
+          "trigger_events": [
+            {
+              "date": "2026-01-08",
+              "reason": "RULE_B_REBOUND_8PCT",
+              "tranches": 1
+            },
+            {
+              "date": "2026-01-19",
+              "reason": "RULE_B_REBOUND_8PCT",
+              "tranches": 1
+            },
+            {
+              "date": "2026-03-03",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2026-03-24",
+              "reason": "RULE_C_DEFENSIVE_MA60",
+              "tranches": 1
+            }
+          ],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2026-01-05..2026-08-31 (partial, bundle cutoff 2026-08-31)",
+            "total_return": 0.1868,
+            "max_drawdown": -0.087,
+            "breached_neg15pct": false,
+            "order_rejects": 2
+          }
+        },
+        "V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0": {
+          "path_mode": "V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0",
+          "total_return": 0.1215,
+          "max_drawdown": -0.1102,
+          "breached_neg15pct": false,
+          "sharpe": 1.0,
+          "trigger_events": [
+            {
+              "date": "2026-01-08",
+              "reason": "RULE_B_REBOUND_8PCT",
+              "tranches": 1
+            },
+            {
+              "date": "2026-01-19",
+              "reason": "RULE_B_REBOUND_8PCT",
+              "tranches": 1
+            },
+            {
+              "date": "2026-03-03",
+              "reason": "RULE_A_MONTHLY_SCHEDULE",
+              "tranches": 1
+            },
+            {
+              "date": "2026-03-24",
+              "reason": "RULE_C_DEFENSIVE_MA60",
+              "tranches": 1
+            }
+          ],
+          "breaker_hits": 0,
+          "rqalpha_native": {
+            "window": "2026-01-05..2026-08-31 (partial, bundle cutoff 2026-08-31)",
+            "total_return": 0.1868,
+            "max_drawdown": -0.087,
+            "breached_neg15pct": false,
+            "order_rejects": 2
+          }
+        }
+      }
+    }
+  ],
+  "flat_rows": [
+    {
+      "window_name": "512480_SEMI_2021_2022",
+      "etf_code": "512480.SH",
+      "path_mode": "PASSIVE_HOLD_70",
+      "asset_mdd": -0.4993,
+      "total_return": -0.289,
+      "max_drawdown": -0.3399,
+      "breached_neg15pct": true,
+      "breaker_hits": 0,
+      "rq_window": "2021-08-02..2022-10-31",
+      "rq_mdd": -0.3411,
+      "rq_ret": -0.2906,
+      "rq_breached_neg15pct": true,
+      "rq_order_rejects": 0
+    },
+    {
+      "window_name": "512480_SEMI_2021_2022",
+      "etf_code": "512480.SH",
+      "path_mode": "DAY1_CUT_18",
+      "asset_mdd": -0.4993,
+      "total_return": -0.0889,
+      "max_drawdown": -0.1189,
+      "breached_neg15pct": false,
+      "breaker_hits": 0,
+      "rq_window": "2021-08-02..2022-10-31",
+      "rq_mdd": -0.1123,
+      "rq_ret": -0.0833,
+      "rq_breached_neg15pct": false,
+      "rq_order_rejects": 2
+    },
+    {
+      "window_name": "512480_SEMI_2021_2022",
+      "etf_code": "512480.SH",
+      "path_mode": "V3_4TRANCHE_PURE",
+      "asset_mdd": -0.4993,
+      "total_return": -0.1495,
+      "max_drawdown": -0.1775,
+      "breached_neg15pct": true,
+      "breaker_hits": 0,
+      "rq_window": "2021-08-02..2022-10-31",
+      "rq_mdd": -0.1676,
+      "rq_ret": -0.1418,
+      "rq_breached_neg15pct": true,
+      "rq_order_rejects": 3
+    },
+    {
+      "window_name": "512480_SEMI_2021_2022",
+      "etf_code": "512480.SH",
+      "path_mode": "V3_4TRANCHE_LAGGING_L2_15_TO_15",
+      "asset_mdd": -0.4993,
+      "total_return": -0.1474,
+      "max_drawdown": -0.1762,
+      "breached_neg15pct": true,
+      "breaker_hits": 8,
+      "rq_window": "2021-08-02..2022-10-31",
+      "rq_mdd": -0.1665,
+      "rq_ret": -0.1434,
+      "rq_breached_neg15pct": true,
+      "rq_order_rejects": 2
+    },
+    {
+      "window_name": "512480_SEMI_2021_2022",
+      "etf_code": "512480.SH",
+      "path_mode": "V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0",
+      "asset_mdd": -0.4993,
+      "total_return": -0.089,
+      "max_drawdown": -0.1252,
+      "breached_neg15pct": false,
+      "breaker_hits": 5,
+      "rq_window": "2021-08-02..2022-10-31",
+      "rq_mdd": -0.1248,
+      "rq_ret": -0.0826,
+      "rq_breached_neg15pct": false,
+      "rq_order_rejects": 3
+    },
+    {
+      "window_name": "512480_SEMI_2023_2024",
+      "etf_code": "512480.SH",
+      "path_mode": "PASSIVE_HOLD_70",
+      "asset_mdd": -0.4755,
+      "total_return": -0.2368,
+      "max_drawdown": -0.3293,
+      "breached_neg15pct": true,
+      "breaker_hits": 0,
+      "rq_window": "2023-04-03..2024-02-08",
+      "rq_mdd": -0.3306,
+      "rq_ret": -0.2382,
+      "rq_breached_neg15pct": true,
+      "rq_order_rejects": 0
+    },
+    {
+      "window_name": "512480_SEMI_2023_2024",
+      "etf_code": "512480.SH",
+      "path_mode": "DAY1_CUT_18",
+      "asset_mdd": -0.4755,
+      "total_return": -0.0406,
+      "max_drawdown": -0.0851,
+      "breached_neg15pct": false,
+      "breaker_hits": 0,
+      "rq_window": "2023-04-03..2024-02-08",
+      "rq_mdd": -0.0785,
+      "rq_ret": -0.0341,
+      "rq_breached_neg15pct": false,
+      "rq_order_rejects": 2
+    },
+    {
+      "window_name": "512480_SEMI_2023_2024",
+      "etf_code": "512480.SH",
+      "path_mode": "V3_4TRANCHE_PURE",
+      "asset_mdd": -0.4755,
+      "total_return": -0.1125,
+      "max_drawdown": -0.1717,
+      "breached_neg15pct": true,
+      "breaker_hits": 0,
+      "rq_window": "2023-04-03..2024-02-08",
+      "rq_mdd": -0.1608,
+      "rq_ret": -0.1015,
+      "rq_breached_neg15pct": true,
+      "rq_order_rejects": 3
+    },
+    {
+      "window_name": "512480_SEMI_2023_2024",
+      "etf_code": "512480.SH",
+      "path_mode": "V3_4TRANCHE_LAGGING_L2_15_TO_15",
+      "asset_mdd": -0.4755,
+      "total_return": -0.1106,
+      "max_drawdown": -0.1696,
+      "breached_neg15pct": true,
+      "breaker_hits": 2,
+      "rq_window": "2023-04-03..2024-02-08",
+      "rq_mdd": -0.1592,
+      "rq_ret": -0.0995,
+      "rq_breached_neg15pct": true,
+      "rq_order_rejects": 3
+    },
+    {
+      "window_name": "512480_SEMI_2023_2024",
+      "etf_code": "512480.SH",
+      "path_mode": "V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0",
+      "asset_mdd": -0.4755,
+      "total_return": -0.0621,
+      "max_drawdown": -0.1265,
+      "breached_neg15pct": false,
+      "breaker_hits": 6,
+      "rq_window": "2023-04-03..2024-02-08",
+      "rq_mdd": -0.122,
+      "rq_ret": -0.0495,
+      "rq_breached_neg15pct": false,
+      "rq_order_rejects": 2
+    },
+    {
+      "window_name": "515790_PV_2022_2023",
+      "etf_code": "515790.SH",
+      "path_mode": "PASSIVE_HOLD_70",
+      "asset_mdd": -0.5768,
+      "total_return": -0.3433,
+      "max_drawdown": -0.401,
+      "breached_neg15pct": true,
+      "breaker_hits": 0,
+      "rq_window": "2022-08-15..2023-12-29",
+      "rq_mdd": -0.4017,
+      "rq_ret": -0.3444,
+      "rq_breached_neg15pct": true,
+      "rq_order_rejects": 0
+    },
+    {
+      "window_name": "515790_PV_2022_2023",
+      "etf_code": "515790.SH",
+      "path_mode": "DAY1_CUT_18",
+      "asset_mdd": -0.5768,
+      "total_return": -0.0683,
+      "max_drawdown": -0.1071,
+      "breached_neg15pct": false,
+      "breaker_hits": 0,
+      "rq_window": "2022-08-15..2023-12-29",
+      "rq_mdd": -0.0972,
+      "rq_ret": -0.0607,
+      "rq_breached_neg15pct": false,
+      "rq_order_rejects": 3
+    },
+    {
+      "window_name": "515790_PV_2022_2023",
+      "etf_code": "515790.SH",
+      "path_mode": "V3_4TRANCHE_PURE",
+      "asset_mdd": -0.5768,
+      "total_return": -0.1276,
+      "max_drawdown": -0.1736,
+      "breached_neg15pct": true,
+      "breaker_hits": 0,
+      "rq_window": "2022-08-15..2023-12-29",
+      "rq_mdd": -0.1502,
+      "rq_ret": -0.104,
+      "rq_breached_neg15pct": true,
+      "rq_order_rejects": 4
+    },
+    {
+      "window_name": "515790_PV_2022_2023",
+      "etf_code": "515790.SH",
+      "path_mode": "V3_4TRANCHE_LAGGING_L2_15_TO_15",
+      "asset_mdd": -0.5768,
+      "total_return": -0.1203,
+      "max_drawdown": -0.1644,
+      "breached_neg15pct": true,
+      "breaker_hits": 3,
+      "rq_window": "2022-08-15..2023-12-29",
+      "rq_mdd": -0.1435,
+      "rq_ret": -0.099,
+      "rq_breached_neg15pct": false,
+      "rq_order_rejects": 4
+    },
+    {
+      "window_name": "515790_PV_2022_2023",
+      "etf_code": "515790.SH",
+      "path_mode": "V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0",
+      "asset_mdd": -0.5768,
+      "total_return": -0.0805,
+      "max_drawdown": -0.1269,
+      "breached_neg15pct": false,
+      "breaker_hits": 5,
+      "rq_window": "2022-08-15..2023-12-29",
+      "rq_mdd": -0.1218,
+      "rq_ret": -0.0671,
+      "rq_breached_neg15pct": false,
+      "rq_order_rejects": 4
+    },
+    {
+      "window_name": "512170_MED_2021_2022",
+      "etf_code": "512170.SH",
+      "path_mode": "PASSIVE_HOLD_70",
+      "asset_mdd": -0.5404,
+      "total_return": -0.3433,
+      "max_drawdown": -0.3641,
+      "breached_neg15pct": true,
+      "breaker_hits": 0,
+      "rq_window": "2021-07-01..2022-09-30",
+      "rq_mdd": -0.3667,
+      "rq_ret": -0.3456,
+      "rq_breached_neg15pct": true,
+      "rq_order_rejects": 0
+    },
+    {
+      "window_name": "512170_MED_2021_2022",
+      "etf_code": "512170.SH",
+      "path_mode": "DAY1_CUT_18",
+      "asset_mdd": -0.5404,
+      "total_return": -0.124,
+      "max_drawdown": -0.1353,
+      "breached_neg15pct": false,
+      "breaker_hits": 0,
+      "rq_window": "2021-07-01..2022-09-30",
+      "rq_mdd": -0.1118,
+      "rq_ret": -0.0992,
+      "rq_breached_neg15pct": false,
+      "rq_order_rejects": 3
+    },
+    {
+      "window_name": "512170_MED_2021_2022",
+      "etf_code": "512170.SH",
+      "path_mode": "V3_4TRANCHE_PURE",
+      "asset_mdd": -0.5404,
+      "total_return": -0.2173,
+      "max_drawdown": -0.2274,
+      "breached_neg15pct": true,
+      "breaker_hits": 0,
+      "rq_window": "2021-07-01..2022-09-30",
+      "rq_mdd": -0.2158,
+      "rq_ret": -0.2059,
+      "rq_breached_neg15pct": true,
+      "rq_order_rejects": 2
+    },
+    {
+      "window_name": "512170_MED_2021_2022",
+      "etf_code": "512170.SH",
+      "path_mode": "V3_4TRANCHE_LAGGING_L2_15_TO_15",
+      "asset_mdd": -0.5404,
+      "total_return": -0.1877,
+      "max_drawdown": -0.1938,
+      "breached_neg15pct": true,
+      "breaker_hits": 17,
+      "rq_window": "2021-07-01..2022-09-30",
+      "rq_mdd": -0.191,
+      "rq_ret": -0.1848,
+      "rq_breached_neg15pct": true,
+      "rq_order_rejects": 2
+    },
+    {
+      "window_name": "512170_MED_2021_2022",
+      "etf_code": "512170.SH",
+      "path_mode": "V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0",
+      "asset_mdd": -0.5404,
+      "total_return": -0.0815,
+      "max_drawdown": -0.1285,
+      "breached_neg15pct": false,
+      "breaker_hits": 1,
+      "rq_window": "2021-07-01..2022-09-30",
+      "rq_mdd": -0.1231,
+      "rq_ret": -0.066,
+      "rq_breached_neg15pct": false,
+      "rq_order_rejects": 2
+    },
+    {
+      "window_name": "159558_CSI2000_2026",
+      "etf_code": "159558.SZ",
+      "path_mode": "PASSIVE_HOLD_70",
+      "asset_mdd": -0.5604,
+      "total_return": 0.2072,
+      "max_drawdown": -0.4744,
+      "breached_neg15pct": true,
+      "breaker_hits": 0,
+      "rq_window": "2026-01-05..2026-08-31 (partial, bundle cutoff 2026-08-31)",
+      "rq_mdd": -0.3314,
+      "rq_ret": 0.5534,
+      "rq_breached_neg15pct": true,
+      "rq_order_rejects": 0
+    },
+    {
+      "window_name": "159558_CSI2000_2026",
+      "etf_code": "159558.SZ",
+      "path_mode": "DAY1_CUT_18",
+      "asset_mdd": -0.5604,
+      "total_return": 0.0878,
+      "max_drawdown": -0.1102,
+      "breached_neg15pct": false,
+      "breaker_hits": 0,
+      "rq_window": "2026-01-05..2026-08-31 (partial, bundle cutoff 2026-08-31)",
+      "rq_mdd": -0.0755,
+      "rq_ret": 0.1509,
+      "rq_breached_neg15pct": false,
+      "rq_order_rejects": 2
+    },
+    {
+      "window_name": "159558_CSI2000_2026",
+      "etf_code": "159558.SZ",
+      "path_mode": "V3_4TRANCHE_PURE",
+      "asset_mdd": -0.5604,
+      "total_return": 0.1215,
+      "max_drawdown": -0.1102,
+      "breached_neg15pct": false,
+      "breaker_hits": 0,
+      "rq_window": "2026-01-05..2026-08-31 (partial, bundle cutoff 2026-08-31)",
+      "rq_mdd": -0.087,
+      "rq_ret": 0.1868,
+      "rq_breached_neg15pct": false,
+      "rq_order_rejects": 2
+    },
+    {
+      "window_name": "159558_CSI2000_2026",
+      "etf_code": "159558.SZ",
+      "path_mode": "V3_4TRANCHE_LAGGING_L2_15_TO_15",
+      "asset_mdd": -0.5604,
+      "total_return": 0.1215,
+      "max_drawdown": -0.1102,
+      "breached_neg15pct": false,
+      "breaker_hits": 0,
+      "rq_window": "2026-01-05..2026-08-31 (partial, bundle cutoff 2026-08-31)",
+      "rq_mdd": -0.087,
+      "rq_ret": 0.1868,
+      "rq_breached_neg15pct": false,
+      "rq_order_rejects": 2
+    },
+    {
+      "window_name": "159558_CSI2000_2026",
+      "etf_code": "159558.SZ",
+      "path_mode": "V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0",
+      "asset_mdd": -0.5604,
+      "total_return": 0.1215,
+      "max_drawdown": -0.1102,
+      "breached_neg15pct": false,
+      "breaker_hits": 0,
+      "rq_window": "2026-01-05..2026-08-31 (partial, bundle cutoff 2026-08-31)",
+      "rq_mdd": -0.087,
+      "rq_ret": 0.1868,
+      "rq_breached_neg15pct": false,
+      "rq_order_rejects": 2
+    }
+  ],
+  "verdict": "PASS_PREEMPTIVE_L2_LOCKED"
+}

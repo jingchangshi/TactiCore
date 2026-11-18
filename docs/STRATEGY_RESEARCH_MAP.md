@@ -19,6 +19,9 @@
 | Equal risk contribution | allocation | E2 | 成熟构造方法，非收益异常 | S4B blocked / S4C R1 | S4C R1 FROZEN / PROSPECTIVE_SHADOW_ACTIVE（observations = 0） | 第一条真实前瞻 decision 只能在 2026-09-30 及之后形成；集中度为已知候选风险而非待优化项，S4B block 保留 | UPSTREAM_COMPARE |
 | Volatility targeting | overlay | E3 | 支持与反证并存 | S10A | execution review did not advance | native cash rejection；不以 local repair 重开 | LOCAL_ADJUDICATION |
 | Static diversification | allocation | E1 | 复杂度门槛 | S30 | REFERENCE_BASELINE | 机制匹配比较器 | REFERENCE_ONLY |
+| Dual-anchor regime + super ETF | tactical | E3 | GTAA/动量须配合宽度与免五成本实证裁决 | EXP-V3-01 | APPROVED_FOR_ACCOUNT_V3 (`v3.1.0`) | Phase 3 实盘接入；IS 2020-02 滞回已披露 | LOCAL_ADJUDICATION |
+| Main-board quality momentum swing | stock_swing | E3 | 中国高换手个股受5元低消与印花税侵蚀，须分买点裁决 | EXP-V3-02 | BP1_APPROVED_BP2_REJECTED_OOS (`v3.1.0`) | Phase 3 仅上线 BP1_PULLBACK；BP2 永久移除 | LOCAL_ADJUDICATION |
+| Concentrated sector ETF exit | drawdown_control | E4 | 重仓分批退出与 T+1 熔断边界无现成定论 | EXP-V3-03 | APPROVED_PREEMPTIVE_L2_V3 (`v3.1.0`) | 滞后 -15%->15% 已证伪；Phase 3 采用前置 -12%->0% | NEW_HYPOTHESIS |
 
 ## 成熟/已知：不应从零验证存在性
 

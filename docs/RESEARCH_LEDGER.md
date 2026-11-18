@@ -684,3 +684,20 @@
 - 结论边界：只否定本协议冻结的 A2 映射在该账户规模、资产池、成本和样本期内的历史表现；不证明趋势策略普遍无效，不构成前瞻证据或生产批准。A1 未运行且不可识别；2026-09/2026-10 未被 bundle 覆盖；海外 QDII 为 0。
 - 证据：[ACCOUNT_TRANSFER_V1 结果](../research/results/ACCOUNT_TRANSFER_V1.md)、[结果 JSON](../research/results/ACCOUNT_TRANSFER_V1.json)、[数据审计](../data/transfer_v1/snapshot_20261114T050648Z/ACCOUNT_TRANSFER_DATA_AUDIT_V1.json)。
 - 重开条件：新资产映射、新趋势/风险定义、不同账户规模或前瞻影子必须以新版本预注册；不得对同一版本调参重跑，不得把历史结果写成前瞻。
+
+## RL-054 V3_OFFENSIVE_SYSTEM_PHASE2：双锚超级 ETF 轮动、主板右侧强势股波段与重仓四批换马实证裁决
+
+- 研究域：账户专属进取型低频攻防系统（V3 Offensive System Phase 2，正交于冻结前瞻候选 `S2_R1`、`S4C_R1` 与 `RL-053` `ACCOUNT_TRANSFER_V1`；不修改任何冻结研究资产、适配器或历史前瞻口径）。
+- 状态：CLOSED（部分通过并签发版本化规格包：`V3_DUAL_ANCHOR_SUPER_ETF` `PASS_WITH_IS_WHIPSAW_DISCLOSURE`；`EXP-V3-02` **保留 `BP1_PULLBACK`、淘汰 `BP2_BREAKOUT`**；`EXP-V3-03` **证伪滞后 `-15% -> 15%` 熔断，锁定前置 `-12% -> 0%` L2 熔断**）。日期：2026-11-15。
+- 数据与严谨口径：PIT 快照 `v3_snapshot_20261113`（`snapshot_id = ca43f6393393056d6b318bba792c3f6c70c7c5d786f72a7ec6beab366d5b5a78`，经 `verify_content=True` 校验）与 `v3_aux_20261113`（`index_daily.csv` 7,680 行），联合只读 `~/.rqalpha/bundle`（截至 `2026-08-31`）与东财 33 只超级 ETF 白名单（SHA-256 `d0c30ecc2c4f18de21827b02bff1db78cc29b853fe40481a17ad8d9facbb07c0`）。重叠窗 `2026-06..08` 指数最大日收益差 `0.00e+00`，ETF 复权日收益最大差 `8.36e-06`；快照缺失 `fund_adj_factor` 的 `37/42` ETF 已显式披露并采用 `close / pre_close` 除权日收益链式接续。
+- **`EXP-V3-01`（双锚三档动态仓位 + 东财 33 只超级 ETF + 511010.SH 国债蓄水池）**：
+  - 核心实证：`V3_SUPER_ETF_BOND_RESERVE_0.5BP`（0.5bp 免 5，2018-01-02..2026-11-13）全期 CAGR `4.79%`、MaxDD `-13.79%`、IS MaxDD `-13.79%`、OOS CAGR `12.57%`、OOS MaxDD `-12.38%`、年换手 `7.31x`（`< 12x`）、OOS 牛市捕获 `122.4%`；原生 RQAlpha 6.3.0（2018-01-02..2026-08-31，¥100,000）全期 CAGR `4.31%`、MaxDD `-13.13%`、IS MaxDD `-13.13%`、OOS CAGR `11.57%`、OOS MaxDD `-12.14%`、`842` 笔成交 `0` 拒单；优于沪深 300 死拿（`1.59%` / `-42.16%`）与静态 60/40（`2.75%` / `-24.39%`），也显著优于 `0%` 现金空置消融（`-17.32%` MaxDD）。
+  - 诚实披露：IS Bull1（2019-01..2021-02）捕获率 `39.2% < 75%`，源自 2020-02 疫情 V 形闪跌触发双锚 `crash_override` 切换 DEFENSIVE 的滞回效应（不事后改参追高），OOS 超级 ETF 完整上线后表现达标，3×3 参数高原（`0.40..0.50` × `0.02..0.04`）均维持 OOS MaxDD `-11.93%..-12.79%`、Bull2 `111.7%..126.0%`。
+- **`EXP-V3-02`（10万/7万主板高质量右侧强势股波段，原生 RQAlpha `open_auction` + 5元低消 + 印花税 + 5bp 滑点）**：
+  - 分路实证：叠加 PIT `QualityCore`（`ROE>5%`、`EPS>0`、`ocf_to_profit>50%`，`ann_date <= T`）后，**`BP1_PULLBACK`（缩量回踩 MA20）**在 ¥100k OOS `N=76` 胜率 `26.3%`、盈亏比 `4.85`、**单笔净期望 `+2.329%`**（CAGR `12.19%`，MaxDD `-15.38%`），在 ¥70k OOS `N=78` **单笔净期望 `+0.592%`**（CAGR `3.89%`）-> **`KEEP_ENABLED`**；**`BP2_BREAKOUT`（15日窄幅放量突破）**在 ¥100k OOS `N=50` 胜率 `36.0%`、盈亏比 `1.69`、**单笔净期望 `-0.187%`**，¥70k `-0.001%` -> **`REJECTED_DROP`**（Phase 3 禁入实盘）。无 `QualityCore` 纯技术端 IS/OOS 均负期望（`-1.328%` / `-2.023%`），证明 `QualityCore` 不可或缺。
+- **`EXP-V3-03`（重仓 70% 高波行业 ETF 四批换马路径对比）**：
+  - 证伪与锁定：在 5 段历史及 2026 暴跌/高波窗口（`512480` 2021-2022 / 2023-2024、`515790` 光伏、`512170` 医疗、`159558` 2026）下，被动持有回撤 `-32.93%..-47.44%`；滞后到 `-15%` 收盘再按 `T+1` 保留 `15%` 权益（`V3_4TRANCHE_LAGGING_L2_15_TO_15`）因跳空与残余敞口在 **`4/5`** 窗口击穿 `-15%`（VBT `-16.44%..-19.38%`，RQAlpha `-15.92%..-19.10%`）；改为前置 **`-12%` 收盘触发 + 次日清零权益转入 `511010.SH` 锁定 15 日**（`V3_4TRANCHE_PREEMPTIVE_L2_12_TO_0`）在 VBT（`-11.02%..-12.85%`）与原生 RQAlpha（`-8.70%..-12.48%`）**全部 `5/5` 窗口严格守住 `-15%` 红线**，并在 `159558_CSI2000_2026` 保留 `+12.15%` 收益（对比 `DAY1_CUT_18` `+8.78%`）。
+- 证据与规格包：
+  - [EXP_V3_01](../research/results/EXP_V3_01_REGIME_SUPER_ETF.md) | [EXP_V3_02](../research/results/EXP_V3_02_MAINBOARD_STOCK_SWING.md) | [EXP_V3_03](../research/results/EXP_V3_03_DECONCENTRATION_PATHS.md)
+  - 发布规格包（`production_admission = APPROVED_FOR_ACCOUNT`）：[v3_offensive_policy_release_v3.1.0.json](../research/ashare/releases/v3_offensive_policy_release_v3.1.0.json)
+- 结论边界：本规格包仅批准面向用户本人东财 ¥100,000（当前约 ¥69,000）低频账户按 Phase 3 工单接入；不改变 `S2_R1`、`S4C_R1` 非生产身份，亦不允许绕开 `EXP-V3-02` 对 `BP2_BREAKOUT` 的 OOS 否定结论。

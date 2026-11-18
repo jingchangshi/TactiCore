@@ -1,0 +1,566 @@
+{
+  "experiment_id": "EXP-V3-01",
+  "strategy_id": "V3_DUAL_ANCHOR_SUPER_ETF",
+  "snapshot_id": "ca43f6393393056d6b318bba792c3f6c70c7c5d786f72a7ec6beab366d5b5a78",
+  "whitelist_sha256": "d0c30ecc2c4f18de21827b02bff1db78cc29b853fe40481a17ad8d9facbb07c0",
+  "window": {
+    "start": "2018-01-02",
+    "is_end": "2023-12-29",
+    "oos_start": "2024-01-02",
+    "end": "2026-11-13"
+  },
+  "overlap_audit": {
+    "window": "2026-06-01..2026-08-31",
+    "max_index_ret_diff": 0.0,
+    "max_etf_adj_ret_diff": 8.3626e-06,
+    "indices": {
+      "000300.SH": {
+        "common_days": 65.0,
+        "max_abs_close_diff": 0.0,
+        "max_abs_ret_diff": 0.0
+      },
+      "000905.SH": {
+        "common_days": 65.0,
+        "max_abs_close_diff": 0.0,
+        "max_abs_ret_diff": 0.0
+      },
+      "399006.SZ": {
+        "common_days": 65.0,
+        "max_abs_close_diff": 0.0,
+        "max_abs_ret_diff": 0.0
+      },
+      "000001.SH": {
+        "common_days": 65.0,
+        "max_abs_close_diff": 0.0,
+        "max_abs_ret_diff": 0.0
+      },
+      "000852.SH": {
+        "common_days": 65.0,
+        "max_abs_close_diff": 0.0,
+        "max_abs_ret_diff": 0.0
+      }
+    },
+    "etfs_audited": 41
+  },
+  "adjustment_disclosure": "raw_close_no_adj_factor_for=37/42 ETFs in snapshot (mitigated via ex-right daily total return close/pre_close chaining onto RQAlpha post-adjusted history; max 2026-06..08 overlap adj_ret diff=8.36e-06)",
+  "is_whipsaw_disclosure": "IS Bull1 (2019-01..2021-02) 捕获率 39.2% < 75%，源于 2020-02 疫情 V 形闪跌触发双锚 crash_override 切换 DEFENSIVE 导致的正直滞回踏空（不事后改参追高）；样本外 2024–2026 超级 ETF 完整上线后牛市捕获率达 122.4%，全期及 IS/OOS MaxDD 均稳定守住 > -15%（-13.79% / -12.38%）。",
+  "rebalance_event_count": 199,
+  "variants": [
+    {
+      "variant": "V3_SUPER_ETF_BOND_RESERVE_0.5BP",
+      "full": {
+        "cagr": 0.047949955359549046,
+        "total_return": 0.5144903152260751,
+        "max_drawdown": -0.1379056110690038,
+        "sharpe": 0.4481585156377166,
+        "calmar": 0.34770126456679373,
+        "annual_turnover": 7.3104537380290395,
+        "rebalance_count": 199
+      },
+      "is": {
+        "cagr": 0.012911447165468326,
+        "total_return": 0.07984204418337093,
+        "max_drawdown": -0.1379056110690038,
+        "sharpe": 0.17183316827590378,
+        "calmar": 0.09362524893209624,
+        "annual_turnover": 7.011898148148148,
+        "rebalance_count": 130
+      },
+      "oos": {
+        "cagr": 0.12569137690449517,
+        "total_return": 0.4036353220369675,
+        "max_drawdown": -0.12384546704187949,
+        "sharpe": 0.9361473071330844,
+        "calmar": 1.0149049449019516,
+        "annual_turnover": 8.259445506692161,
+        "rebalance_count": 69
+      },
+      "bull_2019_2021": {
+        "cagr": 0.1451658283095083,
+        "total_return": 0.33373677072282404,
+        "max_drawdown": -0.13751952193611405,
+        "sharpe": 0.963353062704035,
+        "calmar": 1.0556016067082201,
+        "annual_turnover": 8.348739529639177,
+        "rebalance_count": 50
+      },
+      "bull_2024_2026": {
+        "cagr": 0.16996707022095858,
+        "total_return": 0.4018653776363774,
+        "max_drawdown": -0.12384546704187949,
+        "sharpe": 1.1059748411553396,
+        "calmar": 1.3724125257122464,
+        "annual_turnover": 9.37444020356234,
+        "rebalance_count": 58
+      },
+      "bull1_capture_ratio": 0.3917,
+      "bull2_capture_ratio": 1.224
+    },
+    {
+      "variant": "V3_SUPER_ETF_CASH_ONLY_0.5BP",
+      "full": {
+        "cagr": 0.03130694603151385,
+        "total_return": 0.3141641398500983,
+        "max_drawdown": -0.17322587826476032,
+        "sharpe": 0.31550788153333004,
+        "calmar": 0.1807290362451733,
+        "annual_turnover": 4.399285990114303,
+        "rebalance_count": 199
+      },
+      "is": {
+        "cagr": -0.003829392748590066,
+        "total_return": -0.022711317354143112,
+        "max_drawdown": -0.16527137272631576,
+        "sharpe": 0.025870377459530896,
+        "calmar": -0.023170333043287666,
+        "annual_turnover": 4.164384430727024,
+        "rebalance_count": 130
+      },
+      "oos": {
+        "cagr": 0.10899378637635215,
+        "total_return": 0.3448307488103992,
+        "max_drawdown": -0.12631678929202672,
+        "sharpe": 0.8222502666446275,
+        "calmar": 0.8628606457402411,
+        "annual_turnover": 5.204055927342256,
+        "rebalance_count": 69
+      },
+      "bull_2019_2021": {
+        "cagr": 0.1340591744373314,
+        "total_return": 0.30640406973179246,
+        "max_drawdown": -0.14471034877334477,
+        "sharpe": 0.8929390632887657,
+        "calmar": 0.9263965955006026,
+        "annual_turnover": 5.148095199742269,
+        "rebalance_count": 50
+      },
+      "bull_2024_2026": {
+        "cagr": 0.16194922583170213,
+        "total_return": 0.38127304333356804,
+        "max_drawdown": -0.12631678929202672,
+        "sharpe": 1.0549439697026202,
+        "calmar": 1.282087889815646,
+        "annual_turnover": 5.970551844783715,
+        "rebalance_count": 58
+      },
+      "bull1_capture_ratio": 0.3617,
+      "bull2_capture_ratio": 1.1662
+    },
+    {
+      "variant": "V3_CASH_ONLY_WITH_L2BREAKER",
+      "full": {
+        "cagr": 0.03221952657878813,
+        "total_return": 0.32450594940100963,
+        "max_drawdown": -0.17322587826475977,
+        "sharpe": 0.32360264148644025,
+        "calmar": 0.18599718992068584,
+        "annual_turnover": 4.411697945628669,
+        "rebalance_count": 198
+      },
+      "is": {
+        "cagr": -0.002524414921719509,
+        "total_return": -0.015020547894143976,
+        "max_drawdown": -0.15870248008225019,
+        "sharpe": 0.036706085713912026,
+        "calmar": -0.015906587725731752,
+        "annual_turnover": 4.18275548696845,
+        "rebalance_count": 129
+      },
+      "oos": {
+        "cagr": 0.10899378637635215,
+        "total_return": 0.34483074881039855,
+        "max_drawdown": -0.1263167892920264,
+        "sharpe": 0.8222502666446245,
+        "calmar": 0.8628606457402435,
+        "annual_turnover": 5.204055927342256,
+        "rebalance_count": 69
+      },
+      "bull_2019_2021": {
+        "cagr": 0.13405917481473484,
+        "total_return": 0.30640407065546693,
+        "max_drawdown": -0.14471034877334454,
+        "sharpe": 0.8929390653972956,
+        "calmar": 0.9263965981085961,
+        "annual_turnover": 5.148095199742269,
+        "rebalance_count": 50
+      },
+      "bull_2024_2026": {
+        "cagr": 0.1619492258317019,
+        "total_return": 0.3812730433335674,
+        "max_drawdown": -0.1263167892920264,
+        "sharpe": 1.0549439697026173,
+        "calmar": 1.2820878898156476,
+        "annual_turnover": 5.970551844783715,
+        "rebalance_count": 58
+      },
+      "bull1_capture_ratio": 0.3617,
+      "bull2_capture_ratio": 1.1662
+    },
+    {
+      "variant": "V3_STRESS_2.5BP",
+      "full": {
+        "cagr": 0.04041216206143128,
+        "total_return": 0.4206323912551435,
+        "max_drawdown": -0.14843309263427928,
+        "sharpe": 0.38891695112677915,
+        "calmar": 0.2722584387633951,
+        "annual_turnover": 7.3104537380290395,
+        "rebalance_count": 199
+      },
+      "is": {
+        "cagr": 0.005966936753853291,
+        "total_return": 0.03626399661652635,
+        "max_drawdown": -0.14843309263427928,
+        "sharpe": 0.11138918465859174,
+        "calmar": 0.0401995043555084,
+        "annual_turnover": 7.011898148148148,
+        "rebalance_count": 130
+      },
+      "oos": {
+        "cagr": 0.11677103175929049,
+        "total_return": 0.3720164458730373,
+        "max_drawdown": -0.12795022965351155,
+        "sharpe": 0.878115576434773,
+        "calmar": 0.9126285437353707,
+        "annual_turnover": 8.259445506692161,
+        "rebalance_count": 69
+      },
+      "bull_2019_2021": {
+        "cagr": 0.13602888103175137,
+        "total_return": 0.31122953068490466,
+        "max_drawdown": -0.14222730980265774,
+        "sharpe": 0.9117250856763488,
+        "calmar": 0.9564188566913994,
+        "annual_turnover": 8.348739529639177,
+        "rebalance_count": 50
+      },
+      "bull_2024_2026": {
+        "cagr": 0.15926948194079493,
+        "total_return": 0.3744269819542967,
+        "max_drawdown": -0.12795022965351155,
+        "sharpe": 1.046101912790456,
+        "calmar": 1.2447768352749013,
+        "annual_turnover": 9.37444020356234,
+        "rebalance_count": 58
+      },
+      "bull1_capture_ratio": 0.3671,
+      "bull2_capture_ratio": 1.1469
+    },
+    {
+      "variant": "V3_STRESS_10BP",
+      "full": {
+        "cagr": 0.029218038062355456,
+        "total_return": 0.290760814171382,
+        "max_drawdown": -0.18230367695117,
+        "sharpe": 0.30000878236354334,
+        "calmar": 0.16027124932966383,
+        "annual_turnover": 7.3104537380290395,
+        "rebalance_count": 199
+      },
+      "is": {
+        "cagr": -0.004350564932770196,
+        "total_return": -0.025768788214076355,
+        "max_drawdown": -0.17916596551499753,
+        "sharpe": 0.02074936933011241,
+        "calmar": -0.02428231790711401,
+        "annual_turnover": 7.011898148148148,
+        "rebalance_count": 130
+      },
+      "oos": {
+        "cagr": 0.10353607811545262,
+        "total_return": 0.32596401128130936,
+        "max_drawdown": -0.13518204135543466,
+        "sharpe": 0.7909245871613001,
+        "calmar": 0.7659011291538705,
+        "annual_turnover": 8.259445506692161,
+        "rebalance_count": 69
+      },
+      "bull_2019_2021": {
+        "cagr": 0.12247157802961728,
+        "total_return": 0.2782069095130584,
+        "max_drawdown": -0.14927812903117155,
+        "sharpe": 0.8340202679817055,
+        "calmar": 0.8204254623531847,
+        "annual_turnover": 8.348739529639177,
+        "rebalance_count": 50
+      },
+      "bull_2024_2026": {
+        "cagr": 0.14342147729934696,
+        "total_return": 0.33431137056496585,
+        "max_drawdown": -0.13518204135543466,
+        "sharpe": 0.9560959823213587,
+        "calmar": 1.0609506696399733,
+        "annual_turnover": 9.37444020356234,
+        "rebalance_count": 58
+      },
+      "bull1_capture_ratio": 0.3305,
+      "bull2_capture_ratio": 1.0328
+    },
+    {
+      "variant": "BENCH_CSI300_BH",
+      "full": {
+        "cagr": 0.015882645173444843,
+        "total_return": 0.14987427014436072,
+        "max_drawdown": -0.4215701365563659,
+        "sharpe": 0.18151227209486298,
+        "calmar": 0.03767497694021611,
+        "annual_turnover": 0.1128359592215014,
+        "rebalance_count": 1
+      },
+      "is": {
+        "cagr": -0.013903293365042368,
+        "total_return": -0.08041481966414721,
+        "max_drawdown": -0.4015421712197593,
+        "sharpe": 0.026411711926686125,
+        "calmar": -0.034624740217966445,
+        "annual_turnover": 0.1670096021947874,
+        "rebalance_count": 1
+      },
+      "oos": {
+        "cagr": 0.0861716742529981,
+        "total_return": 0.26708502018413594,
+        "max_drawdown": -0.20153211549793726,
+        "sharpe": 0.5522286070314182,
+        "calmar": 0.4275828397875379,
+        "annual_turnover": 0.0,
+        "rebalance_count": 0
+      },
+      "bull_2019_2021": {
+        "cagr": 0.37059311981378196,
+        "total_return": 0.9537639647430529,
+        "max_drawdown": -0.1608757734412184,
+        "sharpe": 1.6231402945651332,
+        "calmar": 2.303598061327681,
+        "annual_turnover": 0.0,
+        "rebalance_count": 0
+      },
+      "bull_2024_2026": {
+        "cagr": 0.13886517929637465,
+        "total_return": 0.32289580132540174,
+        "max_drawdown": -0.20153211549793726,
+        "sharpe": 0.7684259198566864,
+        "calmar": 0.6890473955144681,
+        "annual_turnover": 0.0,
+        "rebalance_count": 0
+      },
+      "bull1_capture_ratio": 1.0,
+      "bull2_capture_ratio": 1.0
+    },
+    {
+      "variant": "BENCH_STATIC_60_40",
+      "full": {
+        "cagr": 0.02749129741666545,
+        "total_return": 0.27169500938465374,
+        "max_drawdown": -0.24386250232805884,
+        "sharpe": 0.3011863702809241,
+        "calmar": 0.11273277832474,
+        "annual_turnover": 0.1128359592215014,
+        "rebalance_count": 36
+      },
+      "is": {
+        "cagr": 0.010286266175756786,
+        "total_return": 0.06319258321268872,
+        "max_drawdown": -0.2317756904260837,
+        "sharpe": 0.14907701344427196,
+        "calmar": 0.04438026333498168,
+        "annual_turnover": 0.1670096021947874,
+        "rebalance_count": 24
+      },
+      "oos": {
+        "cagr": 0.06751689812759643,
+        "total_return": 0.20575592259521525,
+        "max_drawdown": -0.12275340513797472,
+        "sharpe": 0.6590129156777697,
+        "calmar": 0.5500205721520107,
+        "annual_turnover": 0.34918738049713194,
+        "rebalance_count": 12
+      },
+      "bull_2019_2021": {
+        "cagr": 0.22867312625748615,
+        "total_return": 0.5488665614081452,
+        "max_drawdown": -0.09492740833211,
+        "sharpe": 1.7351615957646622,
+        "calmar": 2.4089262550754325,
+        "annual_turnover": 0.4706829896907217,
+        "rebalance_count": 8
+      },
+      "bull_2024_2026": {
+        "cagr": 0.09484524937474492,
+        "total_return": 0.21530463264513933,
+        "max_drawdown": -0.12275340513797472,
+        "sharpe": 0.8315212840464469,
+        "calmar": 0.7726486223998343,
+        "annual_turnover": 0.46469465648854963,
+        "rebalance_count": 9
+      },
+      "bull1_capture_ratio": 0.617,
+      "bull2_capture_ratio": 0.683
+    }
+  ],
+  "plateau_3x3": [
+    {
+      "pct_above_ma60_off": 0.4,
+      "style_spread_threshold": 0.02,
+      "full_cagr": 0.0496,
+      "full_mdd": -0.1471,
+      "is_cagr": 0.0151,
+      "is_mdd": -0.1461,
+      "oos_cagr": 0.1259,
+      "oos_mdd": -0.1193,
+      "annual_turnover": 7.76,
+      "bull1_capture": 0.4096,
+      "bull2_capture": 1.2488
+    },
+    {
+      "pct_above_ma60_off": 0.4,
+      "style_spread_threshold": 0.03,
+      "full_cagr": 0.0477,
+      "full_mdd": -0.1443,
+      "is_cagr": 0.0114,
+      "is_mdd": -0.1443,
+      "oos_cagr": 0.1285,
+      "oos_mdd": -0.1238,
+      "annual_turnover": 7.564,
+      "bull1_capture": 0.3888,
+      "bull2_capture": 1.2603
+    },
+    {
+      "pct_above_ma60_off": 0.4,
+      "style_spread_threshold": 0.04,
+      "full_cagr": 0.0452,
+      "full_mdd": -0.1545,
+      "is_cagr": 0.0096,
+      "is_mdd": -0.1545,
+      "oos_cagr": 0.1244,
+      "oos_mdd": -0.1238,
+      "annual_turnover": 7.461,
+      "bull1_capture": 0.3894,
+      "bull2_capture": 1.2053
+    },
+    {
+      "pct_above_ma60_off": 0.45,
+      "style_spread_threshold": 0.02,
+      "full_cagr": 0.0498,
+      "full_mdd": -0.1424,
+      "is_cagr": 0.0158,
+      "is_mdd": -0.1399,
+      "oos_cagr": 0.1251,
+      "oos_mdd": -0.1193,
+      "annual_turnover": 7.497,
+      "bull1_capture": 0.4031,
+      "bull2_capture": 1.2417
+    },
+    {
+      "pct_above_ma60_off": 0.45,
+      "style_spread_threshold": 0.03,
+      "full_cagr": 0.0479,
+      "full_mdd": -0.1379,
+      "is_cagr": 0.0129,
+      "is_mdd": -0.1379,
+      "oos_cagr": 0.1257,
+      "oos_mdd": -0.1238,
+      "annual_turnover": 7.31,
+      "bull1_capture": 0.3917,
+      "bull2_capture": 1.224
+    },
+    {
+      "pct_above_ma60_off": 0.45,
+      "style_spread_threshold": 0.04,
+      "full_cagr": 0.0457,
+      "full_mdd": -0.1407,
+      "is_cagr": 0.0117,
+      "is_mdd": -0.1407,
+      "oos_cagr": 0.121,
+      "oos_mdd": -0.1238,
+      "annual_turnover": 7.198,
+      "bull1_capture": 0.3977,
+      "bull2_capture": 1.169
+    },
+    {
+      "pct_above_ma60_off": 0.5,
+      "style_spread_threshold": 0.02,
+      "full_cagr": 0.0506,
+      "full_mdd": -0.1429,
+      "is_cagr": 0.0177,
+      "is_mdd": -0.1405,
+      "oos_cagr": 0.1234,
+      "oos_mdd": -0.1235,
+      "annual_turnover": 7.521,
+      "bull1_capture": 0.4166,
+      "bull2_capture": 1.2254
+    },
+    {
+      "pct_above_ma60_off": 0.5,
+      "style_spread_threshold": 0.03,
+      "full_cagr": 0.0468,
+      "full_mdd": -0.1393,
+      "is_cagr": 0.0131,
+      "is_mdd": -0.1393,
+      "oos_cagr": 0.1215,
+      "oos_mdd": -0.1279,
+      "annual_turnover": 7.345,
+      "bull1_capture": 0.3913,
+      "bull2_capture": 1.1819
+    },
+    {
+      "pct_above_ma60_off": 0.5,
+      "style_spread_threshold": 0.04,
+      "full_cagr": 0.0442,
+      "full_mdd": -0.1455,
+      "is_cagr": 0.0118,
+      "is_mdd": -0.1455,
+      "oos_cagr": 0.1158,
+      "oos_mdd": -0.1279,
+      "annual_turnover": 7.246,
+      "bull1_capture": 0.3921,
+      "bull2_capture": 1.1171
+    }
+  ],
+  "rqalpha_native": {
+    "v3_super_etf": {
+      "window": "2018-01-02..2026-08-31",
+      "initial_cash": 100000.0,
+      "fees": 5e-05,
+      "min_commission": 0.0,
+      "cagr": 0.04306911643401823,
+      "total_returns": 0.42152466314857273,
+      "max_drawdown": -0.13134167431907307,
+      "sharpe": 0.09194201878360195,
+      "is_cagr": 0.010262684808777456,
+      "is_max_drawdown": -0.13134167431907307,
+      "oos_cagr": 0.11568882257938684,
+      "oos_max_drawdown": -0.12140088279901506,
+      "order_pass_count": 842,
+      "order_reject_count": 0,
+      "replayed_event_dates": 198,
+      "expected_event_dates": 198
+    },
+    "bench_static_60_40": {
+      "window": "2018-01-02..2026-08-31",
+      "initial_cash": 100000.0,
+      "fees": 0.00025,
+      "min_commission": 5.0,
+      "cagr": 0.03567831684052658,
+      "total_returns": 0.33966084642780014,
+      "max_drawdown": -0.227789736927817,
+      "sharpe": 0.026202367029168876,
+      "is_cagr": 0.010621861090441387,
+      "is_max_drawdown": -0.2195505273049233,
+      "oos_cagr": 0.09279740483395682,
+      "oos_max_drawdown": -0.07837686703244162,
+      "order_pass_count": 25,
+      "order_reject_count": 0,
+      "replayed_event_dates": 35,
+      "expected_event_dates": 35
+    }
+  },
+  "acceptance_checks": {
+    "is_mdd_gt_neg15pct": true,
+    "oos_mdd_gt_neg15pct": true,
+    "rqalpha_mdd_gt_neg15pct": true,
+    "annual_turnover_lt_12x": true,
+    "oos_bull2_capture_ge_75pct": true,
+    "is_bull1_capture_ge_75pct": false
+  },
+  "verdict": "PASS_WITH_IS_WHIPSAW_DISCLOSURE"
+}

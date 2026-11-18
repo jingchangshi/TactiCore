@@ -135,3 +135,6 @@ V1 的 `1e-12` reproduction 判据不可跨平台达成，作为 `INVALID_RUN` �
 | S4B / S4C | equal risk contribution | E2 | S4B Riskfolio BLOCKED；S4C R1 FROZEN / PROSPECTIVE_SHADOW_ACTIVE（非生产候选，observations = 0） | 前瞻有效性、生产适用性或 ERC 的一般优越性；历史冻结目标日程的原生可执行性已证明，但不构成未来可执行性或有效性证据 |
 | S10A | unlevered volatility targeting | E3 | native cash rejection 后 execution review 未推进 | volatility-managed 文献已被本地证明 |
 | S30 | naive/static diversification | E1 | REFERENCE_BASELINE | alpha 策略 |
+| V3_DUAL_ANCHOR_SUPER_ETF | dual-anchor regime + super ETF + 511010 reserve | E3 | APPROVED_FOR_ACCOUNT_V3（EXP-V3-01：OOS MaxDD -12.38%, Bull2 122.4%，IS 2020-02 滞回已披露） | 2020-02 V反不踏空或脱离 511010/免五环境仍成立 |
+| V3_MAINBOARD_SWING_BREAKOUT_PULLBACK | mainboard QualityCore + momentum BP1 vs BP2 | E3 | BP1_APPROVED_BP2_REJECTED_OOS（EXP-V3-02：BP1 +2.329% OOS 启用；BP2 -0.187% OOS 淘汰） | 无 QualityCore 或 BP2 形态具有正期望 |
+| V3_CONCENTRATED_SECTOR_EXIT | 4-tranche deconcentration + preemptive -12%->0% L2 | E4 | APPROVED_PREEMPTIVE_L2_V3（EXP-V3-03：5/5 窗 VBT&RQAlpha 严守 -15%；证伪滞后 -15%->15%） | 滞后 -15%->15% 熔断在 T+1 下能守住红线 |

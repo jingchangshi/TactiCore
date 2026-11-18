@@ -79,3 +79,12 @@ S4C R1 与 S2 R1 均为 `FROZEN / PROSPECTIVE_SHADOW_ACTIVE`；本地 observatio
 原先的 `2026-09-30` first eligible signal 与后续 `2026-10-30` 窗口均已错过，按 RL-052 不得回填；
 月度前瞻流程和有界迁移研究的当前授权见上节。S27A 资格保留但继续推迟；其他本地缺口须先通过
 External Evidence Gate 与 PIT Tradability Gate。
+
+## 账户专属进取型低频攻防域（V3 Offensive System Phase 2，2026-11-15）
+
+- 所属范围与边界：`EXP-V3-01..03` 服务用户本人东财 10 万级（现净值约 6.9 万）低频攻防账户（见 [RL-054](RESEARCH_LEDGER.md#rl-054-v3_offensive_system_phase2双锚超级-etf-轮动主板右侧强势股波段与重仓四批换马实证裁决)），与长期多资产 ETF 前瞻候选 `S2_R1` / `S4C_R1` 及 `RL-053` 完全隔离；`S2_R1` 与 `S4C_R1` 继续保持冻结非生产前瞻状态。
+- 验证状态：三大验证实验已基于完整 PIT 快照 `v3_snapshot_20261113` 与原生 `RQAlpha 6.3.0` 全部完结：
+  - `EXP-V3-01`（`PASS_WITH_IS_WHIPSAW_DISCLOSURE`）：`85%/60%/15%` + `511010.SH` 国债蓄水池 + 万 0.5 免五超级 ETF 在 VBT 全期 CAGR `4.79%`（MaxDD `-13.79%`，OOS CAGR `12.57%` / MaxDD `-12.38%` / 牛市捕获 `122.4%`），RQAlpha `842` 笔 `0` 拒单（MaxDD `-13.13%`），已如实披露 2020-02 IS `crash_override` V 反弹滞回（Bull1 `39.2%`）。
+  - `EXP-V3-02`（分买点裁决）：PIT `QualityCore` 加持下仅 **`BP1_PULLBACK`（缩量回踩 MA20）** OOS 净期望为正（¥100k `+2.329%`、¥70k `+0.592%`）获准进入 Phase 3；**`BP2_BREAKOUT`（15日窄幅突破）** OOS 净期望为负（¥100k `-0.187%`、¥70k `-0.001%`）已直接淘汰禁用。
+  - `EXP-V3-03`（`PASS_PREEMPTIVE_L2_LOCKED`）：证实滞后 `-15% -> 15%` 熔断在 `T+1` 延迟下于 4/5 历史崩溃窗口击穿红线；锁定高浓度降浓期前置 **`-12% -> 0%` 权益锁 15 交易日**参数，5/5 窗口在 VBT（`-11.02%..-12.85%`）与 RQAlpha（`-8.70%..-12.48%`）均严守 `-15%` 红线。
+- 策略规格包：已签发 [v3_offensive_policy_release_v3.1.0.json](../research/ashare/releases/v3_offensive_policy_release_v3.1.0.json)（`production_admission = APPROVED_FOR_ACCOUNT`），待用户确认后进入 Phase 3 实盘接入。

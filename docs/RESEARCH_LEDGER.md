@@ -701,3 +701,16 @@
   - [EXP_V3_01](../research/results/EXP_V3_01_REGIME_SUPER_ETF.md) | [EXP_V3_02](../research/results/EXP_V3_02_MAINBOARD_STOCK_SWING.md) | [EXP_V3_03](../research/results/EXP_V3_03_DECONCENTRATION_PATHS.md)
   - 发布规格包（`production_admission = APPROVED_FOR_ACCOUNT`）：[v3_offensive_policy_release_v3.1.0.json](../research/ashare/releases/v3_offensive_policy_release_v3.1.0.json)
 - 结论边界：本规格包仅批准面向用户本人东财 ¥100,000（当前约 ¥69,000）低频账户按 Phase 3 工单接入；不改变 `S2_R1`、`S4C_R1` 非生产身份，亦不允许绕开 `EXP-V3-02` 对 `BP2_BREAKOUT` 的 OOS 否定结论。
+
+### RL-055 · `EXP-V3-04` 重仓 `159558.SZ` 留存 25% 底仓震荡磨底降本策略研究与正期望边界验证（`v3.2.0`）
+
+- 实验结论：`PASS_GUARDED_BOTTOM_GRIND_25`；在 5 个半导体芯片（`512480` 2019–2026 / `159558` 2024–2026）及 4 个高波板块（`159995`/`512760`/`515030`/`515790`）共计 9 个历史与样本外窗口中，`V32_GUARDED_BOTTOM_GRIND_25`（25% 战略底仓 + 取消低位 `MONTHLY_SCHEDULE` 强制割肉 + 支撑跌破连续 2 日确认 + 单槽 +10% 至 35% 严格四门槛战术回补 + 趋势下沿 +7.5% 止盈 / MA60 上方牛市追踪 + 超配被动漂移 >=34% 兑现 + 按实时占比 >30% 动态切换前置 `-12% -> 0%` L2）相对 `25%` 静态持有达成：
+  - IS 均值年化超额 `+0.47pp`、IS 回撤改善 `+1.42pp`；
+  - OOS 均值年化超额 `+3.90pp`、OOS 回撤改善 `+7.73pp`；
+  - 最差单窗超额 `-2.66pp`、全周期 15 笔闭环战术回补 **15 胜 0 负（`100.0%` 胜率）**，且 `3×3` 参数高原全部为正超额；
+  - 原生 `RQAlpha 6.3.0` 4 窗口独立回放（`0.0` 与 `5.0` 最低佣金）全部 `0` 拒单通过验证。
+- 证伪对照：`C1_LEGACY_18_MONTHLY`（OOS `-2.75pp`）、`C2_NAIVE_GRID_6PCT`（IS `-8.05pp`, MDD `-8.23pp`）、`C3_MA20_CROSS_SWING`（胜率 `36.3%`, IS `-2.31pp`）、`C4_TIGHT_STOP_10PCT`（胜率 `63.2%`, IS `-0.30pp`）与 `C5_NO_MA60_SLOPE_SHIELD`（IS `-2.89pp`, 最差窗 `-7.52pp`）均在对照组中被统计证伪。
+- 证据文件与版本包：
+  - 实验报告与明细：[EXP_V3_04_BOTTOM_GRIND_COST_REDUCTION.md](../research/results/EXP_V3_04_BOTTOM_GRIND_COST_REDUCTION.md) / `.json` / `.csv`
+  - 升级签发规格包（`production_admission = APPROVED_FOR_ACCOUNT`）：[v3_offensive_policy_release_v3.2.0.json](../research/ashare/releases/v3_offensive_policy_release_v3.2.0.json)（保留 `v3.1.0` 历史归档）。
+- 结论边界：仅针对账户 `159558.SZ` 存量重仓从 `18%` 升级为 `BOTTOM_GRIND_25`（25% 战略底仓 + 单槽 +10% 四门槛降本），不得突破单槽持仓上限或删除四门槛与组合 L2 兜底，亦不改变 `S2_R1`/`S4C_R1` 非生产身份。

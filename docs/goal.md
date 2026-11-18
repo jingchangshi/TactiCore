@@ -2,7 +2,7 @@
 
 状态：
 1. **既有冻结域（`data/canonical/`、`research/shadow/s2_r1/`、`research/shadow/s4c_r1/`）**：Foundation V1 完成并通过独立 revalidation，继续保持开发冻结，等待真实前瞻时间窗口，**本轮绝不触碰**。
-2. **账户实盘研究域（`research/ashare/` — FinanceMCP V3 进取型低频攻防系统 Phase 2）**：依据仓库所有者（用户）2026-11-15 对 `AShareInvestor/docs/v3-offensive-system/MASTER_PLAN_V3.md` 与 `SERVER_EXECUTION_WORK_ORDER.md` 的明确授权（Phase 0–1 验收后答复「确认」推进 Phase 2），在隔离域 `research/ashare/` 内执行 `EXP-V3-01`、`EXP-V3-02`、`EXP-V3-03` 三大样本内/外对照实验，并在通过门控后签发带 `APPROVED_FOR_ACCOUNT` 的版本化 `StrategyRelease` 契约文件。
+2. **账户实盘研究域（`research/ashare/` — FinanceMCP V3 进取型低频攻防系统 Phase 2）**：依据仓库所有者（用户）2026-11-15 对 `AShareInvestor/docs/v3-offensive-system/MASTER_PLAN_V3.md` 与 `SERVER_EXECUTION_WORK_ORDER.md` 的明确授权及 2026-11-18 对 `159558.SZ` 留存 25% 底仓震荡磨底降本模式的升级授权，在隔离域 `research/ashare/` 内执行 `EXP-V3-01`、`EXP-V3-02`、`EXP-V3-03`、`EXP-V3-04` 四大样本内/外对照实验，并在通过门控后签发带 `APPROVED_FOR_ACCOUNT` 的版本化 `StrategyRelease` 契约文件（`v3.1.0` / `v3.2.0`）。
 
 ---
 
@@ -12,10 +12,12 @@
   - `EXP-V3-01` -> `V3_DUAL_ANCHOR_SUPER_ETF`（time-series / GTAA breadth regime + Eastmoney Super ETF `0.5bp` zero-min rotation）
   - `EXP-V3-02` -> `V3_MAINBOARD_SWING_BREAKOUT_PULLBACK`（China main-board quality + RPS momentum pullback `BP1` vs tight breakout `BP2` under realistic ¥5 floor friction）
   - `EXP-V3-03` -> `V3_CONCENTRATED_SECTOR_EXIT`（asymmetric 4-tranche deconcentration state machine for ~70% high-volatility sector ETF positions）
+  - `EXP-V3-04` -> `V3_SECTOR_BOTTOM_GRIND_COST_REDUCTION`（25% strategic core + 4-guard 10% bottom-grind reload/take-profit + overweight drift harvest for `159558.SZ`）
 - **External tier**:
   - `EXP-V3-01`: `E3_MIXED_CONDITIONAL`（Faber GTAA 与趋势跟踪虽成熟，但 A 股双锚广度 + 万 0.5 免五费率结构属于成本敏感型局部迁移判定）
   - `EXP-V3-02`: `E3_MIXED_CONDITIONAL`（质量与动量在美股成熟，但 Yang/Gebka/Hudson 等指出中国 A 股动量高度受频率、跌停与小资金最低佣金摩擦影响）
   - `EXP-V3-03`: `E4_OPEN_LOCAL`（重仓半导体/光伏/医药 ETF 的四批换马路径与 `MA60` 防守保护属于高度本地化账户工程假设）
+  - `EXP-V3-04`: `E4_OPEN_LOCAL`（重仓半导体 ETF 深跌磨底期 25% 底仓与四门槛单槽 `+10%` 降本规则属于高波低频账户负期望防控局部实盘假设）
 - **External conclusion**:
   - 纯静态 60/40 或无摩擦回测均不足以证明约 7–10 万元实盘 A 股账户的可持续净期望；必须按费率分层（Super ETF 万 0.5 免五 vs 主板股票万 2.5 最低 5 元+卖出万 5 印花税+双边万 5 滑点）、T+1 与涨跌停撮合实测裁决。
 - **Relevant contradictions**:
@@ -28,9 +30,10 @@
 - **Remaining local gap**:
   1. `EXP-V3-01`：`2018–2023` 样本内锁定参数在 `2024–2026` 样本外盲测是否同时守住 `MaxDD > -15%`、牛市年化捕获 `>= 75%` 与年化换手 `< 12x`；
   2. `EXP-V3-02`：在 7 万与 10 万账户下，`BP1`（回踩缩量）与 `BP2`（窄幅平台突破）谁能取得正的 OOS 净数学期望，以及单笔费率拖累百分比；
-  3. `EXP-V3-03`：四批换马状态机在高波动行业 ETF 泡沫破裂期是否在不放弃反弹兑现的前提下避免击穿账户 `-15%` HWM 熔断线。
+  3. `EXP-V3-03`：四批换马状态机在高波动行业 ETF 泡沫破裂期是否在不放弃反弹兑现的前提下避免击穿账户 `-15%` HWM 熔断线；
+  4. `EXP-V3-04`：`159558.SZ` 留存 25% 底仓并启用四门槛 `+10%` 战术降本后，能否稳定跑赢 25% 静态持有并证伪低位月度强卖、无门控网格与窄止损。
 - **Research action**:
-  - `LOCAL_ADJUDICATION`（`EXP-V3-01`、`EXP-V3-02`）与 `NEW_HYPOTHESIS`（`EXP-V3-03`）。凡 `EXP-V3-02` 中 OOS 净期望 `<= 0` 的买点直接 `REJECTED_DROP` 禁用，不得事后调参挽救。
+  - `LOCAL_ADJUDICATION`（`EXP-V3-01`、`EXP-V3-02`）与 `NEW_HYPOTHESIS`（`EXP-V3-03`、`EXP-V3-04`）。凡 `EXP-V3-02` 中 OOS 净期望 `<= 0` 的买点直接 `REJECTED_DROP` 禁用，不得事后调参挽救；凡 `EXP-V3-04` 中被证伪的负期望操作禁止接入实盘。
 
 ---
 

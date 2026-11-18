@@ -14,10 +14,10 @@ from tacticore.strategy_release import validate_strategy_release
 TACTICORE_ROOT = Path("/home/jcshi/workspace/TactiCore")
 ASHARE_INVESTOR_ROOT = Path("/home/jcshi/workspace/AShareInvestor")
 
-OUT_TACTICORE = TACTICORE_ROOT / "research/ashare/releases/v3_offensive_policy_release_v3.1.0.json"
+OUT_TACTICORE = TACTICORE_ROOT / "research/ashare/releases/v3_offensive_policy_release_v3.2.0.json"
 OUT_ASHARE_INVESTOR = (
     ASHARE_INVESTOR_ROOT
-    / "docs/v3-offensive-system/fee-profiles/v3_offensive_policy_release_v3.1.0.json"
+    / "docs/v3-offensive-system/fee-profiles/v3_offensive_policy_release_v3.2.0.json"
 )
 
 
@@ -58,6 +58,14 @@ def build_v3_release_payload() -> dict[str, Any]:
             "research/results/EXP_V3_03_DECONCENTRATION_PATHS.md",
             TACTICORE_ROOT / "research/results/EXP_V3_03_DECONCENTRATION_PATHS.md",
         ),
+        (
+            "research/results/EXP_V3_04_BOTTOM_GRIND_COST_REDUCTION.json",
+            TACTICORE_ROOT / "research/results/EXP_V3_04_BOTTOM_GRIND_COST_REDUCTION.json",
+        ),
+        (
+            "research/results/EXP_V3_04_BOTTOM_GRIND_COST_REDUCTION.md",
+            TACTICORE_ROOT / "research/results/EXP_V3_04_BOTTOM_GRIND_COST_REDUCTION.md",
+        ),
     ]
     evidence = [{"reference": ref, "sha256": sha256_file(path)} for ref, path in evidence_paths]
 
@@ -67,7 +75,7 @@ def build_v3_release_payload() -> dict[str, Any]:
         "production_admission": "APPROVED_FOR_ACCOUNT",
         "strategy": {
             "id": "V3_OFFENSIVE_LOW_FREQ_SYSTEM",
-            "version": "3.1.0",
+            "version": "3.2.0",
             "implementation_sha256": impl_sha,
         },
         "applicability": {
@@ -80,8 +88,9 @@ def build_v3_release_payload() -> dict[str, Any]:
                 "Next trading session T+1 (open_auction for stocks; T+1 ETF rebalance)"
             ),
             "exit": (
-                "Dual-anchor regime shift, stock -8% hard stop / +15% breakeven / MA20 "
-                "trailing, and 4-tranche + preemptive -12%->0% L2 breaker for sector ETFs"
+                "Dual-anchor regime shift, stock -8% hard stop / +15% breakeven / MA20 trailing, "
+                "and 25% core bottom-grind mode (+10% guarded tactical slot, 2d floor confirm, "
+                ">=34% drift harvest, preemptive -12%->0% L2 above 30% weight)"
             ),
             "fees": (
                 "Super ETF 0.5bp commission (min 0 CNY); normal ETF 2.5bp (min 5 CNY); "
@@ -125,9 +134,10 @@ def build_v3_release_payload() -> dict[str, Any]:
                 "arming, and MA20 trailing exit."
             ),
             (
-                "Concentrated sector ETF deconcentration uses 4 tranches (Rule A >=12d "
-                "monthly / Rule B +8% rebound / Rule C DEFENSIVE 2d<MA60*0.985) paired with "
-                "preemptive -12%->0% 15-day L2 breaker under T+1 execution."
+                "Concentrated sector ETF uses BOTTOM_GRIND_25 (keep 25% strategic core, drop "
+                "low-level monthly forced selling, 2-day support floor breakdown confirm, plus "
+                "+10% guarded reload only when MA60_slope10>=0, >=7% discount, oversold washout, "
+                "and right-side close>MA5; >=34% drift stall harvest; EXP-V3-04 15/0 RT win rate)."
             ),
         ],
         "parameters": {
@@ -149,10 +159,20 @@ def build_v3_release_payload() -> dict[str, Any]:
             "stock_max_positions": "2",
             "stock_max_single_weight_bps": "1800",
             "stock_risk_budget_per_trade_bps": "130",
+            "deconcentration_mode": "BOTTOM_GRIND_25",
             "deconcentration_tranches": "4",
-            "deconcentration_keep_weight_bps": "1800",
+            "deconcentration_keep_weight_bps": "2500",
             "deconcentration_rebound_trigger_bps": "800",
             "deconcentration_monthly_min_gap_days": "12",
+            "deconcentration_monthly_rule_enabled": "false",
+            "deconcentration_support_breakdown_confirm_days": "2",
+            "grind_tactical_slot_bps": "1000",
+            "grind_reload_min_discount_bps": "700",
+            "grind_reload_ma60_slope10_min_bps": "0",
+            "grind_reload_rsi14_max": "36",
+            "grind_reload_bias20_max_bps": "-650",
+            "grind_take_profit_bps": "750",
+            "grind_drift_harvest_trigger_bps": "3400",
             "l1_warn_drawdown_bps": "1000",
             "l2_hard_lifeline_drawdown_bps": "1500",
             "l2_preemptive_trigger_drawdown_bps": "1200",
@@ -179,4 +199,4 @@ def main() -> str:
 
 if __name__ == "__main__":
     digest = main()
-    print("V3 PolicyRelease v3.1.0 emitted:", digest)
+    print("V3 PolicyRelease v3.2.0 emitted:", digest)

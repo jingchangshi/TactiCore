@@ -138,3 +138,4 @@ V1 的 `1e-12` reproduction 判据不可跨平台达成，作为 `INVALID_RUN` �
 | V3_DUAL_ANCHOR_SUPER_ETF | dual-anchor regime + super ETF + 511010 reserve | E3 | APPROVED_FOR_ACCOUNT_V3（EXP-V3-01：OOS MaxDD -12.38%, Bull2 122.4%，IS 2020-02 滞回已披露） | 2020-02 V反不踏空或脱离 511010/免五环境仍成立 |
 | V3_MAINBOARD_SWING_BREAKOUT_PULLBACK | mainboard QualityCore + momentum BP1 vs BP2 | E3 | BP1_APPROVED_BP2_REJECTED_OOS（EXP-V3-02：BP1 +2.329% OOS 启用；BP2 -0.187% OOS 淘汰） | 无 QualityCore 或 BP2 形态具有正期望 |
 | V3_CONCENTRATED_SECTOR_EXIT | 4-tranche deconcentration + preemptive -12%->0% L2 | E4 | APPROVED_PREEMPTIVE_L2_V3（EXP-V3-03：5/5 窗 VBT&RQAlpha 严守 -15%；证伪滞后 -15%->15%） | 滞后 -15%->15% 熔断在 T+1 下能守住红线 |
+| V3_SECTOR_BOTTOM_GRIND_COST_REDUCTION | 25% strategic core + 4-guard 10% bottom-grind reload/take-profit + overweight drift harvest | E4 | APPROVED_BOTTOM_GRIND_25_V32（EXP-V3-04：IS +0.47pp / OOS +3.90pp / OOS MDD +7.73pp / 15-0 胜率，RQAlpha 0 拒单；证伪无门控网格/MA20波段/10%窄止损/18%低位强卖） | 无 MA60 斜率滤波的网格低吸与窄止损会越做越亏 |

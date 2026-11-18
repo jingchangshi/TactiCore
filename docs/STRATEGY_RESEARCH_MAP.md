@@ -22,6 +22,7 @@
 | Dual-anchor regime + super ETF | tactical | E3 | GTAA/动量须配合宽度与免五成本实证裁决 | EXP-V3-01 | APPROVED_FOR_ACCOUNT_V3 (`v3.1.0`) | Phase 3 实盘接入；IS 2020-02 滞回已披露 | LOCAL_ADJUDICATION |
 | Main-board quality momentum swing | stock_swing | E3 | 中国高换手个股受5元低消与印花税侵蚀，须分买点裁决 | EXP-V3-02 | BP1_APPROVED_BP2_REJECTED_OOS (`v3.1.0`) | Phase 3 仅上线 BP1_PULLBACK；BP2 永久移除 | LOCAL_ADJUDICATION |
 | Concentrated sector ETF exit | drawdown_control | E4 | 重仓分批退出与 T+1 熔断边界无现成定论 | EXP-V3-03 | APPROVED_PREEMPTIVE_L2_V3 (`v3.1.0`) | 滞后 -15%->15% 已证伪；Phase 3 采用前置 -12%->0% | NEW_HYPOTHESIS |
+| Sector bottom-grind cost reduction | swing_reversion | E4 | 重仓半导体等高波 ETF 降浓留存后，无门控网格与窄止损在磨底期易负期望损耗 | EXP-V3-04 | APPROVED_BOTTOM_GRIND_25_V32 (`v3.2.0`) | 证伪 18% 低位月度强卖、无门控 6% 网格、MA20 波段、10% 窄止损与无 MA60 斜率接飞刀 | NEW_HYPOTHESIS |
 
 ## 成熟/已知：不应从零验证存在性
 

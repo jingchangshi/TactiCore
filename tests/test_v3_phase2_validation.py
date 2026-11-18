@@ -17,10 +17,15 @@ from tacticore.strategy_release import validate_strategy_release
 TACTICORE_ROOT = Path(__file__).resolve().parents[1]
 ASHARE_INVESTOR_ROOT = TACTICORE_ROOT.parent / "AShareInvestor"
 
-RELEASE_TC = TACTICORE_ROOT / "research/ashare/releases/v3_offensive_policy_release_v3.1.0.json"
-RELEASE_AI = (
+RELEASE_TC_V31 = TACTICORE_ROOT / "research/ashare/releases/v3_offensive_policy_release_v3.1.0.json"
+RELEASE_AI_V31 = (
     ASHARE_INVESTOR_ROOT
     / "docs/v3-offensive-system/fee-profiles/v3_offensive_policy_release_v3.1.0.json"
+)
+RELEASE_TC = TACTICORE_ROOT / "research/ashare/releases/v3_offensive_policy_release_v3.2.0.json"
+RELEASE_AI = (
+    ASHARE_INVESTOR_ROOT
+    / "docs/v3-offensive-system/fee-profiles/v3_offensive_policy_release_v3.2.0.json"
 )
 
 GATE_FIELDS = (
@@ -46,6 +51,7 @@ def test_evidence_registry_contains_complete_v3_entries() -> None:
         "V3_DUAL_ANCHOR_SUPER_ETF": "APPROVED_FOR_ACCOUNT_V3",
         "V3_MAINBOARD_SWING_BREAKOUT_PULLBACK": "BP1_APPROVED_BP2_REJECTED_OOS",
         "V3_CONCENTRATED_SECTOR_EXIT": "APPROVED_PREEMPTIVE_L2_V3",
+        "V3_SECTOR_BOTTOM_GRIND_COST_REDUCTION": "APPROVED_BOTTOM_GRIND_25_V32",
     }
     for sid, expected_status in expected.items():
         assert sid in entries
@@ -67,6 +73,7 @@ def test_goal_and_experiment_docstrings_have_required_gates() -> None:
         TACTICORE_ROOT / "research/ashare/experiments/exp_v3_01_regime_super_etf.py",
         TACTICORE_ROOT / "research/ashare/experiments/exp_v3_02_stock_swing_rqalpha.py",
         TACTICORE_ROOT / "research/ashare/experiments/exp_v3_03_deconcentration_paths.py",
+        TACTICORE_ROOT / "research/ashare/experiments/exp_v3_04_bottom_grind_cost_reduction.py",
     )
     for path in exp_files:
         doc = ast.get_docstring(ast.parse(path.read_text(encoding="utf-8")))
@@ -78,6 +85,11 @@ def test_goal_and_experiment_docstrings_have_required_gates() -> None:
 
 
 def test_v3_policy_release_parity_and_tamper_rejection() -> None:
+    assert RELEASE_TC_V31.exists()
+    if ASHARE_INVESTOR_ROOT.is_dir():
+        assert RELEASE_AI_V31.exists()
+        assert RELEASE_TC_V31.read_bytes() == RELEASE_AI_V31.read_bytes()
+
     assert RELEASE_TC.exists()
     raw_tc = RELEASE_TC.read_bytes()
     if ASHARE_INVESTOR_ROOT.is_dir():
@@ -92,6 +104,11 @@ def test_v3_policy_release_parity_and_tamper_rejection() -> None:
     assert payload["parameters"]["bp2_breakout_status"] == "DROPPED_NEGATIVE_OOS"
     assert payload["parameters"]["l2_preemptive_trigger_drawdown_bps"] == "1200"
     assert payload["parameters"]["l2_deconcentration_post_breaker_equity_bps"] == "0"
+    assert payload["parameters"]["deconcentration_mode"] == "BOTTOM_GRIND_25"
+    assert payload["parameters"]["deconcentration_keep_weight_bps"] == "2500"
+    assert payload["parameters"]["grind_tactical_slot_bps"] == "1000"
+    assert payload["parameters"]["grind_take_profit_bps"] == "750"
+    assert payload["parameters"]["grind_drift_harvest_trigger_bps"] == "3400"
 
     mutated_param = copy.deepcopy(payload)
     mutated_param["parameters"]["l2_preemptive_trigger_drawdown_bps"] = "1300"
@@ -117,6 +134,8 @@ def test_release_evidence_hashes_match_on_disk() -> None:
         "research/results/EXP_V3_02_MAINBOARD_STOCK_SWING.md",
         "research/results/EXP_V3_03_DECONCENTRATION_PATHS.json",
         "research/results/EXP_V3_03_DECONCENTRATION_PATHS.md",
+        "research/results/EXP_V3_04_BOTTOM_GRIND_COST_REDUCTION.json",
+        "research/results/EXP_V3_04_BOTTOM_GRIND_COST_REDUCTION.md",
     )
     for rel in expected_local:
         target = TACTICORE_ROOT / rel

@@ -140,6 +140,62 @@ def test_download_rejects_configured_listing_date_mismatch() -> None:
         )
 
 
+def test_delisted_fund_metadata_is_accepted_from_status_d() -> None:
+    """标的池可以包含已摘牌 ETF：fund_basic 必须查询 status="D" 而不是只查 L。"""
+
+    class DelistedOnly(FakeTushareApi):
+        def fund_basic(self, **kwargs: Any) -> pd.DataFrame:
+            if kwargs.get("status") != "D":
+                return pd.DataFrame(
+                    columns=[
+                        "ts_code",
+                        "name",
+                        "management",
+                        "fund_type",
+                        "list_date",
+                        "delist_date",
+                    ]
+                )
+            frame = super().fund_basic(**kwargs)
+            frame["delist_date"] = ["20231229"]
+            return frame
+
+    dataset = download_tushare_dataset(
+        DelistedOnly(),
+        _universe(),
+        "20240102",
+        "20240103",
+        downloaded_at="2024-01-04T00:00:00+00:00",
+    )
+
+    record = dataset.provenance["symbols"][0]
+    assert record["metadata"]["request_status"] == "D"
+    assert record["metadata"]["delist_date"] == "20231229"
+    assert [request["status"] for request in dataset.provenance["metadata_requests"]] == [
+        "L",
+        "D",
+    ]
+
+
+def test_conflicting_l_and_d_fund_metadata_is_rejected() -> None:
+    class Conflicting(FakeTushareApi):
+        def fund_basic(self, **kwargs: Any) -> pd.DataFrame:
+            frame = super().fund_basic(**kwargs)
+            if kwargs.get("status") == "D":
+                frame["list_date"] = "20120529"
+                frame["delist_date"] = "20231229"
+            return frame
+
+    with pytest.raises(ValueError, match="身份字段不一致"):
+        download_tushare_dataset(
+            Conflicting(),
+            _universe(),
+            "20240102",
+            "20240103",
+            downloaded_at="2024-01-04T00:00:00+00:00",
+        )
+
+
 @pytest.mark.parametrize(
     "problem",
     [

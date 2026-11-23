@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 import sys
 from pathlib import Path
@@ -20,6 +21,7 @@ from conftest import (
     write_raw_execution_artifact,
 )
 
+from research.experiments import prospective_evidence as pe
 from research.experiments import run_s2_r1_shadow as shadow
 from research.experiments.prospective_evidence import sha256_file
 
@@ -844,3 +846,74 @@ def test_verify_no_observations_rejects_non_empty_table(
 
     with pytest.raises(ValueError, match="必须仍为 0 行"):
         shadow.main()
+
+
+# --- canonical append gate: S2 execution rows cannot bypass frozen state -------------------
+
+
+def _direct_append(record: dict[str, str], observations: Path) -> None:
+    pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+
+def _tampered_targets(record: dict[str, str]) -> str:
+    targets = json.loads(record["desired_targets"])
+    donor = max(targets, key=lambda symbol: targets[symbol])
+    receiver = min(
+        (symbol for symbol in targets if symbol != donor), key=lambda symbol: targets[symbol]
+    )
+    tampered = dict(targets)
+    tampered[donor] -= 0.001
+    tampered[receiver] += 0.001
+    return json.dumps(tampered, sort_keys=True)
+
+
+def _flipped_trend_states(record: dict[str, str]) -> str:
+    states = json.loads(record["trend_states"])
+    for symbol, state in states.items():
+        if state == "UPTREND":
+            states[symbol] = "NEGATIVE_SIGNAL"
+            break
+        states[symbol] = "UPTREND"
+        break
+    return json.dumps(states, sort_keys=True)
+
+
+@pytest.mark.parametrize(
+    ("field", "producer", "match"),
+    [
+        ("desired_targets", _tampered_targets, "desired_targets 必须与对应 decision 一致"),
+        ("trend_states", _flipped_trend_states, "trend_states 必须与对应 decision 一致"),
+        ("data_as_of", lambda record: "2026-09-29", "data_as_of 必须与对应 decision 一致"),
+        ("historical_manifest_hash", lambda record: "0" * 64, "manifest hash"),
+        ("prospective_data_hash", lambda record: "0" * 64, "vintage hash"),
+    ],
+)
+def test_direct_s2_execution_append_cannot_bypass_frozen_state(
+    tmp_path: Path, field: str, producer: Any, match: str
+) -> None:
+    root, complete, observations = _execution_fixture(tmp_path)
+    complete[field] = producer(complete)
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match=match):
+        _direct_append(complete, observations)
+
+    assert observations.read_bytes() == before
+
+
+def test_execution_append_reverifies_the_stored_decision_row(tmp_path: Path) -> None:
+    root, complete, observations = _execution_fixture(tmp_path)
+    rows = pe.read_event_rows(observations, shadow.RECORD_FIELDS)
+    tampered = _tampered_targets(rows[0])
+    rows[0]["desired_targets"] = tampered
+    with observations.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(shadow.RECORD_FIELDS))
+        writer.writeheader()
+        writer.writerows(rows)
+    complete["desired_targets"] = tampered
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="冻结 S2 策略"):
+        _direct_append(complete, observations)
+
+    assert observations.read_bytes() == before

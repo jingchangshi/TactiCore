@@ -1,8 +1,14 @@
-# S4C R1 候选身份与前瞻协议 V1（已预注册，未激活）
+# S4C R1 候选身份与前瞻协议 V1（已冻结，前瞻影子已激活）
 
 本目录只服务冻结的 `S4C_R1`。候选的机器可验证身份见 [candidate_manifest.json](candidate_manifest.json)。
 
-**当前状态：`FROZEN / NOT_ACTIVE`。** 候选身份与前瞻协议已经预注册，但**没有**前瞻失败观测被收集、没有被回填、没有 runner 在运行；`observations.csv` 只有表头。
+**当前状态：`FROZEN / PROSPECTIVE_SHADOW_ACTIVE`。** 候选身份与前瞻协议已经预注册并冻结；
+独立 [activation decision V1](../../results/S4C_R1_PROSPECTIVE_ACTIVATION_DECISION_V1.md)
+在 `ACTIVATION_IMPLEMENTATION_GATE = PASS` 之后，通过候选级 lifecycle artifact
+[activation.json](activation.json) 激活了前瞻影子（`activation_status = ACTIVE`）。
+`candidate_manifest.json` 中的 `prospective_activation = NOT_ACTIVE` 是冻结时的历史身份，
+不是当前生命周期状态。**尚未**产生任何前瞻 observation：没有观测被收集或回填、本仓库内没有
+runner 在运行；`observations.csv` 只有表头。激活不等于生产候选，也不构成收益结论。
 
 ## 1. 不可变身份与顺序版本规则
 
@@ -157,7 +163,11 @@ P05 effective assets            3.24
 
 ## 12. 当前边界
 
-本 Goal 只冻结身份并预注册协议。它**不**激活前瞻影子、**不**采集 observation、**不**创建 vintage。
+候选冻结 Goal 只冻结身份并预注册协议；它当时**不**激活前瞻影子、**不**采集 observation、**不**创建 vintage。
+其后独立的 [activation decision V1](../../results/S4C_R1_PROSPECTIVE_ACTIVATION_DECISION_V1.md)
+完成 `ACTIVATION_IMPLEMENTATION_GATE = PASS` 并由 [activation.json](activation.json) 激活前瞻影子。
+激活本身不采集 observation、不创建 vintage、不产生收益结论；第一条合法前瞻 decision 仍须等待真实
+`2026-09-30` 月末 signal 与对应 candidate-specific vintage，且仍不是生产批准。
 
 身份一致性校验：
 

@@ -25,6 +25,7 @@ from research.ashare.data.contract import (
     SnapshotContractError,
     load_snapshot_manifest,
     sha256_file,
+    verify_financial_indicator_rows,
 )
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "ashare_export"
@@ -238,6 +239,111 @@ def test_AA07_the_price_limit_table_survives_the_adapter(frames) -> None:
     """涨跌停表必须原样带出，供执行层判断可成交性。"""
     assert not frames.price_limits.empty
     assert {"ts_code", "trade_date", "up_limit", "down_limit"} <= set(frames.price_limits.columns)
+
+
+# --------------------------------------------------------------------------------------
+# 财务可得性模式：announcement-date-v1 的 manifest 与行级契约
+# --------------------------------------------------------------------------------------
+
+
+def _set_financial_availability(snapshot: Path, mode: str) -> None:
+    """把 fixture 的财务可得性语义改写为指定模式（manifest 由测试自行负责身份一致性）。"""
+    path = snapshot / "manifest.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    semantics = raw["availability_semantics"]
+    base = semantics["financial_indicator"].split("; financial_availability=", 1)[0]
+    semantics["financial_indicator"] = f"{base}; financial_availability={mode}"
+    path.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+
+
+def _drop_empty_ann_date_rows(snapshot: Path) -> None:
+    """删掉 fixture 中 ann_date 为空的行，得到一份满足 announcement-date-v1 的财务表。"""
+    target = snapshot / "financial_indicator.csv"
+    lines = target.read_text(encoding="utf-8").splitlines()
+    header, *rows = lines
+    ann_index = header.split(",").index("ann_date")
+    kept = [row for row in rows if row.split(",")[ann_index].strip()]
+    assert len(kept) == len(rows) - 1, "fixture 必须恰好有一条空 ann_date 行"
+    target.write_text("\n".join([header, *kept]) + "\n", encoding="utf-8")
+
+
+def test_FA01_a_legacy_export_declares_legacy_financial_availability(manifest) -> None:
+    """旧导出没有 financial_availability 后缀：按 legacy 处理，不臆造新模式。"""
+    assert manifest.financial_availability == "legacy"
+
+
+def test_FA02_announcement_date_v1_rejects_an_unknown_ann_date_row(snapshot: Path) -> None:
+    """声明 announcement-date-v1 后，空 ann_date 行必须被读取方拒绝，不能静默当作 legacy。"""
+    _set_financial_availability(snapshot, "announcement-date-v1")
+
+    manifest = load_snapshot_manifest(snapshot, verify_content=False)
+    assert manifest.financial_availability == "announcement-date-v1"
+
+    with pytest.raises(SnapshotContractError, match="ann_date"):
+        load_snapshot_manifest(snapshot)
+
+
+def test_FA03_valid_announcement_date_v1_rows_pass_row_level_verification(snapshot: Path) -> None:
+    """有效 YYYYMMDD 且 end_date <= ann_date <= as_of 的行必须通过，并逐行计数。"""
+    _drop_empty_ann_date_rows(snapshot)
+    _rehash(snapshot)
+    _set_financial_availability(snapshot, "announcement-date-v1")
+
+    manifest = load_snapshot_manifest(snapshot)
+
+    assert manifest.financial_availability == "announcement-date-v1"
+    assert verify_financial_indicator_rows(manifest) == 1
+
+
+def test_FA04_announcement_date_v1_rejects_a_future_announcement(snapshot: Path) -> None:
+    """ann_date 晚于 as-of 的行破坏了 PIT 边界，必须拒绝。"""
+    _drop_empty_ann_date_rows(snapshot)
+    target = snapshot / "financial_indicator.csv"
+    text = target.read_text(encoding="utf-8")
+    altered = text.replace("600000.SH,20250930,20251020,", "600000.SH,20250930,20260201,")
+    assert altered != text, "fixture 必须包含待改写的公告行"
+    target.write_text(altered, encoding="utf-8")
+    _rehash(snapshot)
+    _set_financial_availability(snapshot, "announcement-date-v1")
+
+    with pytest.raises(SnapshotContractError, match="as_of"):
+        load_snapshot_manifest(snapshot)
+
+
+def test_FA05_announcement_date_v1_rejects_end_date_after_announcement(snapshot: Path) -> None:
+    """end_date 晚于 ann_date 的行不可能按公告日 PIT 使用，必须拒绝。"""
+    _drop_empty_ann_date_rows(snapshot)
+    target = snapshot / "financial_indicator.csv"
+    text = target.read_text(encoding="utf-8")
+    altered = text.replace("20250930,20251020", "20251101,20251020")
+    assert altered != text
+    target.write_text(altered, encoding="utf-8")
+    _rehash(snapshot)
+    _set_financial_availability(snapshot, "announcement-date-v1")
+
+    with pytest.raises(SnapshotContractError, match="end_date"):
+        load_snapshot_manifest(snapshot)
+
+
+def test_FA06_announcement_date_v1_requires_ann_date_as_the_filter_column(snapshot: Path) -> None:
+    """模式声明必须与 dataset 元数据一致；按 trade_date 过滤的财务表不能冒充公告日过滤。"""
+    _set_financial_availability(snapshot, "announcement-date-v1")
+    path = snapshot / "manifest.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    entry = next(d for d in raw["dataset_manifest"] if d["dataset"] == "financial_indicator")
+    entry["time_column"] = "trade_date"
+    path.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+
+    with pytest.raises(SnapshotContractError, match="ann_date"):
+        load_snapshot_manifest(snapshot, verify_content=False)
+
+
+def test_FA07_an_unknown_financial_availability_mode_is_refused(snapshot: Path) -> None:
+    """读取方不认识的模式意味着无法判断 ann_date 语义，必须失败。"""
+    _set_financial_availability(snapshot, "announcement-date-v2")
+
+    with pytest.raises(SnapshotContractError, match="financial_availability"):
+        load_snapshot_manifest(snapshot, verify_content=False)
 
 
 def test_AA08_the_adapter_output_feeds_the_unmodified_engine_contract(frames) -> None:

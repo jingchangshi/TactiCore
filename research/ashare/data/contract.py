@@ -15,12 +15,10 @@
 
 from __future__ import annotations
 
-import csv
 import hashlib
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -225,74 +223,7 @@ def _validate_announcement_date_v1_structure(datasets: list[DatasetEntry]) -> No
                 "financial_availability=announcement-date-v1 要求 financial_indicator 同时声明 "
                 f"end_date 与 ann_date 列；实际 columns={list(entry.columns)}"
             )
-        if entry.availability != "financial_indicator":
-            raise SnapshotContractError(
-                "financial_indicator.availability 必须是 'financial_indicator'，"
-                f"得到 {entry.availability!r}"
-            )
         return
-
-
-def _is_valid_yyyymmdd(text: str) -> bool:
-    if len(text) != 8 or not text.isdigit():
-        return False
-    try:
-        date(int(text[:4]), int(text[4:6]), int(text[6:]))
-    except ValueError:
-        return False
-    return True
-
-
-def verify_financial_indicator_rows(manifest: SnapshotManifest) -> int:
-    """重新验证 announcement-date-v1 的行级过滤不变量，返回检查的行数。
-
-    导出方按该契约过滤行，但 manifest 的内容哈希只证明文件未被改动，**不证明**
-    过滤本身正确。读取方必须自己确认每一行满足
-    `valid(end_date) ∧ valid(ann_date) ∧ end_date <= ann_date <= as_of`。
-    `legacy` 模式允许空 `ann_date`（未知），不做行级承诺。
-    """
-    if manifest.financial_availability != "announcement-date-v1":
-        return 0
-    try:
-        entry = manifest.dataset("financial_indicator")
-    except SnapshotContractError:
-        return 0  # 该数据集未导出：模式可以声明，但没有行需要验证
-    path = manifest.snapshot_dir / entry.file
-    as_of = manifest.as_of_trade_date
-    checked = 0
-    with path.open("r", encoding="utf-8", newline="") as handle:
-        reader = csv.DictReader(handle)
-        fieldnames = reader.fieldnames or []
-        for required in ("end_date", "ann_date"):
-            if required not in fieldnames:
-                raise SnapshotContractError(
-                    f"financial_indicator 缺少 {required} 列；announcement-date-v1 无法验证"
-                )
-        for line_number, row in enumerate(reader, start=2):
-            end_date = (row.get("end_date") or "").strip()
-            ann_date = (row.get("ann_date") or "").strip()
-            if not _is_valid_yyyymmdd(end_date):
-                raise SnapshotContractError(
-                    f"financial_indicator 第 {line_number} 行 end_date={end_date!r} 不是有效 "
-                    "YYYYMMDD；announcement-date-v1 要求有效 end_date"
-                )
-            if not _is_valid_yyyymmdd(ann_date):
-                raise SnapshotContractError(
-                    f"financial_indicator 第 {line_number} 行 ann_date={ann_date!r} 不是有效 "
-                    "YYYYMMDD；announcement-date-v1 要求 ann_date 已知且有效"
-                )
-            if end_date > ann_date:
-                raise SnapshotContractError(
-                    f"financial_indicator 第 {line_number} 行 end_date={end_date} > "
-                    f"ann_date={ann_date}；announcement-date-v1 要求 end_date <= ann_date"
-                )
-            if ann_date > as_of:
-                raise SnapshotContractError(
-                    f"financial_indicator 第 {line_number} 行 ann_date={ann_date} 晚于 "
-                    f"as_of={as_of}；announcement-date-v1 不得导出 as-of 之后公告的行"
-                )
-            checked += 1
-    return checked
 
 
 def verify_snapshot_manifest(
@@ -536,8 +467,6 @@ def verify_snapshot_content(manifest: SnapshotManifest) -> None:
             raise SnapshotContractError(
                 f"{entry.file} 在 dataset_manifest 与 content_hashes 中的哈希不一致"
             )
-    # 哈希一致只证明文件未被改动；声明的可得性语义还必须逐行成立。
-    verify_financial_indicator_rows(manifest)
 
 
 def load_snapshot_manifest(

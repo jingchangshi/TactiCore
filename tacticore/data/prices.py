@@ -20,17 +20,11 @@ def load_price_csv(path: str | Path) -> pd.DataFrame:
         raise ValueError("价格列 symbol 必须唯一")
     numeric = prices.apply(pd.to_numeric, errors="coerce")
     # 原始单元格有内容、却转不成数字 = 非数值文本（例如 "oops"）。不能当成缺失。
-    non_numeric = prices.notna() & numeric.isna()
-    if non_numeric.any().any():
-        row, column = non_numeric.stack().loc[lambda s: s].index[0]
-        raise ValueError(
-            f"价格数据包含非数值文本: date={row} symbol={column} value={prices.at[row, column]!r}"
-        )
+    if (prices.notna() & numeric.isna()).any().any():
+        raise ValueError("价格数据包含非数值文本；缺失值必须保持为空字段")
     # ±inf 能通过 `<= 0` 检查并污染收益/权重的数学，必须显式拒绝。
-    non_finite = numeric.notna() & ~np.isfinite(numeric)
-    if non_finite.any().any():
-        row, column = non_finite.stack().loc[lambda s: s].index[0]
-        raise ValueError(f"价格必须是有限值，得到 inf/-inf: date={row} symbol={column}")
+    if (numeric.notna() & ~np.isfinite(numeric)).any().any():
+        raise ValueError("价格必须是有限值，不得为 inf/-inf")
     if (numeric <= 0).any().any():
         raise ValueError("有效价格必须大于零")
     return numeric

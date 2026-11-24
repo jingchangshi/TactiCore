@@ -52,11 +52,25 @@ def test_empty_delisted_values_mean_not_delisted(raw: object) -> None:
 
 @pytest.mark.parametrize(
     "raw",
-    [20240201, 20240201.0, "20240201", "2024-02-01", "2024-02-01 09:30:00"],
+    [
+        20240201,
+        20240201.0,
+        np.int64(20240201),
+        np.float64(20240201.0),
+        "20240201",
+        "2024-02-01",
+        "2024-02-01 09:30:00",
+    ],
 )
 def test_integer_and_string_yyyymmdd_parse_as_dates(raw: object) -> None:
     """整数 YYYYMMDD 不得被解释成 1970 纳秒时间戳。"""
     assert optional_delisted_date(raw) == pd.Timestamp("2024-02-01")
+
+
+@pytest.mark.parametrize("raw", [20240102.5, 123, 123.0, float("inf"), float("-inf")])
+def test_non_yyyymmdd_numbers_are_rejected_instead_of_becoming_1970(raw: object) -> None:
+    with pytest.raises(ValueError, match="YYYYMMDD|不可解析"):
+        optional_delisted_date(raw)
 
 
 def test_boolean_delisted_date_is_rejected() -> None:

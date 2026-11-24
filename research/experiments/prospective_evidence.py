@@ -784,7 +784,7 @@ def verify_new_decision_is_current(record: Mapping[str, str], *, signal_date: ob
     seal = require_timezone_aware_instant(
         record["record_generated_at"], label="record_generated_at"
     )
-    if seal > now + pd.Timedelta(minutes=1):
+    if seal > now:
         raise ValueError("record_generated_at 晚于可信上海时钟：拒绝未来时间")
 
 
@@ -1475,6 +1475,23 @@ S4C_EXECUTION_DECISION_FIELDS = (
     "desired_targets",
     "action_required",
 )
+# 新 decision 必须逐字段等于冻结 builder 的策略派生结果（不含身份与时间字段）。
+S2_DECISION_DERIVED_FIELDS = (
+    "eligible_assets",
+    "trend_states",
+    "target_changed",
+    "desired_targets",
+    "action_required",
+)
+S4C_DECISION_DERIVED_FIELDS = (
+    "eligible_asset_count",
+    "regime",
+    "maximum_weight",
+    "effective_number_assets",
+    "target_changed",
+    "desired_targets",
+    "action_required",
+)
 
 
 def _canonical_observations_target(record_path: Path) -> tuple[str, Path] | None:
@@ -1496,6 +1513,18 @@ def _require_unchanged_decision_fields(
             raise ValueError(f"execution 行的 {field} 必须与对应 decision 一致")
 
 
+def _require_builder_derived_fields(
+    record: Mapping[str, str],
+    expected: Mapping[str, str],
+    fields: Sequence[str],
+    *,
+    candidate_id: str,
+) -> None:
+    for field in fields:
+        if record.get(field, "") != expected.get(field, ""):
+            raise ValueError(f"decision 的 {field} 与冻结 {candidate_id} builder 结果不一致")
+
+
 def _verify_s2_decision_state(
     record: Mapping[str, str],
     *,
@@ -1504,7 +1533,7 @@ def _verify_s2_decision_state(
     vintage: ProspectiveVintage,
     manifest: Mapping[str, Any],
 ) -> None:
-    """S2 decision 行必须能由冻结候选、signal-date vintage 与策略语义重新推导。"""
+    """S2 decision 行必须能由冻结候选、signal-date vintage 与冻结 builder 重新生成。"""
     from research.experiments import run_s2_r1_shadow as s2
 
     s2.verify_decision_row(record, manifest=manifest, expected_symbols=vintage.prices.columns)
@@ -1522,14 +1551,23 @@ def _verify_s2_decision_state(
         calendar=vintage.raw_calendar,
     )
     verify_new_decision_is_current(record, signal_date=signal)
+    expected = s2.build_decision_record(
+        vintage.prices,
+        manifest,
+        as_of=signal,
+        vintage_identifier=record["vintage_identifier"],
+        prospective_data_hash=record["prospective_data_hash"],
+        manifest_hash=record["historical_manifest_hash"],
+        expected_symbols=vintage.prices.columns,
+        decision_seal_time=record["record_generated_at"],
+        root=root,
+    )
+    if expected is None:
+        raise ValueError("as-of 不是合格月末 signal；冻结 S2 builder 不会生成 decision")
+    _require_builder_derived_fields(record, expected, S2_DECISION_DERIVED_FIELDS, candidate_id="S2")
     targets = parse_weight_vector(
         record["desired_targets"], expected_symbols=vintage.prices.columns, label="desired_targets"
     )
-    expected = s2.build_month_end_targets(
-        vintage.prices, s2.load_trend_config(root / "config/strategy.toml")
-    )
-    if signal not in expected.index or targets != expected.loc[signal].to_dict():
-        raise ValueError("decision 目标与冻结 S2 策略及 signal-date vintage 不一致")
     validate_s2_signal_targets(vintage.prices, signal, targets, load_frozen_universe(root))
 
 
@@ -1541,7 +1579,7 @@ def _verify_s4c_decision_state(
     vintage: ProspectiveVintage,
     manifest: Mapping[str, Any],
 ) -> None:
-    """S4C decision 行必须能由冻结候选、signal-date vintage 与 ERC 语义重新推导。"""
+    """S4C decision 行必须能由冻结候选、signal-date vintage 与冻结 builder 重新生成。"""
     from research.experiments import run_s4c_r1_shadow as s4c
 
     s4c.verify_decision_row(record, manifest=manifest, expected_symbols=vintage.prices.columns)
@@ -1553,14 +1591,20 @@ def _verify_s4c_decision_state(
         calendar=vintage.raw_calendar,
     )
     verify_new_decision_is_current(record, signal_date=signal)
-    targets = parse_weight_vector(
-        record["desired_targets"], expected_symbols=vintage.prices.columns, label="desired_targets"
+    expected = s4c.build_decision_record(
+        vintage.prices,
+        manifest,
+        as_of=signal,
+        vintage_identifier=record["vintage_identifier"],
+        prospective_data_hash=record["prospective_data_hash"],
+        historical_manifest_hash=record["historical_manifest_hash"],
+        expected_symbols=vintage.prices.columns,
+        decision_seal_time=record["record_generated_at"],
+        root=root,
     )
-    expected, _diagnostics = s4c.derive_target(vintage.prices, manifest, signal)
-    expected_targets = {str(symbol): float(weight) for symbol, weight in expected.items()}
-    if targets != expected_targets:
-        raise ValueError("decision 目标与冻结 S4C 语义及 signal-date vintage 不一致")
-    s4c.verify_target_tradable(expected, vintage.prices, root, signal_date=signal)
+    _require_builder_derived_fields(
+        record, expected, S4C_DECISION_DERIVED_FIELDS, candidate_id="S4C"
+    )
 
 
 def _verify_s2_canonical_record(

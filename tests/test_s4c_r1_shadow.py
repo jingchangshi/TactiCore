@@ -1083,7 +1083,7 @@ def test_direct_s4c_decision_append_rejects_undeduced_targets(tmp_path: Path) ->
     record["desired_targets"] = _tampered_targets(record)
     before = observations.read_bytes()
 
-    with pytest.raises(ValueError, match="冻结 S4C 语义"):
+    with pytest.raises(ValueError, match="builder"):
         _direct_append(record, observations)
 
     assert observations.read_bytes() == before
@@ -1180,6 +1180,35 @@ def test_direct_decision_append_rejects_a_pre_eligible_signal(tmp_path: Path) ->
     before = observations.read_bytes()
 
     with pytest.raises(ValueError, match="first_eligible_prospective_signal"):
+        pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+    assert observations.read_bytes() == before
+
+
+def test_direct_decision_append_rejects_a_seal_after_the_trusted_clock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision_record(root)
+    monkeypatch.setattr(pe, "runner_utc_now", lambda: pd.Timestamp("2026-09-30T07:59:59+00:00"))
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="晚于可信上海时钟"):
+        pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+    assert observations.read_bytes() == before
+
+
+def test_direct_decision_append_rejects_forged_diagnostics(tmp_path: Path) -> None:
+    """regime 等策略派生诊断字段必须与冻结 builder 的结果逐字段一致。"""
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision_record(root)
+    record["regime"] = "FALLBACK" if record["regime"] == "RISK" else "RISK"
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="regime.*builder"):
         pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
 
     assert observations.read_bytes() == before

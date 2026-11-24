@@ -7,15 +7,17 @@
 
 已记录的限制：canonical 价格契约不携带停牌/涨跌停状态，mask 只能表达 lifetime 与有限正价格。
 “持仓转 0 但当日不可交易”只能按 mask 判定；真实停牌/板价语义仍由 RQAlpha native /
-FinanceMCP 快照拥有，本模块不猜测。当前只有 S4C 前瞻 runner 的 signal 日校验接入
-delisted-aware 生命周期；“持仓转 0”对完整 execution schedule 的接入是后续项，不改写既有
-冻结实验的 replay 行为。
+FinanceMCP 快照拥有，本模块不猜测。接入点：S4C 前瞻 runner 的 signal 日校验使用
+delisted-aware 生命周期；`research/ashare/engines/execution_audit.py` 在把日程提交给
+VectorBT/RQAlpha 之前显式调用 `validate_held_liquidations`。冻结 replay/VectorBT 路径不接入，
+以免改写既有冻结实验行为。
 """
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
-from numbers import Integral
+from numbers import Integral, Real
 
 import pandas as pd
 
@@ -54,9 +56,17 @@ def optional_delisted_date(value: object) -> pd.Timestamp | None:
     if isinstance(value, bool):
         raise ValueError(f"universe delisted_date 不可解析: {value!r}")
     if isinstance(value, Integral):
-        parsed = _parse_yyyymmdd(int(value), value)
-    elif isinstance(value, float) and value.is_integer() and 10_000_000 <= value <= 99_999_999:
-        parsed = _parse_yyyymmdd(int(value), value)
+        token = int(value)
+        if not 10_000_000 <= token <= 99_999_999:
+            raise ValueError(f"universe delisted_date 必须是 YYYYMMDD 或日期: {value!r}")
+        parsed = _parse_yyyymmdd(token, value)
+    elif isinstance(value, Real):
+        numeric = float(value)
+        if math.isnan(numeric):
+            return None
+        if not (numeric.is_integer() and 10_000_000 <= numeric <= 99_999_999):
+            raise ValueError(f"universe delisted_date 必须是 YYYYMMDD 或日期: {value!r}")
+        parsed = _parse_yyyymmdd(int(numeric), value)
     elif isinstance(value, str):
         text = value.strip()
         if not text:
@@ -66,8 +76,6 @@ def optional_delisted_date(value: object) -> pd.Timestamp | None:
             if len(text) == 8 and text.isdigit()
             else _parse_delisted_date(text)
         )
-    elif isinstance(value, float) and pd.isna(value):
-        return None
     else:
         parsed = _parse_delisted_date(value)
     return None if pd.isna(parsed) else parsed.normalize()

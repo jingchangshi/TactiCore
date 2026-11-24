@@ -1709,9 +1709,10 @@ def _verify_s4c_canonical_record(
 def append_event_row(record: Mapping[str, str], *, path: Path, fields: Sequence[str]) -> None:
     """单一追加点：schema 与重复校验完成后才打开文件，失败不改变 evidence bytes。
 
-    官方 candidate observation 表（S2_R1 / S4C_R1）的 decision 行与 execution 行都必须在
-    写入前对照冻结候选、signal-date vintage、signal-day seal 与重新推导的目标验证；只有
-    非官方路径（fixture / 通用事件表）不做候选级校验。
+    官方 candidate observation 表（S2_R1 / S4C_R1）的 decision 与 execution 行都必须在
+    写入前对照冻结候选、signal-date vintage、manifest/vintage 哈希与 signal-day seal；
+    decision 行额外对照冻结 builder 的策略派生字段，execution 行只绑定已封存 decision
+    与原生执行 artifact（不重算策略）。只有非官方路径（fixture / 通用事件表）不做候选级校验。
     """
     field_names = tuple(fields)
     if tuple(record.keys()) != field_names:

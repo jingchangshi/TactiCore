@@ -714,3 +714,11 @@
   - 实验报告与明细：[EXP_V3_04_BOTTOM_GRIND_COST_REDUCTION.md](../research/results/EXP_V3_04_BOTTOM_GRIND_COST_REDUCTION.md) / `.json` / `.csv`
   - 升级签发规格包（`production_admission = APPROVED_FOR_ACCOUNT`）：[v3_offensive_policy_release_v3.2.0.json](../research/ashare/releases/v3_offensive_policy_release_v3.2.0.json)（保留 `v3.1.0` 历史归档）。
 - 结论边界：仅针对账户 `159558.SZ` 存量重仓从 `18%` 升级为 `BOTTOM_GRIND_25`（25% 战略底仓 + 单槽 +10% 四门槛降本），不得突破单槽持仓上限或删除四门槛与组合 L2 兜底，亦不改变 `S2_R1`/`S4C_R1` 非生产身份。
+
+## RL-056 S4C_R2_CONCENTRATION_CAPPED_ERC：0.30/0.60 归档证据用途勘误
+
+- 研究域：冻结前瞻候选 `S4C_R1` 之外的 `S4C_R2` 集中度 cap 实验归档；不修改 `S4C_R1` 身份、activation、冻结目标或生产账户规格。
+- 状态：CLOSED（evidence-use erratum；**不重跑、不改写归档、不升级/降级 R1/R2**）。日期：2026-11-24。
+- 事实：`research/results/experiment_ledger.jsonl` 第 1 行记录 `CONCENTRATION_CAP=0.30`、`cap binding 36.9% of risk months`、`evidence_hash b5c3b235a7db1282e9690277ba4381c887f2ae920cc525c5f9cc4372196ae31e`、`spec_hash c3ac73492fa1bad056136fb71f1263ee58982d6f271e625048c545ddbbdf89c1`。同 spec_hash 的归档 [JSON](../research/results/s4c_r2_concentration_capped_experiment_v1.json) 却声明 `concentration_cap=0.60`、`cap_binding_share=2.0134%`、`identity_hash f168718610f890f7b2fedac6215d8e7a2285575fae711e9c27d57be732be6029`；[comparison CSV](../research/results/s4c_r2_concentration_capped_comparison_v1.csv) 与 [diagnostics CSV](../research/results/s4c_r2_concentration_capped_diagnostics_v1.csv) 同为该 0.60 归档。
+- 裁决：0.60 归档不能作为 0.30 账本条目的可核验证据；0.30 条目当前缺少同身份产物。该归档仅保留为 0.60 的历史产物，**不**据此推断 0.60 从未运行，也**不**把 0.60 结果认证为 0.30 结果。`S4C_R1` 的冻结身份、前瞻观察与 `v3.2.0` 账户准入均不受影响。
+- 重开条件：只有获得可核验的精确运行输入、代码与产物身份，或新的独立预注册研究（不同输出路径）才重开；不得为同一 spec 静默重跑覆盖。

@@ -392,11 +392,49 @@ def economic_materiality(
 
 
 def contract_compliance(committed: pd.DataFrame, derived: pd.DataFrame) -> dict[str, Any]:
-    """把测量结果直接对照预注册契约：clean Linux 的 CI 日志因此自带合规证据。"""
-    from research.experiments.s4c_portable_reproduction import reproduction_evidence
+    """把测量结果直接对照预注册契约：clean Linux 的 CI 日志因此自带合规证据。
 
-    evidence = reproduction_evidence(committed, derived)
-    evidence["within_contract"] = evidence["elements_exceeding_tolerance"] == 0
+    结构必须精确相等；数值必须落在 `SCHEDULE_WEIGHT_ABS_TOL` 内；任何非有限值都
+    视为违约。`within_contract` 不再只由“超差元素数为 0”推断——support/轴变化
+    可能在该计数之外。默认仍只诊断并写报告；CI 用 opt-in flag 才以非零码失败。
+    """
+    from research.experiments.s4c_portable_reproduction import (
+        reproduction_evidence,
+        require_portable_reproduction,
+    )
+
+    contract_error: str | None = None
+    evidence: dict[str, Any]
+    try:
+        evidence = reproduction_evidence(committed, derived)
+    except Exception as error:  # shape/axis mismatch can break the delta itself
+        evidence = {
+            "contract": "S4C_PORTABLE_REPRODUCTION_CONTRACT_V1",
+            "schedule_weight_abs_tol": 1e-4,
+            "schedule_weight_rel_tol": 0.0,
+            "elements_compared": 0,
+            "maximum_absolute_delta": None,
+            "elements_exceeding_tolerance": 0,
+        }
+        contract_error = f"evidence_unavailable: {error}"
+
+    nonfinite = int((~np.isfinite(committed.to_numpy(dtype=float))).sum()) + int(
+        (~np.isfinite(derived.to_numpy(dtype=float))).sum()
+    )
+    if contract_error is None:
+        try:
+            require_portable_reproduction(
+                committed, derived, label="S4C numerical portability diagnostic"
+            )
+        except Exception as error:
+            contract_error = str(error)
+    evidence["nonfinite_elements"] = nonfinite
+    evidence["contract_error"] = contract_error
+    evidence["within_contract"] = (
+        contract_error is None
+        and nonfinite == 0
+        and evidence["elements_exceeding_tolerance"] == 0
+    )
     return evidence
 
 

@@ -10,6 +10,8 @@ import json
 import sys
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import pytest
 
 from research.experiments import s4c_numerical_portability_diagnostic as diagnostic
@@ -86,3 +88,45 @@ def test_opt_in_flag_fails_only_on_a_contract_violation(
     # 违约时报告仍必须先落盘，供独立分类使用。
     output = tmp_path / "diagnostic.json"
     assert output.is_file()
+
+
+def _schedule(rows: list[list[float]]) -> pd.DataFrame:
+    return pd.DataFrame(
+        rows,
+        index=pd.to_datetime(["2024-01-31", "2024-02-29"]),
+        columns=["A", "B"],
+        dtype=float,
+    )
+
+
+def test_contract_compliance_requires_structural_and_numerical_contract() -> None:
+    base = _schedule([[0.60, 0.40], [0.55, 0.45]])
+    assert diagnostic.contract_compliance(base, base.copy())["within_contract"] is True
+
+    # 同一 support/最大权重下的 5e-5 漂移：在 1e-4 容差内。
+    small = _schedule([[0.60005, 0.39995], [0.55, 0.45]])
+    assert diagnostic.contract_compliance(base, small)["within_contract"] is True
+
+    # 超出数值容差。
+    exceed = _schedule([[0.6002, 0.3998], [0.55, 0.45]])
+    evidence = diagnostic.contract_compliance(base, exceed)
+    assert evidence["within_contract"] is False
+    assert evidence["elements_exceeding_tolerance"] > 0
+
+    # support 从 {A,B} 变为 {A}：结构变化不得借容差通过。
+    support = _schedule([[1.0, 0.0], [0.55, 0.45]])
+    evidence = diagnostic.contract_compliance(base, support)
+    assert evidence["within_contract"] is False
+    assert "support" in str(evidence["contract_error"])
+
+    # 非有限值必须违约，即使超差计数可能为 0。
+    nonfinite = _schedule([[np.inf, 0.0], [0.55, 0.45]])
+    evidence = diagnostic.contract_compliance(base, nonfinite)
+    assert evidence["within_contract"] is False
+    assert evidence["nonfinite_elements"] > 0
+
+    # 轴/列集合不一致。
+    axis = base.rename(columns={"A": "C"})
+    evidence = diagnostic.contract_compliance(base, axis)
+    assert evidence["within_contract"] is False
+    assert evidence["contract_error"] is not None

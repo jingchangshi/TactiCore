@@ -26,6 +26,7 @@ jobs:
           uv run python research/experiments/s4c_numerical_portability_diagnostic.py
           --output /tmp/s4c_numerical_portability_diagnostic.json
           --environment-label github_actions_ubuntu
+          --fail-on-contract-violation
       - name: pytest
         run: uv run pytest -q
       - name: ruff check

@@ -57,9 +57,10 @@ first eligible signal，并非现在应执行的周期。前瞻时钟从首个�
 所有者授权仓库外月度编排器按合格月末交易日调用冻结 CLI，决策提交同时推送；失败即停，
 不重试写入、不补造历史决策。流程保持 `freeze vintage → verify → derive decision → seal →
 append DECISION → commit/push → STOP`，每个候选只由 CLI 一次完成 derive、seal 与 append；
-execution 证据由下一 canonical 观测日的独立 Goal 处理。编排器的
-[说明](../../AShareInvestor/scripts/forward-cycle/README.md) 记录了 2026-11-12 的安装及 dry-run，
-并说明最后开市日早于自然月末时当前日历覆盖守卫会阻断写入。上述记录不证明当前远程调度或执行状态。
+execution 证据由下一 canonical 观测日的独立 Goal 处理。该编排器说明已随仓库清理移除，
+`AShareInvestor/docs/v3-offensive-system/SERVER_EXECUTION_WORK_ORDER.md` §IV 明确退役对应定时器；
+RL-052 的安装/dry-run 记录是**历史授权**，不代表当前存在远程调度器或已安装定时器。当前只保留
+冻结 CLI 的人工/受控运行入口，不得据此新建调度或推断执行状态。
 
 RL-052 同时授权有界的 `ACCOUNT_INVESTABLE_ALLOCATION_TRANSFER_V1` 研究，协议须先于结果提交，
 范围与文件边界以该条为准；这不授权修改冻结候选或创建组合候选。其他新策略、S27A、Theme Rotation

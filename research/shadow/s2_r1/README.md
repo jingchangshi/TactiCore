@@ -19,15 +19,15 @@
 
 决策必须在其后续执行或组合结果可见前形成。不得回填、重建或改写旧决策，也不得在旧前瞻期间替换数据 vintage。手工运行器要求显式 `--as-of`，拒绝 `<= 2026-08-31` 的时点、含有 `as-of` 后行情的 vintage，以及未覆盖完整 signal 月的交易日历；日历若延至该月自然月末，只用于确认最后一个交易日，绝不参与价格信号，因此不会使用未来市场数据。
 
-示例（仅在 signal 日收盘后执行）：
+示例（仅在 signal 日收盘后执行）。**以下 `2026-09-30` 是已错过、永久不得补跑的历史示例；实际运行时必须替换为当前真实 eligible signal 日，不得用本示例日期重跑：**
 
 ```bash
-# 1) 冻结 candidate-specific as-of vintage（需要 TUSHARE_TOKEN；拒绝覆盖既有 evidence）
+# 历史示例日期已错过，不得补跑；实际使用当前真实 eligible signal 日 <YYYY-MM-DD>
 uv run python research/experiments/freeze_prospective_vintage.py \
-  --candidate S2_R1 --as-of 2026-09-30
+  --candidate S2_R1 --as-of <YYYY-MM-DD>
 
 # 2) 在同一个 signal date 收盘后生成本地封存的 decision
-uv run python research/experiments/run_s2_r1_shadow.py --as-of 2026-09-30
+uv run python research/experiments/run_s2_r1_shadow.py --as-of <YYYY-MM-DD>
 ```
 
 `observations.csv` 是 append-only 的 Git-friendly 事件表。`decision` 行先写身份、数据 vintage、signal、目标和待执行状态；执行完成后以新的 `execution` 行写框架原生结果引用/压缩字段。不得自行重建 RQAlpha 的会计、撮合或成交数据。当前只有表头，表示尚无真实前瞻月末决策，而非零收益。

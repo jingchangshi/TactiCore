@@ -967,3 +967,34 @@ def test_direct_decision_append_rejects_a_non_month_end_signal(tmp_path: Path) -
         pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
 
     assert observations.read_bytes() == before
+
+
+def test_direct_decision_append_rejects_a_seal_after_the_trusted_clock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision(tmp_path)
+    monkeypatch.setattr(pe, "runner_utc_now", lambda: pd.Timestamp("2026-09-30T07:59:59+00:00"))
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="晚于可信上海时钟"):
+        pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+    assert observations.read_bytes() == before
+
+
+def test_direct_decision_append_rejects_forged_target_changed(tmp_path: Path) -> None:
+    """目标实际变化时把 target_changed/action_required 写成 false 必须被 builder 对照拒绝。"""
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision(tmp_path)
+    forged = "false" if record["target_changed"] == "true" else "true"
+    record["target_changed"] = forged
+    record["action_required"] = forged
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="target_changed.*builder"):
+        pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+    assert observations.read_bytes() == before

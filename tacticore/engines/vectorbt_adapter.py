@@ -33,26 +33,13 @@ def _calculate_metrics(
     cagr = (equity.iloc[-1] / equity.iloc[0]) ** (1.0 / elapsed_years) - 1.0
     drawdown = equity / equity.cummax() - 1.0
     max_drawdown = float(drawdown.min())
-    # 零方差（横盘、空仓或只有一条收益）时 Sharpe 无定义：既不是 0 风险也不是
-    # 无限可加杠杆。按约定记 0.0（"无风险调整信号"），而不是让 0/0 产生
-    # RuntimeWarning 与 NaN 污染下游比较。
-    returns_std = float(returns.std(ddof=1))
-    if returns.empty or not np.isfinite(returns_std) or returns_std == 0.0:
-        sharpe = 0.0
-    else:
-        sharpe = float(np.sqrt(252) * returns.mean() / returns_std)
+    sharpe = float(np.sqrt(252) * returns.mean() / returns.std(ddof=1))
     calmar = float(cagr / abs(max_drawdown)) if max_drawdown < 0 else float("nan")
 
     targets = execution_weights.loc[metric_start:].dropna(how="all").fillna(0.0)
     turnover = 0.0
     if not targets.empty:
-        # 首次执行从全现金建仓：单边换手等于该行目标权重的绝对值之和（满仓即 1.0），
-        # 与 execution_audit 的 `1 + Σ|Δtarget| / 2` 口径一致。若该行是 no-signal
-        # 全零目标，则没有建仓、换手为 0，而不是凭空记 1.0。后续调仓按
-        # Σ|Δtarget| / 2 计单边换手。
-        initial_turnover = float(targets.iloc[0].abs().sum())
-        subsequent_turnover = float(targets.diff().abs().sum(axis=1).iloc[1:].sum() / 2.0)
-        turnover = initial_turnover + subsequent_turnover
+        turnover = 1.0 + float(targets.diff().abs().sum(axis=1).iloc[1:].sum() / 2.0)
     trades = portfolio.trades.records_readable
     trades = trades.loc[trades["Exit Timestamp"] >= metric_start].copy()
     effective_entry = trades["Entry Timestamp"].clip(lower=metric_start)

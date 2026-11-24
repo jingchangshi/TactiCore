@@ -353,9 +353,16 @@ def verify_snapshot_manifest(
     availability_semantics = _require_mapping(
         manifest["availability_semantics"], label="availability_semantics"
     )
-    financial_availability = _parse_financial_availability(availability_semantics)
-    if financial_availability == "announcement-date-v1":
-        _validate_announcement_date_v1_structure(datasets)
+    # 只有 dataset-manifest-v2 的 snapshot_id 绑定 availability_semantics 与数据集
+    # 元数据。legacy-source-v1 / content-hashes-v1 不覆盖该字段：改动它不会改变
+    # snapshot_id，因此其中的 announcement-date-v1 声明不可信，一律按 legacy 处理，
+    # 不得仅凭 ID 不变就升级为严格语义。
+    if algorithm == "dataset-manifest-v2":
+        financial_availability = _parse_financial_availability(availability_semantics)
+        if financial_availability == "announcement-date-v1":
+            _validate_announcement_date_v1_structure(datasets)
+    else:
+        financial_availability = "legacy"
     identity: dict[str, Any] = {
         "schema_version": schema_version,
         "as_of": as_of_text,

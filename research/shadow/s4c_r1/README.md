@@ -7,8 +7,9 @@
 在 `ACTIVATION_IMPLEMENTATION_GATE = PASS` 之后，通过候选级 lifecycle artifact
 [activation.json](activation.json) 激活了前瞻影子（`activation_status = ACTIVE`）。
 `candidate_manifest.json` 中的 `prospective_activation = NOT_ACTIVE` 是冻结时的历史身份，
-不是当前生命周期状态。**尚未**产生任何前瞻 observation：没有观测被收集或回填、本仓库内没有
-runner 在运行；`observations.csv` 只有表头。激活不等于生产候选，也不构成收益结论。
+不是当前生命周期状态。**尚未**产生任何前瞻 observation：本地 `observations.csv` 只有表头，
+没有观测被收集或回填；本地仓库内没有 runner 在运行，远端运行状态未在此核实。
+激活不等于生产候选或生产批准，也不构成收益结论。
 
 ## 1. 不可变身份与顺序版本规则
 
@@ -166,8 +167,10 @@ P05 effective assets            3.24
 候选冻结 Goal 只冻结身份并预注册协议；它当时**不**激活前瞻影子、**不**采集 observation、**不**创建 vintage。
 其后独立的 [activation decision V1](../../results/S4C_R1_PROSPECTIVE_ACTIVATION_DECISION_V1.md)
 完成 `ACTIVATION_IMPLEMENTATION_GATE = PASS` 并由 [activation.json](activation.json) 激活前瞻影子。
-激活本身不采集 observation、不创建 vintage、不产生收益结论；第一条合法前瞻 decision 仍须等待真实
-`2026-09-30` 月末 signal 与对应 candidate-specific vintage，且仍不是生产批准。
+激活本身不采集 observation、不创建历史 vintage、不产生收益结论，也不是生产批准。
+`2026-09-30` 是历史 `first_eligible_prospective_signal`；该窗口以及其后的 `2026-10-30` 窗口
+已经错过，**永久不得回填**。下一次合法前瞻 decision 只能来自未来真实月末 signal 与对应
+candidate-specific vintage，且仍不构成生产批准。
 
 身份一致性校验：
 

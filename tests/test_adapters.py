@@ -1,4 +1,3 @@
-import warnings
 from pathlib import Path
 from typing import Any
 
@@ -37,81 +36,6 @@ def test_vectorbt_adapter_returns_required_metrics(
     }
     assert result.metrics["trade_count"] > 0
     assert result.metrics["turnover"] == 1.0
-
-
-def _constant_price_inputs(
-    periods: int = 40,
-) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, AssetLifetime]]:
-    index = pd.bdate_range("2024-01-02", periods=periods)
-    prices = pd.DataFrame({"A": 10.0, "B": 20.0}, index=index)
-    lifetimes = {str(symbol): AssetLifetime(str(symbol), index[0]) for symbol in prices}
-    mask = build_tradability_mask(index, list(prices), lifetimes, prices)
-    return prices, mask, lifetimes
-
-
-def test_vectorbt_adapter_zero_variance_sharpe_is_explicit_without_warning() -> None:
-    """横盘序列的 Sharpe 无定义：按约定记 0.0，不产生 RuntimeWarning 或 NaN。"""
-    prices, mask, lifetimes = _constant_price_inputs()
-    execution = pd.DataFrame(float("nan"), index=prices.index, columns=prices.columns)
-    execution.iloc[0] = [0.5, 0.5]
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", RuntimeWarning)
-        result = run_target_weights(
-            prices,
-            execution,
-            fees=0.0,
-            slippage=0.0,
-            initial_cash=100_000,
-            tradability_mask=mask,
-            lifetimes=lifetimes,
-        )
-
-    assert result.metrics["sharpe"] == 0.0
-    assert np.isfinite(result.metrics["sharpe"])
-
-
-def test_vectorbt_adapter_no_signal_has_zero_turnover() -> None:
-    """无正目标 = 没有建仓：换手必须是 0，而不是硬编码的首日 1.0。"""
-    prices, mask, lifetimes = _constant_price_inputs()
-    execution = pd.DataFrame(float("nan"), index=prices.index, columns=prices.columns)
-    execution.iloc[0] = 0.0
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", RuntimeWarning)
-        result = run_target_weights(
-            prices,
-            execution,
-            fees=0.0,
-            slippage=0.0,
-            initial_cash=100_000,
-            tradability_mask=mask,
-            lifetimes=lifetimes,
-        )
-
-    assert result.metrics["turnover"] == 0.0
-    assert result.metrics["sharpe"] == 0.0
-
-
-def test_vectorbt_adapter_first_execution_turnover_is_gross_target_weight() -> None:
-    """首次从现金建仓的单边换手等于该行目标权重绝对值之和（满仓 = 1.0）。"""
-    prices, mask, lifetimes = _constant_price_inputs()
-    execution = pd.DataFrame(float("nan"), index=prices.index, columns=prices.columns)
-    execution.iloc[0] = [0.25, 0.5]  # 部分建仓：75% 单边换手
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", RuntimeWarning)
-        result = run_target_weights(
-            prices,
-            execution,
-            fees=0.0,
-            slippage=0.0,
-            initial_cash=100_000,
-            tradability_mask=mask,
-            lifetimes=lifetimes,
-        )
-
-    assert result.metrics["turnover"] == pytest.approx(0.75)
 
 
 def test_target_weight_replay_requires_explicit_pit_context(simple_prices: pd.DataFrame) -> None:

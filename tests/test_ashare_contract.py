@@ -255,20 +255,104 @@ def _set_financial_availability(snapshot: Path, mode: str) -> None:
     path.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
 
 
+def _rebind_content_hashes_v1(snapshot: Path) -> None:
+    """content-hashes-v1 只绑定内容哈希，不绑定 availability_semantics。"""
+    path = snapshot / "manifest.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw["snapshot_id_algorithm"] = "content-hashes-v1"
+    identity = {
+        "schema_version": raw["schema_version"],
+        "as_of": raw["as_of_trade_date"],
+        "source": raw["source_db_fingerprint"],
+        "content_hashes": dict(sorted(raw["content_hashes"].items())),
+    }
+    raw["snapshot_id"] = hashlib.sha256(
+        json.dumps(identity, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    path.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+
+
+def _rebind_dataset_manifest_v2(snapshot: Path) -> None:
+    """把 fixture 重绑为 dataset-manifest-v2，使 availability_semantics 进入 snapshot_id。"""
+    path = snapshot / "manifest.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw["snapshot_id_algorithm"] = "dataset-manifest-v2"
+    quality = raw["data_quality"]
+    datasets = sorted(raw["dataset_manifest"], key=lambda entry: entry["dataset"])
+    identity = {
+        "schema_version": raw["schema_version"],
+        "as_of": raw["as_of_trade_date"],
+        "source": raw["source_db_fingerprint"],
+        "content_hashes": dict(sorted(raw["content_hashes"].items())),
+        "datasets": [
+            [
+                entry["dataset"],
+                entry["table"],
+                entry["file"],
+                entry["sha256"],
+                entry["rows"],
+                entry["columns"],
+                entry["time_column"],
+                entry["as_of_filtered"],
+                entry["availability"],
+                entry.get("as_of_filter_note", ""),
+                entry.get("missing_note"),
+            ]
+            for entry in datasets
+        ],
+        "quality": {
+            "status": quality["status"],
+            "missing_datasets": sorted(quality["missing_datasets"]),
+            "reasons": sorted(quality["reasons"]),
+            "as_of_requested": quality.get("as_of_requested"),
+            "as_of_resolved": quality.get("as_of_resolved"),
+            "data_cutoff": quality.get("data_cutoff"),
+        },
+        "code_mapping_version": raw["code_mapping_version"],
+        "adjustment_policy": [[k, v] for k, v in sorted(raw["adjustment_policy"].items())],
+        "availability_semantics": [
+            [k, v] for k, v in sorted(raw["availability_semantics"].items())
+        ],
+    }
+    raw["snapshot_id"] = hashlib.sha256(
+        json.dumps(identity, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    path.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+
+
 def test_FA01_a_legacy_export_declares_legacy_financial_availability(manifest) -> None:
     """旧导出没有 financial_availability 后缀：按 legacy 处理，不臆造新模式。"""
     assert manifest.financial_availability == "legacy"
 
 
-def test_FA02_announcement_date_v1_mode_is_parsed_from_the_manifest(snapshot: Path) -> None:
+@pytest.mark.parametrize("algorithm", ["legacy-source-v1", "content-hashes-v1"])
+def test_FA02_non_v2_algorithms_cannot_upgrade_financial_availability(
+    snapshot: Path, algorithm: str
+) -> None:
+    """非 v2 身份不绑定 availability_semantics：声明 announcement-date-v1 也按 legacy 处理。
+
+    改动该字段不改变 snapshot_id，所以不能仅凭 ID 不变就把它升级为严格语义。
+    """
     _set_financial_availability(snapshot, "announcement-date-v1")
+    if algorithm == "content-hashes-v1":
+        _rebind_content_hashes_v1(snapshot)
+
+    manifest = load_snapshot_manifest(snapshot, verify_content=False)
+
+    assert manifest.snapshot_id_algorithm == algorithm
+    assert manifest.financial_availability == "legacy"
+
+
+def test_FA03_dataset_manifest_v2_accepts_announcement_date_v1(snapshot: Path) -> None:
+    _set_financial_availability(snapshot, "announcement-date-v1")
+    _rebind_dataset_manifest_v2(snapshot)
 
     manifest = load_snapshot_manifest(snapshot, verify_content=False)
 
     assert manifest.financial_availability == "announcement-date-v1"
 
 
-def test_FA03_announcement_date_v1_requires_ann_date_as_the_filter_column(snapshot: Path) -> None:
+def test_FA04_dataset_manifest_v2_requires_ann_date_as_the_filter_column(snapshot: Path) -> None:
     """模式声明必须与 dataset 元数据一致；按 trade_date 过滤的财务表不能冒充公告日过滤。"""
     _set_financial_availability(snapshot, "announcement-date-v1")
     path = snapshot / "manifest.json"
@@ -276,14 +360,18 @@ def test_FA03_announcement_date_v1_requires_ann_date_as_the_filter_column(snapsh
     entry = next(d for d in raw["dataset_manifest"] if d["dataset"] == "financial_indicator")
     entry["time_column"] = "trade_date"
     path.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+    _rebind_dataset_manifest_v2(snapshot)
 
     with pytest.raises(SnapshotContractError, match="ann_date"):
         load_snapshot_manifest(snapshot, verify_content=False)
 
 
-def test_FA04_an_unknown_financial_availability_mode_is_refused(snapshot: Path) -> None:
+def test_FA05_dataset_manifest_v2_rejects_unknown_financial_availability_mode(
+    snapshot: Path,
+) -> None:
     """读取方不认识的模式意味着无法判断 ann_date 语义，必须失败。"""
     _set_financial_availability(snapshot, "announcement-date-v2")
+    _rebind_dataset_manifest_v2(snapshot)
 
     with pytest.raises(SnapshotContractError, match="financial_availability"):
         load_snapshot_manifest(snapshot, verify_content=False)

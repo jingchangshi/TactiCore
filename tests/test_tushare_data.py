@@ -141,7 +141,7 @@ def test_download_rejects_configured_listing_date_mismatch() -> None:
 
 
 def test_delisted_fund_metadata_is_accepted_from_status_d() -> None:
-    """标的池可以包含已摘牌 ETF：fund_basic 必须查询 status="D" 而不是只查 L。"""
+    """标的池可以包含已摘牌 ETF：L 缺失该代码时才用 status="D" 补齐。"""
 
     class DelistedOnly(FakeTushareApi):
         def fund_basic(self, **kwargs: Any) -> pd.DataFrame:
@@ -169,31 +169,99 @@ def test_delisted_fund_metadata_is_accepted_from_status_d() -> None:
     )
 
     record = dataset.provenance["symbols"][0]
-    assert record["metadata"]["request_status"] == "D"
     assert record["metadata"]["delist_date"] == "20231229"
-    assert [request["status"] for request in dataset.provenance["metadata_requests"]] == [
-        "L",
-        "D",
-    ]
+    assert dataset.provenance["metadata_request"]["status"] == "L"
+    assert dataset.provenance["delisted_metadata_request"]["status"] == "D"
 
 
-def test_conflicting_l_and_d_fund_metadata_is_rejected() -> None:
-    class Conflicting(FakeTushareApi):
+def test_pure_listed_pool_never_queries_status_d() -> None:
+    """纯 L 池保持原行为：不调用 D，也就不受 D 故障影响。"""
+
+    class ListedOnly(FakeTushareApi):
         def fund_basic(self, **kwargs: Any) -> pd.DataFrame:
-            frame = super().fund_basic(**kwargs)
             if kwargs.get("status") == "D":
-                frame["list_date"] = "20120529"
-                frame["delist_date"] = "20231229"
-            return frame
+                raise AssertionError("纯 L 池不得查询 status=D")
+            return super().fund_basic(**kwargs)
 
-    with pytest.raises(ValueError, match="身份字段不一致"):
+    dataset = download_tushare_dataset(
+        ListedOnly(),
+        _universe(),
+        "20240102",
+        "20240103",
+        downloaded_at="2024-01-04T00:00:00+00:00",
+    )
+
+    assert dataset.provenance["metadata_request"]["status"] == "L"
+    assert "delisted_metadata_request" not in dataset.provenance
+
+
+def test_missing_symbol_in_both_statuses_is_rejected() -> None:
+    class EmptyMetadata(FakeTushareApi):
+        def fund_basic(self, **kwargs: Any) -> pd.DataFrame:
+            return pd.DataFrame(
+                columns=["ts_code", "name", "management", "fund_type", "list_date", "delist_date"]
+            )
+
+    with pytest.raises(ValueError, match="缺少 universe 基金"):
         download_tushare_dataset(
-            Conflicting(),
+            EmptyMetadata(),
             _universe(),
             "20240102",
             "20240103",
             downloaded_at="2024-01-04T00:00:00+00:00",
         )
+
+
+def test_quality_missing_dates_stop_at_the_known_delist_date() -> None:
+    """已摘牌标的的缺失日期统计不得把 delist_date 之后的交易日算成缺失。"""
+
+    class DelistedApi(FakeTushareApi):
+        def trade_cal(self, **kwargs: Any) -> pd.DataFrame:
+            dates = pd.date_range("2024-01-02", "2024-01-05", freq="D")
+            previous = [dates[max(index - 1, 0)] for index in range(len(dates))]
+            return pd.DataFrame(
+                {
+                    "exchange": [kwargs["exchange"]] * len(dates),
+                    "cal_date": [date.strftime("%Y%m%d") for date in dates],
+                    "is_open": [1] * len(dates),
+                    "pretrade_date": [date.strftime("%Y%m%d") for date in previous],
+                }
+            )
+
+        def fund_basic(self, **kwargs: Any) -> pd.DataFrame:
+            if kwargs.get("status") != "D":
+                return pd.DataFrame(
+                    columns=[
+                        "ts_code",
+                        "name",
+                        "management",
+                        "fund_type",
+                        "list_date",
+                        "delist_date",
+                    ]
+                )
+            frame = super().fund_basic(**kwargs)
+            frame["delist_date"] = ["20240103"]
+            return frame
+
+        def fund_daily(self, **kwargs: Any) -> pd.DataFrame:
+            frame = super().fund_daily(**kwargs)
+            return frame.loc[frame["trade_date"] <= "20240103"]
+
+        def fund_adj(self, **kwargs: Any) -> pd.DataFrame:
+            frame = super().fund_adj(**kwargs)
+            return frame.loc[frame["trade_date"] <= "20240103"]
+
+    dataset = download_tushare_dataset(
+        DelistedApi(),
+        _universe(),
+        "20240102",
+        "20240105",
+        downloaded_at="2024-01-06T00:00:00+00:00",
+    )
+
+    quality = dataset.provenance["quality_checks"]["逐标的结果"]["510300.SS"]
+    assert quality["上市后区间缺失日期"] == []
 
 
 @pytest.mark.parametrize(

@@ -38,6 +38,8 @@ FROZEN_MANIFEST_SHA256 = "09469df0ec06d741bee2f176fd1f8334154edafe84afef5b01d889
 def _frozen_runner_clock(monkeypatch: pytest.MonkeyPatch) -> None:
     """execution 行的时间只能来自 runner 时钟；测试用注入时钟复现 fixture 时点。"""
     monkeypatch.setattr(shadow, "_now_utc_iso", lambda: EXECUTION_SEAL)
+    # 新 decision 的可信时钟同样注入到 signal day 收盘后。
+    monkeypatch.setattr(pe, "runner_utc_now", lambda: pd.Timestamp(SEAL))
 
 
 def _fake_repo(tmp_path: Path) -> Path:
@@ -1134,5 +1136,50 @@ def test_direct_s4c_append_rejects_non_official_record_type(tmp_path: Path) -> N
 
     with pytest.raises(ValueError, match="decision 或 execution"):
         _direct_append(record, observations)
+
+    assert observations.read_bytes() == before
+
+
+# --- trusted clock and month-end gate on direct decision append -------------------------
+
+
+def test_direct_decision_append_requires_the_real_signal_day(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision_record(root)
+    monkeypatch.setattr(pe, "runner_utc_now", lambda: pd.Timestamp("2026-10-01T08:00:00+00:00"))
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="真实上海日历日"):
+        pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+    assert observations.read_bytes() == before
+
+
+def test_direct_decision_append_rejects_a_pre_eligible_signal(tmp_path: Path) -> None:
+    root = _repo_with_vintage(tmp_path)
+    vintage_path = root / shadow.VINTAGE_PARENT_RELATIVE_PATH / "2026-09-29"
+    write_prospective_vintage(vintage_path, as_of="2026-09-29")
+    manifest = shadow.load_manifest(root / shadow.MANIFEST_RELATIVE_PATH)
+    inputs = shadow.load_prospective_inputs(
+        vintage_path, manifest, as_of=pd.Timestamp("2026-09-29"), root=root
+    )
+    record = _decision_record(root)
+    record.update(
+        {
+            "signal_date": "2026-09-29",
+            "data_as_of": "2026-09-29",
+            "vintage_identifier": "2026-09-29",
+            "prospective_data_hash": inputs.vintage_hash,
+            "record_generated_at": "2026-09-29T08:00:00+00:00",
+        }
+    )
+    observations = shadow.canonical_observations_path(root)
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="first_eligible_prospective_signal"):
+        pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
 
     assert observations.read_bytes() == before

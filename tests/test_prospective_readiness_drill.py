@@ -43,6 +43,8 @@ def _frozen_runner_clocks(monkeypatch: pytest.MonkeyPatch) -> None:
     """未来 synthetic execution 时点由注入的 runner 时钟复现，不修改系统时间。"""
     monkeypatch.setattr(s2, "_now_utc_iso", lambda: EXECUTION_SEAL)
     monkeypatch.setattr(s4c, "_now_utc_iso", lambda: EXECUTION_SEAL)
+    # 新 decision 的可信时钟同样注入到 signal day 收盘后。
+    monkeypatch.setattr(pe, "runner_utc_now", lambda: pd.Timestamp(SEAL))
 
 
 @pytest.fixture

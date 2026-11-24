@@ -15,6 +15,7 @@ delisted-aware 生命周期；“持仓转 0”对完整 execution schedule 的�
 from __future__ import annotations
 
 from collections.abc import Mapping
+from numbers import Integral
 
 import pandas as pd
 
@@ -28,15 +29,48 @@ from tacticore.data.tradability import (
 from tacticore.data.universe import load_universe
 
 
-def optional_delisted_date(value: object) -> pd.Timestamp | None:
-    """universe 的可选退市日：空值与 NaT 表示未退市；非法值 fail closed。"""
+def _parse_delisted_date(value: object) -> pd.Timestamp:
     try:
-        timestamp = pd.Timestamp(value)  # type: ignore[arg-type]
+        return pd.Timestamp(value)  # type: ignore[arg-type]
     except (TypeError, ValueError) as error:
         raise ValueError(f"universe delisted_date 不可解析: {value!r}") from error
-    if pd.isna(timestamp):
+
+
+def _parse_yyyymmdd(token: int, raw: object) -> pd.Timestamp:
+    try:
+        parsed = pd.to_datetime(f"{token:08d}", format="%Y%m%d", errors="raise")
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"universe delisted_date 不可解析: {raw!r}") from error
+    return pd.Timestamp(parsed)
+
+
+def optional_delisted_date(value: object) -> pd.Timestamp | None:
+    """universe 的可选退市日：空值与 NaT 表示未退市；非法值 fail closed。
+
+    整数 `YYYYMMDD`（如 20240102）按显式日期格式解析，不会被当成 1970 年纳秒时间戳。
+    """
+    if value is None or value is pd.NaT or value is pd.NA:
         return None
-    return timestamp.normalize()
+    if isinstance(value, bool):
+        raise ValueError(f"universe delisted_date 不可解析: {value!r}")
+    if isinstance(value, Integral):
+        parsed = _parse_yyyymmdd(int(value), value)
+    elif isinstance(value, float) and value.is_integer() and 10_000_000 <= value <= 99_999_999:
+        parsed = _parse_yyyymmdd(int(value), value)
+    elif isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        parsed = (
+            _parse_yyyymmdd(int(text), value)
+            if len(text) == 8 and text.isdigit()
+            else _parse_delisted_date(text)
+        )
+    elif isinstance(value, float) and pd.isna(value):
+        return None
+    else:
+        parsed = _parse_delisted_date(value)
+    return None if pd.isna(parsed) else parsed.normalize()
 
 
 def lifetimes_from_universe_with_delisting(universe: pd.DataFrame) -> dict[str, AssetLifetime]:

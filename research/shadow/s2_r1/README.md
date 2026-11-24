@@ -51,6 +51,10 @@ temporal seal           signal_close <= provenance download_timestamp <= decisio
 decision 行             不含任何执行结果字段；同一 signal_date 只允许一条，重复写入失败且不改 bytes
 execution 行            append 前必须完整（执行日、状态、realized weights、cash、candidate-specific
                         deviation、turnover、RQAlpha evidence path + SHA-256）；无 decision 不得追加
+append gate             decision 行写入前必须对照冻结 candidate、signal-date vintage、manifest/
+                        vintage hash、signal-day seal 与可信上海时钟，并逐字段等于冻结 builder 的
+                        派生结果；execution 行只对照已封存 decision、manifest/vintage hash 与
+                        native artifact verifier。拒绝的写入不改变 evidence bytes
 ```
 
 生产 CLI 不再接受 `--vintage-dir`、`--record-path` 或任何 decision 时间覆盖：vintage 位置由

@@ -64,8 +64,9 @@ from research.experiments.verify_s4c_r1_candidate import (
 from research.experiments.verify_s4c_r1_candidate import (
     verify_candidate as verify_frozen_candidate,
 )
+from tacticore.data.execution_guards import load_tradability_inputs_with_delisting
 from tacticore.data.prices import load_price_csv
-from tacticore.data.tradability import load_tradability_inputs, validate_execution_targets
+from tacticore.data.tradability import validate_execution_targets
 from tacticore.data.tushare import ADJUSTMENT_TYPE, SOURCE
 
 SHADOW_DIR = ROOT / "research/shadow/s4c_r1"
@@ -460,9 +461,11 @@ def verify_target_tradable(
     *,
     signal_date: pd.Timestamp,
 ) -> None:
-    """正目标必须在 signal 时点 active 且价格有限为正（沿用冻结 PIT 契约）。"""
+    """正目标必须在 signal 时点 active 且价格有限为正（沿用冻结 PIT 契约 + 可选退市日）。"""
     frame = pd.DataFrame([target], index=pd.DatetimeIndex([signal_date]))
-    mask, lifetimes = load_tradability_inputs(prices, str(root / "config/universe.csv"))
+    mask, lifetimes = load_tradability_inputs_with_delisting(
+        prices, str(root / "config/universe.csv")
+    )
     validate_execution_targets(frame, prices, mask, lifetimes)
 
 

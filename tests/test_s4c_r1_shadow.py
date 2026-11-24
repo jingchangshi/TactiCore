@@ -21,6 +21,7 @@ from conftest import (
 )
 
 from research.experiments import frozen_target_replay
+from research.experiments import prospective_evidence as pe
 from research.experiments import run_s4c_r1_shadow as shadow
 from research.experiments import verify_s4c_r1_candidate as candidate
 
@@ -37,6 +38,8 @@ FROZEN_MANIFEST_SHA256 = "09469df0ec06d741bee2f176fd1f8334154edafe84afef5b01d889
 def _frozen_runner_clock(monkeypatch: pytest.MonkeyPatch) -> None:
     """execution 行的时间只能来自 runner 时钟；测试用注入时钟复现 fixture 时点。"""
     monkeypatch.setattr(shadow, "_now_utc_iso", lambda: EXECUTION_SEAL)
+    # 新 decision 的可信时钟同样注入到 signal day 收盘后。
+    monkeypatch.setattr(pe, "runner_utc_now", lambda: pd.Timestamp(SEAL))
 
 
 def _fake_repo(tmp_path: Path) -> Path:
@@ -1028,3 +1031,184 @@ def test_read_only_modes_reject_as_of(
 
     with pytest.raises(SystemExit):
         shadow.main()
+
+
+# --- canonical append gate: S4C rows cannot bypass decision/execution validation ----------
+
+
+def _direct_append(record: dict[str, str], observations: Path) -> None:
+    pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+
+def _tampered_targets(record: dict[str, str]) -> str:
+    targets = json.loads(record["desired_targets"])
+    donor = max(targets, key=lambda symbol: targets[symbol])
+    receiver = min(
+        (symbol for symbol in targets if symbol != donor), key=lambda symbol: targets[symbol]
+    )
+    tampered = dict(targets)
+    tampered[donor] -= 0.001
+    tampered[receiver] += 0.001
+    return json.dumps(tampered, sort_keys=True)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "match"),
+    [
+        ("candidate_id", "S2_R1", "candidate_id"),
+        ("historical_manifest_hash", "0" * 64, "manifest hash"),
+        ("prospective_data_hash", "0" * 64, "vintage hash"),
+        ("record_generated_at", "2026-10-01T08:00:00+00:00", "signal_date"),
+    ],
+)
+def test_direct_s4c_decision_append_cannot_bypass_identity_and_timing(
+    tmp_path: Path, field: str, value: str, match: str
+) -> None:
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision_record(root)
+    record[field] = value
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match=match):
+        _direct_append(record, observations)
+
+    assert observations.read_bytes() == before
+
+
+def test_direct_s4c_decision_append_rejects_undeduced_targets(tmp_path: Path) -> None:
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision_record(root)
+    record["desired_targets"] = _tampered_targets(record)
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="builder"):
+        _direct_append(record, observations)
+
+    assert observations.read_bytes() == before
+
+
+def test_direct_s4c_decision_append_requires_activation(tmp_path: Path) -> None:
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision_record(root)
+    shadow.canonical_activation_path(root).unlink()
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="未激活"):
+        _direct_append(record, observations)
+
+    assert observations.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "match"),
+    [
+        ("desired_targets", "tampered", "desired_targets 必须与对应 decision 一致"),
+        ("data_as_of", "2026-09-29", "data_as_of 必须与对应 decision 一致"),
+        ("historical_manifest_hash", "0" * 64, "manifest hash"),
+        ("prospective_data_hash", "0" * 64, "vintage hash"),
+    ],
+)
+def test_direct_s4c_execution_append_cannot_bypass_frozen_state(
+    tmp_path: Path, field: str, value: str, match: str
+) -> None:
+    root, _decision_row, complete, observations = _execution_fixture(tmp_path)
+    if value == "tampered":
+        complete[field] = _tampered_targets(complete)
+    else:
+        complete[field] = value
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match=match):
+        _direct_append(complete, observations)
+
+    assert observations.read_bytes() == before
+
+
+def test_direct_s4c_append_rejects_non_official_record_type(tmp_path: Path) -> None:
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = {field: "" for field in shadow.RECORD_FIELDS}
+    record.update({"record_type": "note", "candidate_id": "S4C_R1", "signal_date": "2026-09-30"})
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="decision 或 execution"):
+        _direct_append(record, observations)
+
+    assert observations.read_bytes() == before
+
+
+# --- trusted clock and month-end gate on direct decision append -------------------------
+
+
+def test_direct_decision_append_requires_the_real_signal_day(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision_record(root)
+    monkeypatch.setattr(pe, "runner_utc_now", lambda: pd.Timestamp("2026-10-01T08:00:00+00:00"))
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="真实上海日历日"):
+        pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+    assert observations.read_bytes() == before
+
+
+def test_direct_decision_append_rejects_a_pre_eligible_signal(tmp_path: Path) -> None:
+    root = _repo_with_vintage(tmp_path)
+    vintage_path = root / shadow.VINTAGE_PARENT_RELATIVE_PATH / "2026-09-29"
+    write_prospective_vintage(vintage_path, as_of="2026-09-29")
+    manifest = shadow.load_manifest(root / shadow.MANIFEST_RELATIVE_PATH)
+    inputs = shadow.load_prospective_inputs(
+        vintage_path, manifest, as_of=pd.Timestamp("2026-09-29"), root=root
+    )
+    record = _decision_record(root)
+    record.update(
+        {
+            "signal_date": "2026-09-29",
+            "data_as_of": "2026-09-29",
+            "vintage_identifier": "2026-09-29",
+            "prospective_data_hash": inputs.vintage_hash,
+            "record_generated_at": "2026-09-29T08:00:00+00:00",
+        }
+    )
+    observations = shadow.canonical_observations_path(root)
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="first_eligible_prospective_signal"):
+        pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+    assert observations.read_bytes() == before
+
+
+def test_direct_decision_append_rejects_a_seal_after_the_trusted_clock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision_record(root)
+    monkeypatch.setattr(pe, "runner_utc_now", lambda: pd.Timestamp("2026-09-30T07:59:59+00:00"))
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="晚于可信上海时钟"):
+        pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+    assert observations.read_bytes() == before
+
+
+def test_direct_decision_append_rejects_forged_diagnostics(tmp_path: Path) -> None:
+    """regime 等策略派生诊断字段必须与冻结 builder 的结果逐字段一致。"""
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision_record(root)
+    record["regime"] = "FALLBACK" if record["regime"] == "RISK" else "RISK"
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="regime.*builder"):
+        pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+    assert observations.read_bytes() == before

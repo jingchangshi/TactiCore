@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 import sys
 from pathlib import Path
@@ -20,6 +21,7 @@ from conftest import (
     write_raw_execution_artifact,
 )
 
+from research.experiments import prospective_evidence as pe
 from research.experiments import run_s2_r1_shadow as shadow
 from research.experiments.prospective_evidence import sha256_file
 
@@ -36,6 +38,8 @@ ARTIFACT_RELATIVE_PATH = "research/shadow/s2_r1/execution_artifacts/2026-09-30_2
 def _frozen_runner_clock(monkeypatch: pytest.MonkeyPatch) -> None:
     """execution 行的时间只能来自 runner 时钟；测试用注入时钟复现 fixture 时点。"""
     monkeypatch.setattr(shadow, "_now_utc_iso", lambda: EXECUTION_SEAL)
+    # 新 decision 的可信时钟同样注入到 signal day 收盘后。
+    monkeypatch.setattr(pe, "runner_utc_now", lambda: pd.Timestamp(SEAL))
 
 
 def _decision(tmp_path: Path, *, seal: str = SEAL) -> dict[str, str]:
@@ -844,3 +848,153 @@ def test_verify_no_observations_rejects_non_empty_table(
 
     with pytest.raises(ValueError, match="必须仍为 0 行"):
         shadow.main()
+
+
+# --- canonical append gate: S2 execution rows cannot bypass frozen state -------------------
+
+
+def _direct_append(record: dict[str, str], observations: Path) -> None:
+    pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+
+def _tampered_targets(record: dict[str, str]) -> str:
+    targets = json.loads(record["desired_targets"])
+    donor = max(targets, key=lambda symbol: targets[symbol])
+    receiver = min(
+        (symbol for symbol in targets if symbol != donor), key=lambda symbol: targets[symbol]
+    )
+    tampered = dict(targets)
+    tampered[donor] -= 0.001
+    tampered[receiver] += 0.001
+    return json.dumps(tampered, sort_keys=True)
+
+
+def _flipped_trend_states(record: dict[str, str]) -> str:
+    states = json.loads(record["trend_states"])
+    for symbol, state in states.items():
+        if state == "UPTREND":
+            states[symbol] = "NEGATIVE_SIGNAL"
+            break
+        states[symbol] = "UPTREND"
+        break
+    return json.dumps(states, sort_keys=True)
+
+
+@pytest.mark.parametrize(
+    ("field", "producer", "match"),
+    [
+        ("desired_targets", _tampered_targets, "desired_targets 必须与对应 decision 一致"),
+        ("trend_states", _flipped_trend_states, "trend_states 必须与对应 decision 一致"),
+        ("data_as_of", lambda record: "2026-09-29", "data_as_of 必须与对应 decision 一致"),
+        ("historical_manifest_hash", lambda record: "0" * 64, "manifest hash"),
+        ("prospective_data_hash", lambda record: "0" * 64, "vintage hash"),
+    ],
+)
+def test_direct_s2_execution_append_cannot_bypass_frozen_state(
+    tmp_path: Path, field: str, producer: Any, match: str
+) -> None:
+    root, complete, observations = _execution_fixture(tmp_path)
+    complete[field] = producer(complete)
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match=match):
+        _direct_append(complete, observations)
+
+    assert observations.read_bytes() == before
+
+
+def test_execution_append_rejects_a_tampered_stored_decision_via_artifact_binding(
+    tmp_path: Path,
+) -> None:
+    """execution 不重算策略；已封存 decision 被篡改时由 native artifact 的目标绑定发现。"""
+    root, complete, observations = _execution_fixture(tmp_path)
+    rows = pe.read_event_rows(observations, shadow.RECORD_FIELDS)
+    tampered = _tampered_targets(rows[0])
+    rows[0]["desired_targets"] = tampered
+    with observations.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(shadow.RECORD_FIELDS))
+        writer.writeheader()
+        writer.writerows(rows)
+    complete["desired_targets"] = tampered
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="intended_targets"):
+        _direct_append(complete, observations)
+
+    assert observations.read_bytes() == before
+
+
+# --- trusted clock and month-end gate on direct decision append -------------------------
+
+
+def test_direct_decision_append_requires_the_real_signal_day(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision(tmp_path)
+    monkeypatch.setattr(pe, "runner_utc_now", lambda: pd.Timestamp("2026-10-01T08:00:00+00:00"))
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="真实上海日历日"):
+        pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+    assert observations.read_bytes() == before
+
+
+def test_direct_decision_append_rejects_a_non_month_end_signal(tmp_path: Path) -> None:
+    root = _repo_with_vintage(tmp_path)
+    vintage_path = root / shadow.VINTAGE_PARENT_RELATIVE_PATH / "2026-09-29"
+    write_prospective_vintage(vintage_path, as_of="2026-09-29")
+    manifest = shadow.load_manifest(root / shadow.MANIFEST_RELATIVE_PATH)
+    inputs = shadow.load_prospective_inputs(
+        vintage_path, manifest, as_of=pd.Timestamp("2026-09-29"), root=root
+    )
+    record = _decision(tmp_path)
+    record.update(
+        {
+            "signal_date": "2026-09-29",
+            "data_as_of": "2026-09-29",
+            "vintage_identifier": "2026-09-29",
+            "prospective_data_hash": inputs.vintage_hash,
+            "record_generated_at": "2026-09-29T08:00:00+00:00",
+        }
+    )
+    observations = shadow.canonical_observations_path(root)
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="未覆盖完整 signal 月"):
+        pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+    assert observations.read_bytes() == before
+
+
+def test_direct_decision_append_rejects_a_seal_after_the_trusted_clock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision(tmp_path)
+    monkeypatch.setattr(pe, "runner_utc_now", lambda: pd.Timestamp("2026-09-30T07:59:59+00:00"))
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="晚于可信上海时钟"):
+        pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+    assert observations.read_bytes() == before
+
+
+def test_direct_decision_append_rejects_forged_target_changed(tmp_path: Path) -> None:
+    """目标实际变化时把 target_changed/action_required 写成 false 必须被 builder 对照拒绝。"""
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision(tmp_path)
+    forged = "false" if record["target_changed"] == "true" else "true"
+    record["target_changed"] = forged
+    record["action_required"] = forged
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="target_changed.*builder"):
+        pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+    assert observations.read_bytes() == before

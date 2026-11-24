@@ -767,6 +767,27 @@ def trusted_generation_instant() -> pd.Timestamp:
     return instant.tz_convert("UTC")
 
 
+def trusted_shanghai_now() -> pd.Timestamp:
+    """新 decision 追加的可信时钟：复用 runner 时钟 seam，测试可注入。"""
+    instant = require_timezone_aware_instant(runner_utc_now(), label="trusted decision clock")
+    return instant.tz_convert(SHANGHAI_TIMEZONE)
+
+
+def verify_new_decision_is_current(record: Mapping[str, str], *, signal_date: object) -> None:
+    """新 decision 不能只信记录自报的时间：必须在其 signal_date 的真实上海日历日追加。"""
+    signal = normalize_signal_date(signal_date)
+    now = trusted_shanghai_now()
+    if now.date() != signal.date():
+        raise ValueError(
+            "新 decision 只能在其 signal_date 的真实上海日历日追加：拒绝回填或提前写入的 decision"
+        )
+    seal = require_timezone_aware_instant(
+        record["record_generated_at"], label="record_generated_at"
+    )
+    if seal > now:
+        raise ValueError("record_generated_at 晚于可信上海时钟：拒绝未来时间")
+
+
 def execution_observation_instant(execution_date: object) -> pd.Timestamp:
     """daily-bar 语义：execution 观测在 execution_date 收盘（15:00 Asia/Shanghai）才存在。"""
     return signal_close_instant(execution_date)
@@ -1418,61 +1439,302 @@ def verify_no_duplicate_event(rows: Iterable[Mapping[str, str]], record: Mapping
             )
 
 
+# canonical observation 表的仓库相对位置；只有这些位置触发候选级强校验。
+CANONICAL_OBSERVATION_LAYOUTS = {
+    "S2_R1": ("research", "shadow", "s2_r1", "observations.csv"),
+    "S4C_R1": ("research", "shadow", "s4c_r1", "observations.csv"),
+}
+# execution 行必须逐字段复述对应 decision 的冻结身份；只有执行结果字段允许新增。
+S2_EXECUTION_DECISION_FIELDS = (
+    "candidate_id",
+    "protocol_version",
+    "data_as_of",
+    "vintage_identifier",
+    "historical_manifest_hash",
+    "prospective_data_hash",
+    "signal_date",
+    "eligible_assets",
+    "trend_states",
+    "target_changed",
+    "desired_targets",
+    "action_required",
+)
+S4C_EXECUTION_DECISION_FIELDS = (
+    "candidate_id",
+    "protocol_version",
+    "data_as_of",
+    "vintage_identifier",
+    "historical_manifest_hash",
+    "prospective_data_hash",
+    "signal_date",
+    "eligible_asset_count",
+    "regime",
+    "maximum_weight",
+    "effective_number_assets",
+    "target_changed",
+    "desired_targets",
+    "action_required",
+)
+# 新 decision 必须逐字段等于冻结 builder 的策略派生结果（不含身份与时间字段）。
+S2_DECISION_DERIVED_FIELDS = (
+    "eligible_assets",
+    "trend_states",
+    "target_changed",
+    "desired_targets",
+    "action_required",
+)
+S4C_DECISION_DERIVED_FIELDS = (
+    "eligible_asset_count",
+    "regime",
+    "maximum_weight",
+    "effective_number_assets",
+    "target_changed",
+    "desired_targets",
+    "action_required",
+)
+
+
+def _canonical_observations_target(record_path: Path) -> tuple[str, Path] | None:
+    """解析官方 observation 表对应的候选；解析路径与词法路径都参与判定。"""
+    lexical_path = Path(os.path.abspath(record_path))
+    resolved_path = record_path.resolve()
+    for candidate_id, suffix in CANONICAL_OBSERVATION_LAYOUTS.items():
+        for candidate_path in (resolved_path, lexical_path):
+            if candidate_path.parts[-4:] == suffix:
+                return candidate_id, candidate_path
+    return None
+
+
+def _require_unchanged_decision_fields(
+    record: Mapping[str, str], decision: Mapping[str, str], fields: Sequence[str]
+) -> None:
+    for field in fields:
+        if record.get(field, "") != decision.get(field, ""):
+            raise ValueError(f"execution 行的 {field} 必须与对应 decision 一致")
+
+
+def _require_builder_derived_fields(
+    record: Mapping[str, str],
+    expected: Mapping[str, str],
+    fields: Sequence[str],
+    *,
+    candidate_id: str,
+) -> None:
+    for field in fields:
+        if record.get(field, "") != expected.get(field, ""):
+            raise ValueError(f"decision 的 {field} 与冻结 {candidate_id} builder 结果不一致")
+
+
+def _verify_s2_decision_state(
+    record: Mapping[str, str],
+    *,
+    root: Path,
+    signal: pd.Timestamp,
+    vintage: ProspectiveVintage,
+    manifest: Mapping[str, Any],
+) -> None:
+    """S2 decision 行必须能由冻结候选、signal-date vintage 与冻结 builder 重新生成。"""
+    from research.experiments import run_s2_r1_shadow as s2
+
+    s2.verify_decision_row(record, manifest=manifest, expected_symbols=vintage.prices.columns)
+    s2.validate_month_end_review(vintage.raw_calendar, signal)
+    first_eligible = s2.derive_first_eligible_signal(manifest, vintage.raw_calendar)
+    if first_eligible is not None and signal < first_eligible:
+        raise ValueError(
+            "prospective --as-of 早于由冻结月度语义推导的 first eligible signal；"
+            "该时点不可形成前瞻证据"
+        )
+    verify_signal_day_seal(
+        signal_date=signal,
+        download_timestamp=vintage.provenance.download_timestamp,
+        decision_seal_time=record["record_generated_at"],
+        calendar=vintage.raw_calendar,
+    )
+    verify_new_decision_is_current(record, signal_date=signal)
+    expected = s2.build_decision_record(
+        vintage.prices,
+        manifest,
+        as_of=signal,
+        vintage_identifier=record["vintage_identifier"],
+        prospective_data_hash=record["prospective_data_hash"],
+        manifest_hash=record["historical_manifest_hash"],
+        expected_symbols=vintage.prices.columns,
+        decision_seal_time=record["record_generated_at"],
+        root=root,
+    )
+    if expected is None:
+        raise ValueError("as-of 不是合格月末 signal；冻结 S2 builder 不会生成 decision")
+    _require_builder_derived_fields(record, expected, S2_DECISION_DERIVED_FIELDS, candidate_id="S2")
+    targets = parse_weight_vector(
+        record["desired_targets"], expected_symbols=vintage.prices.columns, label="desired_targets"
+    )
+    validate_s2_signal_targets(vintage.prices, signal, targets, load_frozen_universe(root))
+
+
+def _verify_s4c_decision_state(
+    record: Mapping[str, str],
+    *,
+    root: Path,
+    signal: pd.Timestamp,
+    vintage: ProspectiveVintage,
+    manifest: Mapping[str, Any],
+) -> None:
+    """S4C decision 行必须能由冻结候选、signal-date vintage 与冻结 builder 重新生成。"""
+    from research.experiments import run_s4c_r1_shadow as s4c
+
+    s4c.verify_decision_row(record, manifest=manifest, expected_symbols=vintage.prices.columns)
+    s4c.validate_month_end(vintage.raw_calendar, signal, manifest)
+    verify_signal_day_seal(
+        signal_date=signal,
+        download_timestamp=vintage.provenance.download_timestamp,
+        decision_seal_time=record["record_generated_at"],
+        calendar=vintage.raw_calendar,
+    )
+    verify_new_decision_is_current(record, signal_date=signal)
+    expected = s4c.build_decision_record(
+        vintage.prices,
+        manifest,
+        as_of=signal,
+        vintage_identifier=record["vintage_identifier"],
+        prospective_data_hash=record["prospective_data_hash"],
+        historical_manifest_hash=record["historical_manifest_hash"],
+        expected_symbols=vintage.prices.columns,
+        decision_seal_time=record["record_generated_at"],
+        root=root,
+    )
+    _require_builder_derived_fields(
+        record, expected, S4C_DECISION_DERIVED_FIELDS, candidate_id="S4C"
+    )
+
+
+def _verify_s2_canonical_record(
+    record: Mapping[str, str], *, root: Path, rows: Sequence[Mapping[str, str]]
+) -> None:
+    """S2 canonical decision/execution 行都对照冻结候选与 signal-date vintage 验证。"""
+    from research.experiments import run_s2_r1_shadow as s2
+
+    if record.get("record_type") not in {"decision", "execution"}:
+        raise ValueError("canonical observations 只接受 decision 或 execution record")
+    manifest = s2.load_manifest(root / s2.MANIFEST_RELATIVE_PATH)
+    s2.verify_candidate(manifest, root, verify_framework=False)
+    signal = parse_iso_date(record["signal_date"], label="signal_date")
+    vintage_path = s2.canonical_vintage_dir(root, signal)
+    verify_canonical_vintage_location(
+        vintage_path, signal, canonical_parent=root / s2.VINTAGE_PARENT_RELATIVE_PATH
+    )
+    vintage = s2.load_prospective_inputs(vintage_path, manifest, as_of=signal, root=root)
+    if record["historical_manifest_hash"] != sha256_frozen_repository_text(
+        root / s2.MANIFEST_RELATIVE_PATH
+    ):
+        raise ValueError("record 与 candidate manifest hash 不一致")
+    if vintage.vintage_hash != record["prospective_data_hash"]:
+        raise ValueError("record 与 signal-date vintage hash 不一致")
+    if record["record_type"] == "decision":
+        _verify_s2_decision_state(
+            record, root=root, signal=signal, vintage=vintage, manifest=manifest
+        )
+        return
+    decisions = [
+        row
+        for row in rows
+        if row["record_type"] == "decision"
+        and row["candidate_id"] == record["candidate_id"]
+        and row["signal_date"] == record["signal_date"]
+    ]
+    if len(decisions) != 1:
+        raise ValueError("execution 行只能追加在唯一对应的 decision 行之后")
+    decision = decisions[0]
+    _require_unchanged_decision_fields(record, decision, S2_EXECUTION_DECISION_FIELDS)
+    # execution 行只比对已封存 decision、manifest/vintage hash 与 native artifact verifier；
+    # 不重算策略目标：S4C 的跨平台合法 Δw 会让 exact dict 相等永久阻断 execution 追加。
+    s2.verify_execution_row(
+        record,
+        decision=decision,
+        expected_symbols=vintage.prices.columns,
+        expected_framework_version=str(manifest["framework_versions"]["rqalpha"]),
+        root=root,
+    )
+
+
+def _verify_s4c_canonical_record(
+    record: Mapping[str, str], *, root: Path, rows: Sequence[Mapping[str, str]]
+) -> None:
+    """S4C canonical decision/execution 行都对照冻结候选、activation 与 vintage 验证。"""
+    from research.experiments import run_s4c_r1_shadow as s4c
+
+    if record.get("record_type") not in {"decision", "execution"}:
+        raise ValueError("canonical observations 只接受 decision 或 execution record")
+    manifest = s4c.load_manifest(root / s4c.MANIFEST_RELATIVE_PATH)
+    s4c.verify_frozen_candidate(manifest, root, verify_framework=False)
+    s4c.require_activation(s4c.canonical_activation_path(root), manifest, root=root)
+    signal = parse_iso_date(record["signal_date"], label="signal_date")
+    vintage_path = s4c.canonical_vintage_dir(root, signal)
+    verify_canonical_vintage_location(
+        vintage_path, signal, canonical_parent=root / s4c.VINTAGE_PARENT_RELATIVE_PATH
+    )
+    vintage = s4c.load_prospective_inputs(vintage_path, manifest, as_of=signal, root=root)
+    if record["historical_manifest_hash"] != sha256_frozen_repository_text(
+        root / s4c.MANIFEST_RELATIVE_PATH
+    ):
+        raise ValueError("record 与 candidate manifest hash 不一致")
+    if vintage.vintage_hash != record["prospective_data_hash"]:
+        raise ValueError("record 与 signal-date vintage hash 不一致")
+    if record["record_type"] == "decision":
+        _verify_s4c_decision_state(
+            record, root=root, signal=signal, vintage=vintage, manifest=manifest
+        )
+        return
+    decisions = [
+        row
+        for row in rows
+        if row["record_type"] == "decision"
+        and row["candidate_id"] == record["candidate_id"]
+        and row["signal_date"] == record["signal_date"]
+    ]
+    if len(decisions) != 1:
+        raise ValueError("execution 行只能追加在唯一对应的 decision 行之后")
+    decision = decisions[0]
+    _require_unchanged_decision_fields(record, decision, S4C_EXECUTION_DECISION_FIELDS)
+    # 同 S2：execution 追加不重新求解 ERC，也不做 exact target 相等；只信已封存 decision
+    # 与 manifest/vintage hash，并由 native artifact verifier 绑定目标与实际执行。
+    s4c.verify_execution_row(
+        record,
+        decision=decision,
+        expected_symbols=vintage.prices.columns,
+        expected_framework_version=str(manifest["framework_versions"]["rqalpha"]),
+        root=root,
+    )
+
+
 def append_event_row(record: Mapping[str, str], *, path: Path, fields: Sequence[str]) -> None:
-    """单一追加点：schema 与重复校验完成后才打开文件，失败不改变 evidence bytes。"""
+    """单一追加点：schema 与重复校验完成后才打开文件，失败不改变 evidence bytes。
+
+    官方 candidate observation 表（S2_R1 / S4C_R1）的 decision 与 execution 行都必须在
+    写入前对照冻结候选、signal-date vintage、manifest/vintage 哈希与 signal-day seal；
+    decision 行额外对照冻结 builder 的策略派生字段，execution 行只绑定已封存 decision
+    与原生执行 artifact（不重算策略）。只有非官方路径（fixture / 通用事件表）不做候选级校验。
+    """
     field_names = tuple(fields)
     if tuple(record.keys()) != field_names:
         raise ValueError("record 字段集合与冻结 observation schema 不一致")
     existing = read_event_rows(path, field_names)
     verify_no_duplicate_event(existing, record)
     record_path = Path(path)
-    lexical_path = Path(os.path.abspath(record_path))
-    resolved_path = record_path.resolve()
-    s2_suffix = ("research", "shadow", "s2_r1", "observations.csv")
-    official_path = next(
-        (p for p in (resolved_path, lexical_path) if p.parts[-4:] == s2_suffix), None
-    )
-    if official_path is not None:
+    official = _canonical_observations_target(record_path)
+    if official is not None:
+        candidate_id, official_path = official
+        lexical_path = Path(os.path.abspath(record_path))
         if lexical_path.is_symlink():
-            raise ValueError("S2 canonical observations 不允许是符号链接")
-        if record.get("candidate_id") != "S2_R1":
-            raise ValueError("S2 canonical observations 的 candidate_id 必须是 S2_R1")
-    if official_path is not None and record.get("record_type") == "decision":
-        # 只保护官方新 decision 追加，不改变历史 vintage 的读取/复验。
-        from research.experiments import run_s2_r1_shadow as s2
-
+            raise ValueError(f"{candidate_id} canonical observations 不允许是符号链接")
+        if record.get("candidate_id") != candidate_id:
+            raise ValueError(
+                f"{candidate_id} canonical observations 的 candidate_id 必须是 {candidate_id}"
+            )
+        # 仓库根：<root>/research/shadow/<candidate>/observations.csv
         root = official_path.parent.parents[2]
-        manifest = s2.load_manifest(root / s2.MANIFEST_RELATIVE_PATH)
-        s2.verify_candidate(manifest, root, verify_framework=False)
-        signal = parse_iso_date(record["signal_date"], label="signal_date")
-        vintage_path = s2.canonical_vintage_dir(root, signal)
-        verify_canonical_vintage_location(
-            vintage_path, signal, canonical_parent=root / s2.VINTAGE_PARENT_RELATIVE_PATH
-        )
-        vintage = s2.load_prospective_inputs(vintage_path, manifest, as_of=signal, root=root)
-        s2.verify_decision_row(record, manifest=manifest, expected_symbols=vintage.prices.columns)
-        if record["historical_manifest_hash"] != sha256_frozen_repository_text(
-            root / s2.MANIFEST_RELATIVE_PATH
-        ):
-            raise ValueError("decision 与 candidate manifest hash 不一致")
-        verify_signal_day_seal(
-            signal_date=signal,
-            download_timestamp=vintage.provenance.download_timestamp,
-            decision_seal_time=record["record_generated_at"],
-            calendar=vintage.raw_calendar,
-        )
-        if vintage.vintage_hash != record["prospective_data_hash"]:
-            raise ValueError("decision 与 signal-date vintage hash 不一致")
-        targets = parse_weight_vector(
-            record["desired_targets"],
-            expected_symbols=vintage.prices.columns,
-            label="desired_targets",
-        )
-        expected = s2.build_month_end_targets(
-            vintage.prices, s2.load_trend_config(root / "config/strategy.toml")
-        )
-        if signal not in expected.index or targets != expected.loc[signal].to_dict():
-            raise ValueError("decision 目标与冻结 S2 策略及 signal-date vintage 不一致")
-        validate_s2_signal_targets(vintage.prices, signal, targets, load_frozen_universe(root))
+        if candidate_id == "S2_R1":
+            _verify_s2_canonical_record(record, root=root, rows=existing)
+        else:
+            _verify_s4c_canonical_record(record, root=root, rows=existing)
     with Path(path).open("a", encoding="utf-8", newline="") as handle:
         csv.DictWriter(handle, fieldnames=list(field_names)).writerow(dict(record))

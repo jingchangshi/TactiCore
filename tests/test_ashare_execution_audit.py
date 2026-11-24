@@ -410,3 +410,35 @@ def test_EA17_the_replay_rejects_a_schedule_outside_the_window(bundle_window) ->
             bundle_path=DEFAULT_BUNDLE,
             asset_class="ETF",
         )
+
+
+def test_EA04b_audit_rejects_held_liquidation_before_engine_submission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """持仓转 0 且停牌时，必须在提交给任一引擎之前拒绝，而不是静默不成交。"""
+    from research.ashare.engines import execution_audit
+
+    dates = pd.date_range("2026-01-05", periods=3, freq="B")
+    prices = pd.DataFrame({"A": [10.0, 10.0, 10.0]}, index=dates)
+    suspended = pd.DataFrame({"A": [False, False, True]}, index=dates)
+    schedule = pd.DataFrame(float("nan"), index=dates, columns=["A"])
+    schedule.loc[dates[0]] = 1.0
+    schedule.loc[dates[2]] = 0.0
+
+    def tripwire(*args: object, **kwargs: object) -> object:
+        raise AssertionError("guard must reject before submitting to either engine")
+
+    monkeypatch.setattr(execution_audit, "run_vectorbt_side", tripwire)
+    monkeypatch.setattr(execution_audit, "run_rqalpha_side", tripwire)
+
+    with pytest.raises(Exception, match="不可交易清仓目标"):
+        execution_audit.audit(
+            schedule,
+            prices,
+            suspended,
+            start=dates[0],
+            end=dates[-1],
+            initial_cash=100_000.0,
+            bundle_path=Path("unused-bundle"),
+            asset_class="ETF",
+        )

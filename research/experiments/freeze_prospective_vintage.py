@@ -7,6 +7,8 @@
 它不实现 scheduler、daemon、provider abstraction 或通用数据快照服务。
 
 本工具在真实数据缺失/不一致时 fail closed：不覆盖既有 evidence，也不留下半成品目录。
+每次冻结都在写盘前用该快照自己的 provenance 与日历验证 signal-day temporal seal；as-of 恰为
+自然月末时没有额外的日历请求，价格下载完成时刻本身就是该 vintage 的 decision seal。
 
 Production 路径只有 `candidate + --as-of + TUSHARE_TOKEN`：universe 与下载起点都来自
 manifest-hash-bound 的 repository 冻结契约，不暴露任何 universe / start-date 覆盖。
@@ -141,8 +143,10 @@ def freeze_vintage(
     if dataset.prices.index.max().normalize() != as_of_day:
         raise ValueError("--as-of 必须是该快照实际覆盖到的 canonical 价格观测日")
 
-    # 价格仍截止于 as-of；只额外读取当时已公布的月末交易所日历。
+    # 价格仍截止于 as-of；只有自然月末之前的 as-of 才需要额外读取当时已公布的月末交易所日历。
     month_end = as_of_day + pd.offsets.MonthEnd(0)
+    seal_calendar = dataset.calendar
+    decision_seal_time = dataset.provenance["download_timestamp"]
     if as_of_day < month_end:
         start = as_of_day + pd.Timedelta(days=1)
         expected_dates = pd.date_range(start, month_end, freq="D")
@@ -183,13 +187,19 @@ def freeze_vintage(
                 downloaded_at or datetime.now(timezone.utc).isoformat()
             ),
         }
-        verify_signal_day_seal(
-            signal_date=as_of_day,
-            download_timestamp=provenance["download_timestamp"],
-            decision_seal_time=provenance["calendar_extension_download_timestamp"],
-            calendar=calendar,
-        )
         dataset = replace(dataset, calendar=calendar, provenance=provenance)
+        seal_calendar = calendar
+        decision_seal_time = provenance["calendar_extension_download_timestamp"]
+
+    # temporal seal 在**所有** as-of 上都必须成立，不能只在自然月末之前的扩展分支里检查：
+    # 自然月末的 as-of 没有第二次日历请求，下载完成时刻本身就是该 vintage 的 decision seal。
+    # 校验必须发生在创建任何目录/文件之前，否则收盘前下载或次日回填会进入不可覆盖的 vintage。
+    verify_signal_day_seal(
+        signal_date=as_of_day,
+        download_timestamp=dataset.provenance["download_timestamp"],
+        decision_seal_time=decision_seal_time,
+        calendar=seal_calendar,
+    )
 
     canonical_parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=".staging-", dir=canonical_parent))

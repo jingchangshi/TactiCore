@@ -459,6 +459,14 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--environment-label", default="local_windows_development")
     parser.add_argument("--repository-head", default=None)
+    parser.add_argument(
+        "--fail-on-contract-violation",
+        action="store_true",
+        help=(
+            "opt-in：when within_contract is false, exit non-zero after writing the report；"
+            "默认行为仍是只诊断、exit 0"
+        ),
+    )
     args = parser.parse_args()
 
     report = build_report(args.environment_label, args.repository_head)
@@ -466,6 +474,15 @@ def main() -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(serialized + "\n", encoding="utf-8", newline="\n")
     print(serialized)
+    compliance = report.get("contract_compliance") or {}
+    if args.fail_on_contract_violation and not compliance.get("within_contract", False):
+        print(
+            "S4C 可移植性契约违约: "
+            f"elements_exceeding_tolerance={compliance.get('elements_exceeding_tolerance')}、"
+            f"max_abs_delta={compliance.get('maximum_absolute_delta')}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

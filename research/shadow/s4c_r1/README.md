@@ -1,8 +1,15 @@
-# S4C R1 候选身份与前瞻协议 V1（已预注册，未激活）
+# S4C R1 候选身份与前瞻协议 V1（已冻结，前瞻影子已激活）
 
 本目录只服务冻结的 `S4C_R1`。候选的机器可验证身份见 [candidate_manifest.json](candidate_manifest.json)。
 
-**当前状态：`FROZEN / NOT_ACTIVE`。** 候选身份与前瞻协议已经预注册，但**没有**前瞻失败观测被收集、没有被回填、没有 runner 在运行；`observations.csv` 只有表头。
+**当前状态：`FROZEN / PROSPECTIVE_SHADOW_ACTIVE`。** 候选身份与前瞻协议已经预注册并冻结；
+独立 [activation decision V1](../../results/S4C_R1_PROSPECTIVE_ACTIVATION_DECISION_V1.md)
+在 `ACTIVATION_IMPLEMENTATION_GATE = PASS` 之后，通过候选级 lifecycle artifact
+[activation.json](activation.json) 激活了前瞻影子（`activation_status = ACTIVE`）。
+`candidate_manifest.json` 中的 `prospective_activation = NOT_ACTIVE` 是冻结时的历史身份，
+不是当前生命周期状态。**尚未**产生任何前瞻 observation：本地 `observations.csv` 只有表头，
+没有观测被收集或回填；本地仓库内没有 runner 在运行，远端运行状态未在此核实。
+激活不等于生产候选或生产批准，也不构成收益结论。
 
 ## 1. 不可变身份与顺序版本规则
 
@@ -22,7 +29,7 @@ first_eligible_prospective_signal = 2026-09-30
 
 **不得回溯前瞻证据。** 冻结时点之前就已经可观察的数据或市场结果不能成为真正前瞻证据。冻结当天（`2026-09-13`）之前的任何 2026 年 9 月观测都不得回填成前瞻记录。
 
-`2026-09-30` 是**严格晚于**冻结时点的第一个合格月末 signal（下一个自然月末）。因此第一条合法前瞻 decision 只能在 `2026-09-30` 月末收盘后形成，并在其后的下一 canonical 观测日才可观察执行——前提是届时已有真实 candidate-specific vintage。本文件不产生也不需要第一条记录。
+`2026-09-30` 是**严格晚于**冻结时点的第一个合格月末 signal（历史 first eligible）。该窗口已经错过，**永久不得回填**；第一条合法前瞻 decision 只能等待下一个真实合格的月末 signal，且必须已存在该 as-of 的 candidate-specific vintage 后才可形成。本文件不产生也不需要第一条记录。
 
 ## 3. 候选专属 vintage 与不可变历史
 
@@ -157,7 +164,13 @@ P05 effective assets            3.24
 
 ## 12. 当前边界
 
-本 Goal 只冻结身份并预注册协议。它**不**激活前瞻影子、**不**采集 observation、**不**创建 vintage。
+候选冻结 Goal 只冻结身份并预注册协议；它当时**不**激活前瞻影子、**不**采集 observation、**不**创建 vintage。
+其后独立的 [activation decision V1](../../results/S4C_R1_PROSPECTIVE_ACTIVATION_DECISION_V1.md)
+完成 `ACTIVATION_IMPLEMENTATION_GATE = PASS` 并由 [activation.json](activation.json) 激活前瞻影子。
+激活本身不采集 observation、不创建历史 vintage、不产生收益结论，也不是生产批准。
+`2026-09-30` 是历史 `first_eligible_prospective_signal`；该窗口以及其后的 `2026-10-30` 窗口
+已经错过，**永久不得回填**。下一次合法前瞻 decision 只能来自未来真实月末 signal 与对应
+candidate-specific vintage，且仍不构成生产批准。
 
 身份一致性校验：
 
@@ -186,6 +199,10 @@ temporal seal           signal_close <= provenance download_timestamp <= decisio
 decision 行             不含任何执行结果字段；同一 signal_date 只允许一条，重复写入失败且不改 bytes
 execution 行            append 前必须完整（执行日、状态、realized weights、cash、组合层与单资产
                         deviation、turnover、RQAlpha evidence path + SHA-256）；无 decision 不得追加
+append gate             decision 行写入前必须对照冻结 candidate、activation、signal-date vintage、
+                        manifest/vintage hash、signal-day seal 与可信上海时钟，并逐字段等于冻结
+                        builder 的派生结果；execution 行只对照已封存 decision、manifest/vintage
+                        hash 与 native artifact verifier。拒绝的写入不改变 evidence bytes
 CLI 授权                 不暴露 --vintage-dir / --record-path / --activation-path / --generated-at；
                         vintage 位置由 --as-of 推导，record 目的地固定
 ```

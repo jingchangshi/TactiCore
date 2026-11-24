@@ -28,6 +28,16 @@ def _require_columns(frame: pd.DataFrame, required: set[str], endpoint: str) -> 
         raise ValueError(f"{endpoint} 返回缺少字段: {sorted(missing)}")
 
 
+def _optional_tushare_date(value: object) -> pd.Timestamp | None:
+    """Tushare 的 YYYYMMDD 日期字段；空值表示未知/未退市。"""
+    if value is None or value is pd.NaT or (isinstance(value, float) and pd.isna(value)):
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    return pd.to_datetime(text, format="%Y%m%d", errors="raise").normalize()
+
+
 def _fetch_pages(
     api: Any,
     endpoint: str,
@@ -155,6 +165,27 @@ def download_tushare_dataset(
     if metadata["ts_code"].duplicated().any():
         raise ValueError("fund_basic 返回重复基金代码")
     metadata_by_code = metadata.set_index("ts_code")
+    # 只有请求标的在 L 中缺失时才查询 D：纯 L 池保持原 provenance、请求顺序与调用行为。
+    requested_codes = {str(code) for code in universe["tushare_symbol"]}
+    missing_codes = requested_codes.difference(metadata_by_code.index)
+    delisted_metadata_request: dict[str, str] | None = None
+    if missing_codes:
+        delisted_metadata_request = {**metadata_request, "status": "D"}
+        delisted = api.fund_basic(**delisted_metadata_request)
+        if delisted is None:
+            raise RuntimeError(
+                f"fund_basic(status=D) 未返回数据；无法解析标的池中的已摘牌基金: "
+                f"{sorted(missing_codes)}"
+            )
+        _require_columns(
+            delisted,
+            {"ts_code", "name", "management", "fund_type", "list_date", "delist_date"},
+            "fund_basic",
+        )
+        if delisted["ts_code"].duplicated().any():
+            raise ValueError("fund_basic(status=D) 返回重复基金代码")
+        resolved = delisted.loc[delisted["ts_code"].isin(missing_codes)]
+        metadata_by_code = pd.concat([metadata_by_code, resolved.set_index("ts_code")])
 
     adjusted_series: dict[str, pd.Series] = {}
     records: list[dict[str, Any]] = []
@@ -190,7 +221,7 @@ def download_tushare_dataset(
         if set(adjustments["ts_code"]) != {tushare_symbol}:
             raise ValueError(f"fund_adj 返回了非请求标的: {tushare_symbol}")
         if tushare_symbol not in metadata_by_code.index:
-            raise ValueError(f"fund_basic 缺少当前上市基金: {tushare_symbol}")
+            raise ValueError(f"fund_basic 缺少 universe 基金: {tushare_symbol}")
         source_metadata = metadata_by_code.loc[tushare_symbol]
         configured_list_date = pd.to_datetime(str(row.start_date)).strftime("%Y%m%d")
         if str(source_metadata["list_date"]) != configured_list_date:
@@ -212,7 +243,11 @@ def download_tushare_dataset(
             raise ValueError(f"{tushare_symbol} 有 {len(misaligned)} 个行情日期不在交易日历中")
         adjusted_series[symbol] = adjusted.rename(symbol)
 
-        active_open_dates = open_dates[open_dates >= adjusted.index.min()]
+        delist_date = _optional_tushare_date(source_metadata["delist_date"])
+        active_end = open_dates.max() if delist_date is None else min(open_dates.max(), delist_date)
+        active_open_dates = open_dates[
+            (open_dates >= adjusted.index.min()) & (open_dates <= active_end)
+        ]
         missing_dates = active_open_dates.difference(adjusted.index)
         factors = (
             adjustments.assign(
@@ -304,6 +339,8 @@ def download_tushare_dataset(
             "逐标的结果": quality_by_symbol,
         },
     }
+    if delisted_metadata_request is not None:
+        provenance["delisted_metadata_request"] = delisted_metadata_request
     return TushareDataset(prices=prices, calendar=calendar, provenance=provenance)
 
 

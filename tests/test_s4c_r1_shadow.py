@@ -21,6 +21,7 @@ from conftest import (
 )
 
 from research.experiments import frozen_target_replay
+from research.experiments import prospective_evidence as pe
 from research.experiments import run_s4c_r1_shadow as shadow
 from research.experiments import verify_s4c_r1_candidate as candidate
 
@@ -1028,3 +1029,110 @@ def test_read_only_modes_reject_as_of(
 
     with pytest.raises(SystemExit):
         shadow.main()
+
+
+# --- canonical append gate: S4C rows cannot bypass decision/execution validation ----------
+
+
+def _direct_append(record: dict[str, str], observations: Path) -> None:
+    pe.append_event_row(record, path=observations, fields=shadow.RECORD_FIELDS)
+
+
+def _tampered_targets(record: dict[str, str]) -> str:
+    targets = json.loads(record["desired_targets"])
+    donor = max(targets, key=lambda symbol: targets[symbol])
+    receiver = min(
+        (symbol for symbol in targets if symbol != donor), key=lambda symbol: targets[symbol]
+    )
+    tampered = dict(targets)
+    tampered[donor] -= 0.001
+    tampered[receiver] += 0.001
+    return json.dumps(tampered, sort_keys=True)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "match"),
+    [
+        ("candidate_id", "S2_R1", "candidate_id"),
+        ("historical_manifest_hash", "0" * 64, "manifest hash"),
+        ("prospective_data_hash", "0" * 64, "vintage hash"),
+        ("record_generated_at", "2026-10-01T08:00:00+00:00", "signal_date"),
+    ],
+)
+def test_direct_s4c_decision_append_cannot_bypass_identity_and_timing(
+    tmp_path: Path, field: str, value: str, match: str
+) -> None:
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision_record(root)
+    record[field] = value
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match=match):
+        _direct_append(record, observations)
+
+    assert observations.read_bytes() == before
+
+
+def test_direct_s4c_decision_append_rejects_undeduced_targets(tmp_path: Path) -> None:
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision_record(root)
+    record["desired_targets"] = _tampered_targets(record)
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="冻结 S4C 语义"):
+        _direct_append(record, observations)
+
+    assert observations.read_bytes() == before
+
+
+def test_direct_s4c_decision_append_requires_activation(tmp_path: Path) -> None:
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = _decision_record(root)
+    shadow.canonical_activation_path(root).unlink()
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="未激活"):
+        _direct_append(record, observations)
+
+    assert observations.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "match"),
+    [
+        ("desired_targets", "tampered", "desired_targets 必须与对应 decision 一致"),
+        ("data_as_of", "2026-09-29", "data_as_of 必须与对应 decision 一致"),
+        ("historical_manifest_hash", "0" * 64, "manifest hash"),
+        ("prospective_data_hash", "0" * 64, "vintage hash"),
+    ],
+)
+def test_direct_s4c_execution_append_cannot_bypass_frozen_state(
+    tmp_path: Path, field: str, value: str, match: str
+) -> None:
+    root, _decision_row, complete, observations = _execution_fixture(tmp_path)
+    if value == "tampered":
+        complete[field] = _tampered_targets(complete)
+    else:
+        complete[field] = value
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match=match):
+        _direct_append(complete, observations)
+
+    assert observations.read_bytes() == before
+
+
+def test_direct_s4c_append_rejects_non_official_record_type(tmp_path: Path) -> None:
+    root = _repo_with_vintage(tmp_path)
+    observations = shadow.canonical_observations_path(root)
+    record = {field: "" for field in shadow.RECORD_FIELDS}
+    record.update({"record_type": "note", "candidate_id": "S4C_R1", "signal_date": "2026-09-30"})
+    before = observations.read_bytes()
+
+    with pytest.raises(ValueError, match="decision 或 execution"):
+        _direct_append(record, observations)
+
+    assert observations.read_bytes() == before

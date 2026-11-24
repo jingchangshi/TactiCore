@@ -552,6 +552,53 @@ def test_mocked_tushare_snapshot_publishes_and_feeds_both_decisions(tmp_path: Pa
     assert s4c.decision_record_count(s4c.canonical_observations_path(root)) == 1
 
 
+@pytest.mark.parametrize("candidate_id", ["S2_R1", "S4C_R1"])
+@pytest.mark.parametrize(
+    ("downloaded_at", "match"),
+    [
+        ("2026-09-30T06:59:00+00:00", "早于 signal_close"),
+        ("2026-10-01T01:00:00+00:00", "回填决策"),
+    ],
+)
+def test_month_end_as_of_enforces_signal_day_seal_before_any_write(
+    tmp_path: Path, candidate_id: str, downloaded_at: str, match: str
+) -> None:
+    """AS_OF 恰为自然月末时也不能绕过 temporal seal：收盘前下载或次日回填必须失败。"""
+    assert AS_OF == AS_OF + pd.offsets.MonthEnd(0)
+    root = _repo(tmp_path, candidate_id)
+
+    with pytest.raises(ValueError, match=match):
+        freeze.freeze_vintage(
+            MockTushareApi(),
+            candidate_id=candidate_id,
+            as_of=AS_OF,
+            root=root,
+            downloaded_at=downloaded_at,
+        )
+
+    shadow_dir = freeze.CANDIDATES[candidate_id]
+    parent = root / shadow_dir / "vintages"
+    assert not parent.exists() or not list(parent.iterdir())
+
+
+@pytest.mark.parametrize("candidate_id", ["S2_R1", "S4C_R1"])
+def test_month_end_as_of_with_post_close_download_still_freezes(
+    tmp_path: Path, candidate_id: str
+) -> None:
+    """月末 as-of 的合法路径不变：收盘后下载且当日封存仍然成功。"""
+    root = _repo(tmp_path, candidate_id)
+
+    vintage = freeze.freeze_vintage(
+        MockTushareApi(),
+        candidate_id=candidate_id,
+        as_of=AS_OF,
+        root=root,
+        downloaded_at="2026-09-30T07:30:00+00:00",
+    )
+
+    assert vintage == root / freeze.CANDIDATES[candidate_id] / "vintages/2026-09-30"
+
+
 class _MonthEndApi(MockTushareApi):
     def __init__(self, *, missing: bool = False, future_open: bool = False) -> None:
         super().__init__(as_of="2026-10-30")

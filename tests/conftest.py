@@ -116,11 +116,14 @@ def _synthetic_provenance(
             }
             for exchange in ("SSE", "SZSE")
         ],
-        "metadata_request": {
-            "market": "E",
-            "status": "L",
-            "fields": "ts_code,name,management,fund_type,list_date,delist_date",
-        },
+        "metadata_requests": [
+            {
+                "market": "E",
+                "status": status,
+                "fields": "ts_code,name,management,fund_type,list_date,delist_date",
+            }
+            for status in ("L", "D")
+        ],
         "lookahead_control": {
             "data_availability": "trade_date 收盘价只在该交易日收盘后可用",
             "strategy_execution": "月末收盘生成信号，下一交易日执行",

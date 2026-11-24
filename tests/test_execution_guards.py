@@ -50,6 +50,20 @@ def test_empty_delisted_values_mean_not_delisted(raw: object) -> None:
     assert lifetime.delisted_date is None
 
 
+@pytest.mark.parametrize(
+    "raw",
+    [20240201, 20240201.0, "20240201", "2024-02-01", "2024-02-01 09:30:00"],
+)
+def test_integer_and_string_yyyymmdd_parse_as_dates(raw: object) -> None:
+    """整数 YYYYMMDD 不得被解释成 1970 纳秒时间戳。"""
+    assert optional_delisted_date(raw) == pd.Timestamp("2024-02-01")
+
+
+def test_boolean_delisted_date_is_rejected() -> None:
+    with pytest.raises(ValueError, match="不可解析"):
+        optional_delisted_date(True)
+
+
 def test_delisted_date_is_normalized_and_malformed_values_fail_closed() -> None:
     lifetimes = lifetimes_from_universe_with_delisting(_universe(delisted="2024-02-01 09:30:00"))
 

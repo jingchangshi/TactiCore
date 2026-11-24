@@ -428,8 +428,13 @@ def audit(
     asset_class: str,
 ) -> dict[str, Any]:
     """跑完两个引擎并产出差异审计。返回的 dict 可直接写成 CSV / 打印。"""
+    from tacticore.data.execution_guards import validate_held_liquidations
+
     lifetimes = build_lifetimes(_symbols_from_prices(prices))
     mask = build_mask(prices, suspended, lifetimes)
+    # 提交给两个引擎之前：持仓转 0 的执行日不得被停牌/生命周期 mask 判为不可交易。
+    # 首行无持仓、NaN（不下单）与连续 0 都不构成清仓，因此不会被拦截。
+    validate_held_liquidations(schedule, prices, mask, lifetimes)
 
     vectorbt = run_vectorbt_side(
         schedule, prices, mask, lifetimes, asset_class=asset_class, initial_cash=initial_cash

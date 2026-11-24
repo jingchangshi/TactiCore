@@ -30,6 +30,12 @@ AS_OF = pd.Timestamp("2026-09-30")
 SEAL = "2026-09-30T08:00:00+00:00"
 
 
+@pytest.fixture(autouse=True)
+def _frozen_decision_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    """新 decision 的可信时钟注入到 fixture 的 signal day 收盘后。"""
+    monkeypatch.setattr(pe, "runner_utc_now", lambda: pd.Timestamp(SEAL))
+
+
 class _UnusedApi:
     """守卫在下载之前就会失败；任何 API 调用都说明顺序错误。"""
 
@@ -626,10 +632,11 @@ class _MonthEndApi(MockTushareApi):
 
 @pytest.mark.parametrize("candidate_id", ["S2_R1", "S4C_R1"])
 def test_snapshot_extends_calendar_not_prices_for_weekend_month_end(
-    tmp_path: Path, candidate_id: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, candidate_id: str
 ) -> None:
     root = _repo(tmp_path, candidate_id)
     api = _MonthEndApi()
+    monkeypatch.setattr(pe, "runner_utc_now", lambda: pd.Timestamp("2026-10-30T08:00:00+00:00"))
     vintage = freeze.freeze_vintage(
         api,
         candidate_id=candidate_id,

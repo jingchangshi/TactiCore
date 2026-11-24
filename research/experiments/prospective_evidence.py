@@ -767,6 +767,27 @@ def trusted_generation_instant() -> pd.Timestamp:
     return instant.tz_convert("UTC")
 
 
+def trusted_shanghai_now() -> pd.Timestamp:
+    """新 decision 追加的可信时钟：复用 runner 时钟 seam，测试可注入。"""
+    instant = require_timezone_aware_instant(runner_utc_now(), label="trusted decision clock")
+    return instant.tz_convert(SHANGHAI_TIMEZONE)
+
+
+def verify_new_decision_is_current(record: Mapping[str, str], *, signal_date: object) -> None:
+    """新 decision 不能只信记录自报的时间：必须在其 signal_date 的真实上海日历日追加。"""
+    signal = normalize_signal_date(signal_date)
+    now = trusted_shanghai_now()
+    if now.date() != signal.date():
+        raise ValueError(
+            "新 decision 只能在其 signal_date 的真实上海日历日追加：拒绝回填或提前写入的 decision"
+        )
+    seal = require_timezone_aware_instant(
+        record["record_generated_at"], label="record_generated_at"
+    )
+    if seal > now + pd.Timedelta(minutes=1):
+        raise ValueError("record_generated_at 晚于可信上海时钟：拒绝未来时间")
+
+
 def execution_observation_instant(execution_date: object) -> pd.Timestamp:
     """daily-bar 语义：execution 观测在 execution_date 收盘（15:00 Asia/Shanghai）才存在。"""
     return signal_close_instant(execution_date)
@@ -1487,12 +1508,20 @@ def _verify_s2_decision_state(
     from research.experiments import run_s2_r1_shadow as s2
 
     s2.verify_decision_row(record, manifest=manifest, expected_symbols=vintage.prices.columns)
+    s2.validate_month_end_review(vintage.raw_calendar, signal)
+    first_eligible = s2.derive_first_eligible_signal(manifest, vintage.raw_calendar)
+    if first_eligible is not None and signal < first_eligible:
+        raise ValueError(
+            "prospective --as-of 早于由冻结月度语义推导的 first eligible signal；"
+            "该时点不可形成前瞻证据"
+        )
     verify_signal_day_seal(
         signal_date=signal,
         download_timestamp=vintage.provenance.download_timestamp,
         decision_seal_time=record["record_generated_at"],
         calendar=vintage.raw_calendar,
     )
+    verify_new_decision_is_current(record, signal_date=signal)
     targets = parse_weight_vector(
         record["desired_targets"], expected_symbols=vintage.prices.columns, label="desired_targets"
     )
@@ -1516,12 +1545,14 @@ def _verify_s4c_decision_state(
     from research.experiments import run_s4c_r1_shadow as s4c
 
     s4c.verify_decision_row(record, manifest=manifest, expected_symbols=vintage.prices.columns)
+    s4c.validate_month_end(vintage.raw_calendar, signal, manifest)
     verify_signal_day_seal(
         signal_date=signal,
         download_timestamp=vintage.provenance.download_timestamp,
         decision_seal_time=record["record_generated_at"],
         calendar=vintage.raw_calendar,
     )
+    verify_new_decision_is_current(record, signal_date=signal)
     targets = parse_weight_vector(
         record["desired_targets"], expected_symbols=vintage.prices.columns, label="desired_targets"
     )
@@ -1570,9 +1601,8 @@ def _verify_s2_canonical_record(
         raise ValueError("execution 行只能追加在唯一对应的 decision 行之后")
     decision = decisions[0]
     _require_unchanged_decision_fields(record, decision, S2_EXECUTION_DECISION_FIELDS)
-    _verify_s2_decision_state(
-        decision, root=root, signal=signal, vintage=vintage, manifest=manifest
-    )
+    # execution 行只比对已封存 decision、manifest/vintage hash 与 native artifact verifier；
+    # 不重算策略目标：S4C 的跨平台合法 Δw 会让 exact dict 相等永久阻断 execution 追加。
     s2.verify_execution_row(
         record,
         decision=decision,
@@ -1621,9 +1651,8 @@ def _verify_s4c_canonical_record(
         raise ValueError("execution 行只能追加在唯一对应的 decision 行之后")
     decision = decisions[0]
     _require_unchanged_decision_fields(record, decision, S4C_EXECUTION_DECISION_FIELDS)
-    _verify_s4c_decision_state(
-        decision, root=root, signal=signal, vintage=vintage, manifest=manifest
-    )
+    # 同 S2：execution 追加不重新求解 ERC，也不做 exact target 相等；只信已封存 decision
+    # 与 manifest/vintage hash，并由 native artifact verifier 绑定目标与实际执行。
     s4c.verify_execution_row(
         record,
         decision=decision,

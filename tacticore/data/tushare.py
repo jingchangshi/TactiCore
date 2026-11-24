@@ -28,6 +28,16 @@ def _require_columns(frame: pd.DataFrame, required: set[str], endpoint: str) -> 
         raise ValueError(f"{endpoint} 返回缺少字段: {sorted(missing)}")
 
 
+def _optional_tushare_date(value: object) -> pd.Timestamp | None:
+    """Tushare 的 YYYYMMDD 日期字段；空值表示未知/未退市。"""
+    if value is None or value is pd.NaT or (isinstance(value, float) and pd.isna(value)):
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    return pd.to_datetime(text, format="%Y%m%d", errors="raise").normalize()
+
+
 def _fetch_pages(
     api: Any,
     endpoint: str,
@@ -139,39 +149,43 @@ def download_tushare_dataset(
         raise ValueError(f"universe 缺少 Tushare 字段: {sorted(missing_columns)}")
 
     calendar = _load_calendar(api, start_date, end_date)
-    # 上市（L）与已摘牌（D）基金都必须进入元数据：标的池可能包含已退市 ETF，
-    # 只查 status="L" 会把它当成“缺少当前上市基金”而崩溃。
-    metadata_requests = [
-        {
-            "market": "E",
-            "status": status,
-            "fields": "ts_code,name,management,fund_type,list_date,delist_date",
-        }
-        for status in ("L", "D")
-    ]
-    metadata_frames: list[pd.DataFrame] = []
-    for metadata_request in metadata_requests:
-        metadata = api.fund_basic(**metadata_request)
-        if metadata is None:
-            raise RuntimeError(f"fund_basic(status={metadata_request['status']}) 未返回数据")
+    metadata_request = {
+        "market": "E",
+        "status": "L",
+        "fields": "ts_code,name,management,fund_type,list_date,delist_date",
+    }
+    metadata = api.fund_basic(**metadata_request)
+    if metadata is None:
+        raise RuntimeError("fund_basic 未返回数据")
+    _require_columns(
+        metadata,
+        {"ts_code", "name", "management", "fund_type", "list_date", "delist_date"},
+        "fund_basic",
+    )
+    if metadata["ts_code"].duplicated().any():
+        raise ValueError("fund_basic 返回重复基金代码")
+    metadata_by_code = metadata.set_index("ts_code")
+    # 只有请求标的在 L 中缺失时才查询 D：纯 L 池保持原 provenance、请求顺序与调用行为。
+    requested_codes = {str(code) for code in universe["tushare_symbol"]}
+    missing_codes = requested_codes.difference(metadata_by_code.index)
+    delisted_metadata_request: dict[str, str] | None = None
+    if missing_codes:
+        delisted_metadata_request = {**metadata_request, "status": "D"}
+        delisted = api.fund_basic(**delisted_metadata_request)
+        if delisted is None:
+            raise RuntimeError(
+                f"fund_basic(status=D) 未返回数据；无法解析标的池中的已摘牌基金: "
+                f"{sorted(missing_codes)}"
+            )
         _require_columns(
-            metadata,
+            delisted,
             {"ts_code", "name", "management", "fund_type", "list_date", "delist_date"},
             "fund_basic",
         )
-        if metadata["ts_code"].duplicated().any():
-            raise ValueError("fund_basic 返回重复基金代码")
-        metadata_frames.append(metadata.assign(request_status=metadata_request["status"]))
-    metadata = pd.concat(metadata_frames, ignore_index=True)
-    identity_fields = ["name", "management", "fund_type", "list_date", "delist_date"]
-    repeated = metadata["ts_code"].duplicated(keep=False)
-    if repeated.any():
-        # 供应商若忽略 status 过滤会同时返回 L/D 两行；身份字段必须一致，且优先保留 L。
-        conflicts = metadata.loc[repeated].groupby("ts_code")[identity_fields].nunique(dropna=False)
-        if (conflicts > 1).any().any():
-            raise ValueError("fund_basic 的 L/D 状态间身份字段不一致")
-        metadata = metadata.drop_duplicates(subset="ts_code", keep="first")
-    metadata_by_code = metadata.set_index("ts_code")
+        if delisted["ts_code"].duplicated().any():
+            raise ValueError("fund_basic(status=D) 返回重复基金代码")
+        resolved = delisted.loc[delisted["ts_code"].isin(missing_codes)]
+        metadata_by_code = pd.concat([metadata_by_code, resolved.set_index("ts_code")])
 
     adjusted_series: dict[str, pd.Series] = {}
     records: list[dict[str, Any]] = []
@@ -229,7 +243,11 @@ def download_tushare_dataset(
             raise ValueError(f"{tushare_symbol} 有 {len(misaligned)} 个行情日期不在交易日历中")
         adjusted_series[symbol] = adjusted.rename(symbol)
 
-        active_open_dates = open_dates[open_dates >= adjusted.index.min()]
+        delist_date = _optional_tushare_date(source_metadata["delist_date"])
+        active_end = open_dates.max() if delist_date is None else min(open_dates.max(), delist_date)
+        active_open_dates = open_dates[
+            (open_dates >= adjusted.index.min()) & (open_dates <= active_end)
+        ]
         missing_dates = active_open_dates.difference(adjusted.index)
         factors = (
             adjustments.assign(
@@ -275,7 +293,6 @@ def download_tushare_dataset(
                     "fund_type": source_metadata["fund_type"],
                     "list_date": source_metadata["list_date"],
                     "delist_date": source_metadata["delist_date"],
-                    "request_status": source_metadata["request_status"],
                 },
             }
         )
@@ -307,7 +324,7 @@ def download_tushare_dataset(
             }
             for exchange in ("SSE", "SZSE")
         ],
-        "metadata_requests": metadata_requests,
+        "metadata_request": metadata_request,
         "lookahead_control": {
             "data_availability": "trade_date 收盘价只在该交易日收盘后可用",
             "strategy_execution": "月末收盘生成信号，下一交易日执行",
@@ -322,6 +339,8 @@ def download_tushare_dataset(
             "逐标的结果": quality_by_symbol,
         },
     }
+    if delisted_metadata_request is not None:
+        provenance["delisted_metadata_request"] = delisted_metadata_request
     return TushareDataset(prices=prices, calendar=calendar, provenance=provenance)
 
 

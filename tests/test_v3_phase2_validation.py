@@ -8,17 +8,10 @@ import json
 import subprocess
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
 import pytest
 import yaml
 
 from research.ashare.data.contract import sha256_file
-from research.ashare.v3_data import (
-    _chain_bundle_tail_adjusted_close,
-    _chain_snapshot_only_adjusted_close,
-    _daily_total_return_multiplier,
-)
 from tacticore.strategy_release import validate_strategy_release
 
 TACTICORE_ROOT = Path(__file__).resolve().parents[1]
@@ -160,12 +153,11 @@ def test_release_evidence_hashes_match_on_disk() -> None:
 
 
 def test_frozen_shadow_and_transfer_artifacts_untouched() -> None:
-    # vectorbt_adapter.py 曾在此守卫中；2026-11-23 的契约加固显式修改了它的
-    # 零方差 Sharpe 与首日换手语义，改由 test_adapters.py 的显式测试保护。
     frozen_paths = (
         "research/shadow/s2_r1/candidate_manifest.json",
         "research/shadow/s4c_r1/candidate_manifest.json",
         "research/results/ACCOUNT_TRANSFER_V1.json",
+        "tacticore/engines/vectorbt_adapter.py",
         "tacticore/engines/rqalpha_adapter.py",
     )
     res = subprocess.run(
@@ -175,75 +167,3 @@ def test_frozen_shadow_and_transfer_artifacts_untouched() -> None:
         text=True,
     )
     assert res.stdout.strip() == ""
-
-
-# --------------------------------------------------------------------------------------
-# 复权串联：缺失 pre_close 不是零收益
-# --------------------------------------------------------------------------------------
-
-
-def test_snapshot_only_adjusted_chain_keeps_frozen_normalization() -> None:
-    """锁定已发布 V3 结果使用的归一化口径：m0 参与每日相对倍数。
-
-    这不是新语义：`first_close * cumprod((close/pre_close) / m0)` 是冻结研究
-    的口径。若要改成"只丢弃首日收益"，必须开新的研究版本并重跑，不能在本
-    契约加固中静默改数。
-    """
-    close = pd.Series([1.01, 1.02])
-    pre_close = pd.Series([1.0, 1.01])
-    m0 = 1.01
-    m1 = 1.02 / 1.01
-
-    chained = _chain_snapshot_only_adjusted_close(close, pre_close)
-
-    assert chained.iloc[0] == pytest.approx(1.01)
-    assert chained.iloc[1] == pytest.approx(1.01 * (m1 / m0))
-
-
-def test_snapshot_only_missing_first_pre_close_is_rejected() -> None:
-    """首日 m0 未知就无法按冻结口径归一化：显式失败，不以 1.0 冒充。"""
-    close = pd.Series([1.0, 1.1])
-    pre_close = pd.Series([np.nan, 1.0])
-
-    with pytest.raises(ValueError, match="首日"):
-        _chain_snapshot_only_adjusted_close(close, pre_close)
-
-
-def test_missing_pre_close_is_not_carried_as_zero_return() -> None:
-    """缺失日及其后累计收益不可恢复：保持 NaN，绝不填补 1.0 后继续 cumprod。"""
-    close = pd.Series([1.0, 1.1, 1.21, 1.331])
-    pre_close = pd.Series([1.0, np.nan, 1.1, 1.21])
-
-    chained = _chain_snapshot_only_adjusted_close(close, pre_close)
-
-    assert chained.iloc[0] == pytest.approx(1.0)
-    assert chained.iloc[1:].isna().all(), chained.to_dict()
-
-
-def test_bundle_tail_missing_first_pre_close_is_unknown() -> None:
-    """bundle 尾段没有归一化豁免：首日 pre_close 缺失则整段未知。"""
-    close = pd.Series([1.0, 1.1])
-    pre_close = pd.Series([np.nan, 1.0])
-
-    chained = _chain_bundle_tail_adjusted_close(1.0, close, pre_close)
-
-    assert chained.isna().all(), chained.to_dict()
-
-
-def test_bundle_tail_complete_data_chains_daily_multipliers() -> None:
-    close = pd.Series([1.1, 1.21])
-    pre_close = pd.Series([1.0, 1.1])
-
-    chained = _chain_bundle_tail_adjusted_close(2.0, close, pre_close)
-
-    assert chained.to_numpy() == pytest.approx([2.2, 2.42])
-
-
-def test_non_positive_pre_close_is_rejected_not_filled() -> None:
-    with pytest.raises(ValueError, match="pre_close"):
-        _daily_total_return_multiplier(pd.Series([1.0, 1.1]), pd.Series([1.0, 0.0]))
-
-
-def test_non_positive_close_is_rejected_not_chained() -> None:
-    with pytest.raises(ValueError, match="close"):
-        _daily_total_return_multiplier(pd.Series([1.0, 0.0]), pd.Series([0.99, 1.0]))

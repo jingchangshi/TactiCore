@@ -125,7 +125,7 @@ TactiCore 研究假设、对照、样本外、成本和执行、市场状态适�
 
 研究成熟、冻结、前瞻影子激活及生产批准是不同阶段。候选达到其预注册的评审资格后，仍须独立生产准入审核，核验适用域、风险、成本、可执行性和证据；各策略的前瞻期限按协议确定。S2 R1 和 S4C R1 是冻结的活动前瞻影子候选，均非生产候选；其当前状态和阻塞以 [CURRENT_STATE](CURRENT_STATE.md) 及候选协议为准。错过的前瞻窗口不得回填，决策须在执行结果可观察之前封存。
 
-目标接口已实现为有界、版本化的 `strategy-release-1` schema：`tacticore/strategy_release.py` 离线校验策略身份与版本、冻结规则和参数、数据来源与快照及时间范围、适用市场与环境、信号时点与最早执行及退出/费用/整手假设、证据引用及其内容哈希、研究状态及 `production_admission`（`NOT_APPROVED` / `APPROVED_FOR_ACCOUNT`）。schema 与校验器的存在**不**代表任何候选获得生产批准：批准责任人、审核标准与具体准入决定仍按策略独立作出，并记录在对应 release 与 [CURRENT_STATE](CURRENT_STATE.md) 中。FinanceMCP 只正式启用经批准版本，并对相同输入与版本验证信号语义一致；简单规则可经一致性验证移植，复杂策略可考虑隔离批处理，无需在线研究服务或通用插件平台。
+目标接口已实现为有界、版本化的 `strategy-release-1` schema：`tacticore/strategy_release.py` 离线校验策略身份与版本、冻结规则和参数、数据来源与快照及时间范围、适用市场与环境、信号时点与最早执行及退出/费用/整手假设、证据引用及每个引用的 SHA-256 格式与整包 `content_hash`（validator 只校验格式与整包哈希，**不读取证据文件本身**）、研究状态及 `production_admission`（`NOT_APPROVED` / `APPROVED_FOR_ACCOUNT`）。schema 与校验器的存在**不**代表任何候选获得生产批准：批准责任人、审核标准与具体准入决定仍按策略独立作出，并记录在对应 release 与 [CURRENT_STATE](CURRENT_STATE.md) 中。FinanceMCP 只正式启用经批准版本，并对相同输入与版本验证信号语义一致；简单规则可经一致性验证移植，复杂策略可考虑隔离批处理，无需在线研究服务或通用插件平台。
 
 FinanceMCP 可向 TactiCore 返回版本化的市场状态、信号、账户约束下的拒绝原因及后续表现，用于研究失效、暂停或退役建议；这些反馈不能改变已冻结的历史或伪造前瞻证据。日常机会比较、持仓与现金约束、条件化账户预案属于 FinanceMCP，最终交易由投资者决定。
 

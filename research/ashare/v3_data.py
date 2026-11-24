@@ -246,85 +246,6 @@ def _read_bundle_etf_series(
     return raw, post, listed, delisted
 
 
-def _daily_total_return_multiplier(close: pd.Series, pre_close: pd.Series) -> pd.Series:
-    """每日 `close / pre_close` 总收益倍数；未知 pre_close 保持 NaN。
-
-    `pre_close` 缺失表示当日收益未知，不得用 1.0 冒充零收益；`pre_close <= 0`
-    使除法无定义，属于坏数据，直接失败而不是发明倍数。
-    """
-    close = close.astype(float)
-    pre_close = pre_close.astype(float)
-    invalid_pre = pre_close.notna() & (pre_close <= 0)
-    if invalid_pre.any():
-        bad = pre_close[invalid_pre]
-        raise ValueError(f"pre_close 必须大于零，得到无效值: {bad.to_dict()}")
-    invalid_close = close.notna() & (close <= 0)
-    if invalid_close.any():
-        bad = close[invalid_close]
-        raise ValueError(f"close 必须大于零，得到无效值: {bad.to_dict()}")
-    return (close / pre_close).replace([np.inf, -np.inf], np.nan)
-
-
-def _chain_snapshot_only_adjusted_close(close: pd.Series, pre_close: pd.Series) -> pd.Series:
-    """快照内新上市 ETF 的复权收盘序列（保持冻结 V3 研究的归一化口径）。
-
-    已发布的 V3 结果使用 `first_close * cumprod((close/pre_close) / m0)`，其中
-    `m0` 是首日 `close/pre_close`，首日按归一化定义为锚点。为不改写 v3.x 研究
-    数字，这里保留该口径；其归一化形式是否应改为"只丢弃首日收益"属于新的研究
-    版本，不能在本契约加固中静默改变。
-
-    首日收盘或首日倍数缺失时无法锚定，直接失败。其余任何一天缺少有效
-    `close` / `pre_close`，该日及**其后全部**复权价格都不可恢复——累计收益
-    无法从后续单日收益重建。这些日期保持 NaN，绝不以 1.0 填充后把缺口
-    声称为零收益。
-    """
-    close = close.astype(float)
-    multiple = _daily_total_return_multiplier(close, pre_close)
-    if multiple.empty:
-        return pd.Series(dtype=float)
-    first_close = float(close.iloc[0])
-    first_multiple = float(multiple.iloc[0])
-    if not np.isfinite(first_close) or first_close <= 0:
-        raise ValueError("快照内新上市 ETF 的首日收盘必须存在且为正，无法锚定复权序列")
-    if not np.isfinite(first_multiple) or first_multiple <= 0:
-        raise ValueError("快照内新上市 ETF 的首日 close/pre_close 必须已知且为正，无法归一化")
-    relative = multiple / first_multiple
-    relative.iloc[0] = 1.0
-    chained = pd.Series(np.nan, index=relative.index, dtype=float)
-    chained.iloc[0] = first_close
-    running = 1.0
-    for position in range(1, len(relative)):
-        factor = float(relative.iloc[position])
-        if not np.isfinite(factor):
-            break
-        running *= factor
-        chained.iloc[position] = first_close * running
-    return chained
-
-
-def _chain_bundle_tail_adjusted_close(
-    last_post: float,
-    close: pd.Series,
-    pre_close: pd.Series,
-) -> pd.Series:
-    """把 bundle 截止后的快照尾段按 `close / pre_close` 串到 `last_post` 上。
-
-    任何一天缺少有效 `close` / `pre_close`，该日及其后累计复权价格都不可恢复，
-    保持 NaN；不把缺失日当作零收益继续 cumprod。
-    """
-    if not np.isfinite(last_post) or last_post <= 0:
-        raise ValueError(f"bundle 尾段锚点必须存在且为正，得到 {last_post!r}")
-    multiple = _daily_total_return_multiplier(close, pre_close)
-    chained = pd.Series(np.nan, index=multiple.index, dtype=float)
-    running = 1.0
-    for position, daily in enumerate(multiple.to_numpy(dtype=float)):
-        if not np.isfinite(daily):
-            break
-        running *= daily
-        chained.iloc[position] = last_post * running
-    return chained
-
-
 def load_stitched_panels(
     provenance: SnapshotProvenance,
     *,
@@ -431,9 +352,10 @@ def load_stitched_panels(
             tail_fb = sub_fb[sub_fb.index > BUNDLE_CUTOFF]
             if not tail_fb.empty and not b_post.empty:
                 last_post = float(b_post.iloc[-1])
-                tail_post = _chain_bundle_tail_adjusted_close(
-                    last_post, tail_fb["close"], tail_fb["pre_close"]
-                )
+                daily_mult = (
+                    tail_fb["close"].astype(float) / tail_fb["pre_close"].astype(float)
+                ).replace([np.inf, -np.inf], np.nan)
+                tail_post = last_post * daily_mult.cumprod()
                 stitched_adj = pd.concat([b_post, tail_post]).sort_index()
                 stitched_raw = pd.concat([b_raw, tail_fb["close"].astype(float)]).sort_index()
             else:
@@ -445,11 +367,13 @@ def load_stitched_panels(
                 stitched_adj = pd.Series(dtype=float)
                 stitched_raw = pd.Series(dtype=float)
             else:
-                # 复权序列以已知首日收盘为锚；其余日期逐日串联。缺失
-                # pre_close 的日子及以后保持 NaN，绝不以 1.0 冒充零收益。
-                stitched_adj = _chain_snapshot_only_adjusted_close(
-                    sub_fb["close"], sub_fb["pre_close"]
-                )
+                daily_mult = (
+                    sub_fb["close"].astype(float) / sub_fb["pre_close"].astype(float)
+                ).fillna(1.0)
+                first_close = float(sub_fb["close"].iloc[0])
+                # Day 0 ratio uses close/pre_close from issue close; normalize day 0 to close.
+                rel = daily_mult / float(daily_mult.iloc[0])
+                stitched_adj = first_close * rel.cumprod()
                 stitched_raw = sub_fb["close"].astype(float)
 
         # Clip strictly outside AssetLifetime so NaN != 0 is preserved

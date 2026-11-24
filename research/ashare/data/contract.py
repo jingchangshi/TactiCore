@@ -65,6 +65,13 @@ REQUIRED_DATASET_FIELDS = (
 #: 数据质量状态。DEGRADED 允许加载，但调用方必须显式确认，不得静默接受。
 KNOWN_QUALITY_STATUS = ("READY", "DEGRADED")
 
+#: FinanceMCP `research-export --financial-availability` 的两种模式。
+#: `announcement-date-v1` 承诺财务行满足 valid(end_date) ∧ valid(ann_date)
+#: ∧ end_date <= ann_date <= as_of；`legacy` 不承诺，空 ann_date 允许保留。
+FINANCIAL_AVAILABILITY_MODES = ("legacy", "announcement-date-v1")
+#: 旧版 manifest 没有该后缀，等价于 legacy。
+FINANCIAL_AVAILABILITY_MARKER = "financial_availability="
+
 
 class SnapshotContractError(ValueError):
     """快照契约校验失败。"""
@@ -108,6 +115,7 @@ class SnapshotManifest:
     reasons: tuple[str, ...]
     data_cutoff: str | None
     availability_semantics: Mapping[str, Any]
+    financial_availability: str
     code_mapping_version: str
     adjustment_policy: Mapping[str, Any]
     content_hashes: Mapping[str, str]
@@ -176,6 +184,46 @@ def _require_iso_date(value: object, *, label: str) -> str:
         return f"{text[:4]}-{text[4:6]}-{text[6:]}"
     except (ValueError, IndexError) as error:
         raise SnapshotContractError(f"{label} 不是有效日期: {text!r}") from error
+
+
+def _parse_financial_availability(semantics: Mapping[str, Any]) -> str:
+    """从 `availability_semantics.financial_indicator` 解析导出方的财务可得性模式。
+
+    旧版 manifest 没有 `financial_availability=` 后缀，等价于 `legacy`；出现未知
+    模式即拒绝，因为读取方无法知道 `ann_date` 是否经过边界过滤。
+    """
+    raw = semantics.get("financial_indicator")
+    if raw is None:
+        return "legacy"
+    text = _require_str(raw, label="availability_semantics.financial_indicator")
+    if FINANCIAL_AVAILABILITY_MARKER not in text:
+        return "legacy"
+    mode = text.split(FINANCIAL_AVAILABILITY_MARKER, 1)[1].split(";", 1)[0].strip()
+    if mode not in FINANCIAL_AVAILABILITY_MODES:
+        raise SnapshotContractError(
+            f"未知的 financial_availability {mode!r}"
+            f"（已知: {', '.join(FINANCIAL_AVAILABILITY_MODES)}）"
+        )
+    return mode
+
+
+def _validate_announcement_date_v1_structure(datasets: list[DatasetEntry]) -> None:
+    """announcement-date-v1 的结构前提：财务数据集必须按 ann_date 过滤且声明 end_date。"""
+    for entry in datasets:
+        if entry.dataset != "financial_indicator":
+            continue
+        if entry.time_column != "ann_date" or not entry.as_of_filtered:
+            raise SnapshotContractError(
+                "financial_availability=announcement-date-v1 要求 financial_indicator 按 "
+                f"ann_date 做 as-of 过滤；实际 time_column={entry.time_column!r}, "
+                f"as_of_filtered={entry.as_of_filtered}"
+            )
+        if "end_date" not in entry.columns or "ann_date" not in entry.columns:
+            raise SnapshotContractError(
+                "financial_availability=announcement-date-v1 要求 financial_indicator 同时声明 "
+                f"end_date 与 ann_date 列；实际 columns={list(entry.columns)}"
+            )
+        return
 
 
 def verify_snapshot_manifest(
@@ -302,6 +350,12 @@ def verify_snapshot_manifest(
     algorithm = manifest.get("snapshot_id_algorithm", "legacy-source-v1")
     if algorithm not in ("legacy-source-v1", "content-hashes-v1", "dataset-manifest-v2"):
         raise SnapshotContractError(f"不支持的 snapshot_id_algorithm: {algorithm!r}")
+    availability_semantics = _require_mapping(
+        manifest["availability_semantics"], label="availability_semantics"
+    )
+    financial_availability = _parse_financial_availability(availability_semantics)
+    if financial_availability == "announcement-date-v1":
+        _validate_announcement_date_v1_structure(datasets)
     identity: dict[str, Any] = {
         "schema_version": schema_version,
         "as_of": as_of_text,
@@ -369,9 +423,8 @@ def verify_snapshot_manifest(
         missing_datasets=missing_datasets,
         reasons=reasons,
         data_cutoff=data_cutoff,
-        availability_semantics=_require_mapping(
-            manifest["availability_semantics"], label="availability_semantics"
-        ),
+        availability_semantics=availability_semantics,
+        financial_availability=financial_availability,
         code_mapping_version=_require_str(
             manifest["code_mapping_version"], label="code_mapping_version"
         ),

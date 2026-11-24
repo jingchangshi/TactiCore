@@ -240,6 +240,55 @@ def test_AA07_the_price_limit_table_survives_the_adapter(frames) -> None:
     assert {"ts_code", "trade_date", "up_limit", "down_limit"} <= set(frames.price_limits.columns)
 
 
+# --------------------------------------------------------------------------------------
+# 财务可得性模式：announcement-date-v1 的 manifest 契约（行过滤由导出方负责）
+# --------------------------------------------------------------------------------------
+
+
+def _set_financial_availability(snapshot: Path, mode: str) -> None:
+    """把 fixture 的财务可得性语义改写为指定模式（manifest 由测试自行负责身份一致性）。"""
+    path = snapshot / "manifest.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    semantics = raw["availability_semantics"]
+    base = semantics["financial_indicator"].split("; financial_availability=", 1)[0]
+    semantics["financial_indicator"] = f"{base}; financial_availability={mode}"
+    path.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+
+
+def test_FA01_a_legacy_export_declares_legacy_financial_availability(manifest) -> None:
+    """旧导出没有 financial_availability 后缀：按 legacy 处理，不臆造新模式。"""
+    assert manifest.financial_availability == "legacy"
+
+
+def test_FA02_announcement_date_v1_mode_is_parsed_from_the_manifest(snapshot: Path) -> None:
+    _set_financial_availability(snapshot, "announcement-date-v1")
+
+    manifest = load_snapshot_manifest(snapshot, verify_content=False)
+
+    assert manifest.financial_availability == "announcement-date-v1"
+
+
+def test_FA03_announcement_date_v1_requires_ann_date_as_the_filter_column(snapshot: Path) -> None:
+    """模式声明必须与 dataset 元数据一致；按 trade_date 过滤的财务表不能冒充公告日过滤。"""
+    _set_financial_availability(snapshot, "announcement-date-v1")
+    path = snapshot / "manifest.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    entry = next(d for d in raw["dataset_manifest"] if d["dataset"] == "financial_indicator")
+    entry["time_column"] = "trade_date"
+    path.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+
+    with pytest.raises(SnapshotContractError, match="ann_date"):
+        load_snapshot_manifest(snapshot, verify_content=False)
+
+
+def test_FA04_an_unknown_financial_availability_mode_is_refused(snapshot: Path) -> None:
+    """读取方不认识的模式意味着无法判断 ann_date 语义，必须失败。"""
+    _set_financial_availability(snapshot, "announcement-date-v2")
+
+    with pytest.raises(SnapshotContractError, match="financial_availability"):
+        load_snapshot_manifest(snapshot, verify_content=False)
+
+
 def test_AA08_the_adapter_output_feeds_the_unmodified_engine_contract(frames) -> None:
     """产物必须能直接交给未修改的 `run_target_weights()`。
 

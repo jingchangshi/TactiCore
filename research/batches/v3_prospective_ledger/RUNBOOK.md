@@ -53,6 +53,9 @@ $PY -m research.experiments.v3_prospective_ledger init
 （`top_position.name` 这类"合法形状被误拒"的缺陷只能被端到端彩排抓到）：
 
 ```bash
+DATE=$(TZ=Asia/Shanghai date +%Y%m%d)
+BRIEF=~/.local/share/ashare-private/daily-briefs/$DATE.json
+CAL=~/.local/share/finance-mcp-ashare/ashare.sqlite
 REHEARSAL=$(mktemp -d)/ledger
 $PY -m research.experiments.v3_prospective_ledger --ledger-root "$REHEARSAL" init
 $PY -m research.experiments.v3_prospective_ledger --ledger-root "$REHEARSAL" \

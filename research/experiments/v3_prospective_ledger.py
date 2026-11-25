@@ -672,7 +672,7 @@ def _validate_action(action: object) -> Mapping[str, Any]:
     return payload
 
 
-def _validate_recommendation_content(content: Mapping[str, Any]) -> None:
+def _validate_recommendation_content(content: Mapping[str, Any], missing: tuple[str, ...]) -> None:
     required = {
         "brief_schema",
         "report_id",
@@ -695,6 +695,8 @@ def _validate_recommendation_content(content: Mapping[str, Any]) -> None:
         _parse_ymd(
             content["expected_execution_date"], label="RECOMMENDATION expected_execution_date"
         )
+    elif "expected_execution_date" not in missing:
+        raise LedgerCorruption("RECOMMENDATION expected_execution_date 为空但未记入 missing_fields")
     try:
         _validate_action(content["action"])
     except LedgerRefusal as error:
@@ -856,7 +858,7 @@ def _validate_content(record_type: str, content: object, missing: tuple[str, ...
         if record_type == "SIGNAL":
             _validate_signal_content(payload, missing)
         elif record_type == "RECOMMENDATION":
-            _validate_recommendation_content(payload)
+            _validate_recommendation_content(payload, missing)
         elif record_type == "VALUATION":
             _validate_valuation_content(payload, missing)
         elif record_type == "CONFIRMED_FILL":
@@ -1358,13 +1360,17 @@ def _recommendation_drafts(
     if validated["status"] == "DATA_INSUFFICIENT":
         return []
     drafts: list[Draft] = []
+    expected_execution = validated["expected_next_trade_date"]
+    missing: tuple[str, ...] = (
+        () if expected_execution is not None else ("expected_execution_date",)
+    )
     for action in validated["actions"]:
         content = {
             "brief_schema": BRIEF_SCHEMA,
             "report_id": validated["report_id"],
             "status": validated["status"],
             "generated_at": validated["generated_at"].isoformat(),
-            "expected_execution_date": validated["expected_next_trade_date"],
+            "expected_execution_date": expected_execution,
             "action": copy.deepcopy(dict(action)),
         }
         drafts.append(
@@ -1378,7 +1384,7 @@ def _recommendation_drafts(
                 content=content,
                 source=copy.deepcopy(dict(source)),
                 policy=dict(policy),
-                missing_fields=(),
+                missing_fields=missing,
             )
         )
     return drafts
@@ -2002,10 +2008,10 @@ def status_report(
         if expected is None:
             continue
         if open_days_for_age:
-            # 等待的交易日数：从执行日起到昨日（含端点）的开市日。
-            age = len([day for day in open_days_for_age if expected <= day <= upper])
+            # 执行日之后已过去的交易日数；执行日当天不计。
+            age = len([day for day in open_days_for_age if expected < day <= upper])
         else:
-            age = (now_date - date.fromisoformat(_iso_day(expected))).days
+            age = max(0, (now_date - date.fromisoformat(_iso_day(expected))).days - 1)
         if age >= 3:
             stale_unresolved.append(recommendation_id)
     pause_reasons: list[str] = []

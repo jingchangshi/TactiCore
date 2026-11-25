@@ -570,6 +570,28 @@ def test_brief_generated_on_a_different_shanghai_day_is_rejected() -> None:
         ledger._validate_brief(brief, account_id="real-main", now=NOW)
 
 
+def test_recommendation_explicitly_records_missing_expected_execution_date(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = init(tmp_path)
+    ingest(tmp_path, make_brief())
+    monkeypatch.setattr(
+        ledger, "utc_now", lambda: datetime(2026, 11, 27, 13, 0, tzinfo=timezone.utc)
+    )
+    second = make_brief(as_of=NEXT_DAY, generated_at="2026-11-27T12:00:00Z")
+    second["report_id"] = "e" * 64
+    ingest(tmp_path, second, name="second.json")
+    recommendations = [
+        event
+        for event in ledger.read_events(root, "RECOMMENDATION")
+        if event["as_of_trade_date"] == NEXT_DAY
+    ]
+    assert recommendations
+    for event in recommendations:
+        assert "expected_execution_date" in event["missing_fields"]
+        assert event["content"]["expected_execution_date"] is None
+
+
 # --------------------------------------------------------------------------------------
 # Explicit missing
 # --------------------------------------------------------------------------------------

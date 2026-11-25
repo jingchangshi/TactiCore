@@ -125,17 +125,22 @@ V1 的 `1e-12` reproduction 判据不可跨平台达成，作为 `INVALID_RUN` �
 | Local strategy | Canonical external mapping | Tier | Local question/status | Local result does NOT prove |
 | --- | --- | --- | --- | --- |
 | S1 | cross-sectional / dual momentum | E1/E3 | 受限ETF transfer，REJECTED | 全球 momentum 被否定 |
-| S2 | time-series momentum | E1 | 长多ETF transfer，PROSPECTIVE_SHADOW_ACTIVE | 已获得生产资格 |
+| S2 | time-series momentum | E1 | 长多ETF transfer，PROSPECTIVE_SHADOW_ACTIVE（A：`S2_R1=EQUIVALENT` max 4.44e-9；已建 `S2_R1F` 且 11-25 仅封存 `vintage`，`observations=0`） | 已获得生产资格 |
 | S3A | industry momentum | E1 | 中国行业ETF transfer，REJECTED | industry momentum 不存在 |
 | S3B | aggregate breadth regime | E4 | 本地广度假设，REJECTED | 所有 breadth 规则无效 |
 | S3C | per-sector trend transfer | E3 | 本地固定sleeve filter，REJECTED | trend globally invalid |
 | S4A | inverse-volatility allocation | E2 | 复杂度是否有增量价值，REJECTED | inverse-vol 方法无用 |
 | S8A | moving-average tactical allocation | E3 | 两资产中国ETF规则，REJECTED | trend literature 被否定 |
 | S27A | trend + inverse-vol sizing | E3 | candidate-freeze review eligible | 新异常或生产资格 |
-| S4B / S4C | equal risk contribution | E2 | S4B Riskfolio BLOCKED；S4C R1 FROZEN / PROSPECTIVE_SHADOW_ACTIVE（非生产候选，observations = 0） | 前瞻有效性、生产适用性或 ERC 的一般优越性；历史冻结目标日程的原生可执行性已证明，但不构成未来可执行性或有效性证据 |
+| S4B / S4C | equal risk contribution | E2 | S4B Riskfolio BLOCKED；S4C R1 FROZEN / PROSPECTIVE_SHADOW_ACTIVE（非生产候选，`observations=0`；A：`NOT_EQUIVALENT` max 0.0011551，不建后继） | 前瞻有效性、生产适用性或 ERC 的一般优越性；历史冻结目标日程的原生可执行性已证明，但不构成未来可执行性或有效性证据 |
 | S10A | unlevered volatility targeting | E3 | native cash rejection 后 execution review 未推进 | volatility-managed 文献已被本地证明 |
 | S30 | naive/static diversification | E1 | REFERENCE_BASELINE | alpha 策略 |
-| V3_DUAL_ANCHOR_SUPER_ETF | dual-anchor regime + super ETF + 511010 reserve | E3 | APPROVED_FOR_ACCOUNT_V3（EXP-V3-01：OOS MaxDD -12.38%, Bull2 122.4%，IS 2020-02 滞回已披露） | 2020-02 V反不踏空或脱离 511010/免五环境仍成立 |
-| V3_MAINBOARD_SWING_BREAKOUT_PULLBACK | mainboard QualityCore + momentum BP1 vs BP2 | E3 | BP1_APPROVED_BP2_REJECTED_OOS（EXP-V3-02：BP1 +2.329% OOS 启用；BP2 -0.187% OOS 淘汰） | 无 QualityCore 或 BP2 形态具有正期望 |
-| V3_CONCENTRATED_SECTOR_EXIT | 4-tranche deconcentration + preemptive -12%->0% L2 | E4 | APPROVED_PREEMPTIVE_L2_V3（EXP-V3-03：5/5 窗 VBT&RQAlpha 严守 -15%；证伪滞后 -15%->15%） | 滞后 -15%->15% 熔断在 T+1 下能守住红线 |
-| V3_SECTOR_BOTTOM_GRIND_COST_REDUCTION | 25% strategic core + 4-guard 10% bottom-grind reload/take-profit + overweight drift harvest | E4 | APPROVED_BOTTOM_GRIND_25_V32（EXP-V3-04：IS +0.47pp / OOS +3.90pp / OOS MDD +7.73pp / 15-0 胜率，RQAlpha 0 拒单；证伪无门控网格/MA20波段/10%窄止损/18%低位强卖） | 无 MA60 斜率滤波的网格低吸与窄止损会越做越亏 |
+| V3_DUAL_ANCHOR_SUPER_ETF | dual-anchor regime + super ETF + 511010 reserve | E3 | APPROVED_FOR_ACCOUNT_V3（`v3.2.0` 内嵌 / `v3.2.1` 已签待可达；同窗复杂度门槛 `EXP` **E** 因 7 笔拆分余股清仓触及整手 veto 判 `INVALID_RUN`，§8 未裁决） | 2020-02 V反不踏空或脱离 511010/免五环境仍成立 |
+| V3_MAINBOARD_SWING_BREAKOUT_PULLBACK | mainboard QualityCore + momentum BP1 vs BP2 | E3 | BP1_APPROVED_BP2_REJECTED_OOS（`EXP-V3-02B` 稳健性协议 `PASS`，OOS/IS 均 `BLOCKED_DATA`，0 新评估） | 无 QualityCore、BP2 形态或 2017–2023 当次公告财务证据已解锁 |
+| V3_CONCENTRATED_SECTOR_EXIT | 4-tranche deconcentration + preemptive -12%->0% L2 | E4 | APPROVED_PREEMPTIVE_L2_V3（`EXP-V3-05` ETF-only 全账户回放：`REDLINE_BREACHED / PARTIAL_DATA`，70% 集中起步穿 15% 线 49/45 日、个股腿因缺 PIT 流通市值禁用） | 70% 高集中起始仓在全账户约束下不穿 15% 线或完整 V3 已验收 |
+| V3_SECTOR_BOTTOM_GRIND_COST_REDUCTION | 25% strategic core + 4-guard 10% bottom-grind reload/take-profit + overweight drift harvest | E4 | APPROVED_BOTTOM_GRIND_25_V32（`v3.2.1` 继承四门槛，`04B` 去折价门变体 `NOT_APPROVED / GATE2_BINDING_RETAIN`） | 无 MA60 斜率滤波的网格低吸、窄止损或去掉门②折价门可获批 |
+
+## 2026-11-25 研究验收分支补充边界
+
+- **已签发规格区分**：`v3.2.0`（`05346a96…`）为当前内嵌基线；`v3.2.1`（`9869bd0b…`）编码了 2026-11-24 已批准个股/保本/止损条款，双仓分支逐字节相同但主树尚缺镜像（`signed_release_missing`）；`EXP-V3-04B` 未被采纳，保持 `NOT_APPROVED`。
+- **前瞻基础设施与免费数据源**：V3 前瞻台账代码已通过独立技术验收（`V3_PROSPECTIVE_LEDGER_INFRASTRUCTURE_READY`），真实观测为 `0`（首个合格日 `2026-11-26`）；`FinanceMCP` 免费源迁移已通过独立代码复核（`PASS`），现行历史库与新写入存在 `suspend=source_explicit_only` 新旧混合语义，研究消费端不得声明已一致。

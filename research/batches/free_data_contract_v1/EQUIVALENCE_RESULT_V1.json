@@ -1,0 +1,21 @@
+{
+  "contract": "FREE_DATA_CONTRACT_V1",
+  "protocol": "research/batches/free_data_contract_v1/PROTOCOL_V1.md",
+  "protocol_commit": "fa6eed9",
+  "run_at": "2026-11-25T08:20Z",
+  "stage_reached": "DATA_DOWNLOAD",
+  "outcome": "FAIL_CLOSED_NO_SNAPSHOT",
+  "reason": "PROTOCOL_V1 §3 requires fail closed when an xdxr category 11/12 (扩缩股) event falls after listing. TDX returned post-listing split/merge events for risk assets used by both candidates; no snapshot was produced and no equivalence comparison was run.",
+  "post_listing_split_events": [
+    {"symbol": "510500.SS", "date": "2015-04-15", "category": 11, "suogu": 0.2803248167037964, "raw_close_before": {"date": "2015-04-13", "close": 2.243}, "raw_close_after": {"date": "2015-04-15", "close": 7.818}},
+    {"symbol": "510500.SS", "date": "2022-08-29", "category": 11, "suogu": 1.1453900337219238, "raw_close_before": {"date": "2022-08-26", "close": 7.22}, "raw_close_after": {"date": "2022-08-29", "close": 6.3}},
+    {"symbol": "513500.SS", "date": "2022-03-30", "category": 11, "suogu": 2.0, "raw_close_before": {"date": "2022-03-29", "close": 2.735}, "raw_close_after": {"date": "2022-03-30", "close": 1.39}},
+    {"symbol": "513100.SS", "date": "2022-01-14", "category": 11, "suogu": 5.0, "raw_close_before": {"date": "2022-01-13", "close": 5.192}, "raw_close_after": {"date": "2022-01-14", "close": 1.015}}
+  ],
+  "verdicts": {
+    "S2_R1": "NOT_EQUIVALENT_UNDER_V1 (no compliant free-source snapshot; 510500/513500/513100 are S2 risk assets)",
+    "S4C_R1": "NOT_EQUIVALENT_UNDER_V1 (no compliant free-source snapshot; 510500/513500/513100 are S4C risk assets)"
+  },
+  "successor_versions_created": [],
+  "note": "No retry with other hosts, tolerances or parameters was made under V1. Any change to split handling requires a separately pre-registered PROTOCOL_V2."
+}

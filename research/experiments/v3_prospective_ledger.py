@@ -1364,8 +1364,9 @@ def _validate_fill_content(content: Mapping[str, Any]) -> None:
     _require_int(content["cash_delta_cents"], label="fill.cash_delta_cents")
     if content["source"] not in CONFIRMED_FILL_SOURCES:
         raise LedgerCorruption("CONFIRMED_FILL source 必须是券商对账单")
-    if content["reversed_by"] not in (None, ""):
-        raise LedgerCorruption("CONFIRMED_FILL 不得是已撤销成交")
+    if content["reversed_by"] is not None:
+        # 协议 §4：只有 `reversed_by IS NULL` 才可导入；空串不是 NULL。
+        raise LedgerCorruption("CONFIRMED_FILL 不得是已撤销/带撤销标记的成交")
     _require_aware_instant(content["recorded_at"], label="fill.recorded_at")
 
 
@@ -2443,13 +2444,12 @@ def _account_event_schema_fingerprint(connection: sqlite3.Connection) -> str:
 def _reversed_imported_fill_ids(
     connection: sqlite3.Connection, imported: Iterable[str]
 ) -> list[str]:
-    """撤销复核只针对**已导入** fill；空串按“未撤销”处理，不阻断整批。"""
+    """撤销复核只针对**已导入** fill；源行现在 `reversed_by` 非 NULL（含空串）即视为已撤销。"""
     imported_set = set(imported)
     if not imported_set:
         return []
     rows = connection.execute(
-        "SELECT event_id FROM account_event "
-        "WHERE reversed_by IS NOT NULL AND reversed_by != ''"
+        "SELECT event_id FROM account_event WHERE reversed_by IS NOT NULL"
     ).fetchall()
     return sorted(str(row["event_id"]) for row in rows if str(row["event_id"]) in imported_set)
 
@@ -2492,8 +2492,9 @@ def _fill_drafts(
         if event_source not in CONFIRMED_FILL_SOURCES:
             skipped["not_broker_statement"] += 1
             continue
-        if record.get("reversed_by") not in (None, ""):
-            # 空串与 NULL 一样按“未撤销”处理（B 第 5 条反例）；只有非空撤销标记才跳过。
+        if record.get("reversed_by") is not None:
+            # 协议 §4：只有 `reversed_by IS NULL` 才导入；空串不是 NULL，按正常筛选排除，
+            # 不判 CORRUPT、不阻断整批。
             skipped["reversed"] += 1
             continue
         if record.get("account_id") != account_id:

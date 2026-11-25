@@ -1388,17 +1388,19 @@ def test_fill_import_reads_only_account_event_table(tmp_path: Path) -> None:
     assert all("account_meta" not in statement for statement in statements)
 
 
-@pytest.mark.parametrize("reversed_value", ["rev-9"])
+@pytest.mark.parametrize("reversed_value", ["rev-9", ""])
 def test_fill_reversed_after_import_blocks_further_ingest(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reversed_value: str
 ) -> None:
-    """撤销复核只针对已导入 fill；非空撤销标记触发 SOURCE_REVERSED_AFTER_IMPORT。"""
+    """撤销复核只针对已导入 fill；源行 `reversed_by` 非 NULL（含空串）即触发
+    SOURCE_REVERSED_AFTER_IMPORT，停止追加。"""
     monkeypatch.setattr(
         ledger, "utc_now", lambda: datetime(2026, 11, 27, 2, 0, tzinfo=timezone.utc)
     )
     root = init(tmp_path)
     db = make_account_db(tmp_path)
     ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
+    before = snapshot_bytes(root)
     connection = sqlite3.connect(db)
     try:
         connection.execute(
@@ -1410,6 +1412,7 @@ def test_fill_reversed_after_import_blocks_further_ingest(
         connection.close()
     with pytest.raises(ledger.LedgerRefusal, match="SOURCE_REVERSED_AFTER_IMPORT"):
         ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
+    assert snapshot_bytes(root) == before
 
 
 def test_only_imported_fills_are_reverse_checked(
@@ -1435,10 +1438,11 @@ def test_only_imported_fills_are_reverse_checked(
     assert result["status"] == "IDEMPOTENT_NOOP"
 
 
-def test_empty_string_reversed_by_row_is_imported_as_not_reversed(
+def test_empty_string_reversed_by_row_is_not_imported(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """B 第 5 条：空串按“未撤销”处理（只跳过非空撤销标记），不阻断整批。"""
+    """协议 §4：只有 `reversed_by IS NULL` 才导入；空串行按正常筛选排除，
+    不导入、不报 CORRUPT、不阻断同批其它行。"""
     monkeypatch.setattr(
         ledger, "utc_now", lambda: datetime(2026, 11, 27, 2, 0, tzinfo=timezone.utc)
     )
@@ -1451,8 +1455,29 @@ def test_empty_string_reversed_by_row_is_imported_as_not_reversed(
     finally:
         connection.close()
     result = ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
+    assert result["status"] == "NO_NEW_FILLS"
+    assert result["skipped_rows"]["reversed"] == 2  # fill-1（空串）+ fill-reversed（rev-1）
+    assert ledger.read_events(root, "CONFIRMED_FILL") == []
+
+
+def test_empty_string_reversed_by_row_does_not_block_the_batch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """空串行被排除属正常筛选：同批 NULL 行仍正常导入，不是 CORRUPT。"""
+    monkeypatch.setattr(
+        ledger, "utc_now", lambda: datetime(2026, 11, 27, 2, 0, tzinfo=timezone.utc)
+    )
+    root = init(tmp_path)
+    db = make_account_db(tmp_path)
+    connection = sqlite3.connect(db)
+    try:
+        connection.execute("UPDATE account_event SET reversed_by = '' WHERE event_id = 'fill-old'")
+        connection.commit()
+    finally:
+        connection.close()
+    result = ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
     assert result["status"] == "INGESTED"
-    assert result["skipped_rows"]["reversed"] == 1  # 只有 fill-reversed
+    assert result["skipped_rows"]["reversed"] == 2  # fill-old（空串）+ fill-reversed（rev-1）
     imported = [
         event["content"]["event_id"] for event in ledger.read_events(root, "CONFIRMED_FILL")
     ]

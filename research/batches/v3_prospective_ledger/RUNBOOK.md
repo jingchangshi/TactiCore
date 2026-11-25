@@ -80,9 +80,11 @@ $PY -m research.experiments.v3_prospective_ledger ingest-brief --brief "$BRIEF" 
 $PY -m research.experiments.v3_prospective_ledger ingest-fills
 ```
 
-- 只导入 `account_event` 中 `source='broker_statement'`、非空撤销标记以外（`reversed_by`
-  为 NULL 或空串都按未撤销）的 `TRADE_BUY/TRADE_SELL`；只读该表，不读 `account_meta`。
-  `synthetic` 成交永不导入；`recommendation` 永不变成成交。撤销复核只针对**已导入** fill。
+- 只导入 `account_event` 中 `source='broker_statement'` 且 `reversed_by IS NULL` 的
+  `TRADE_BUY/TRADE_SELL`；只读该表，不读 `account_meta`。**空串不是 NULL**，带任何撤销标记
+  （含空串）的行按正常筛选排除——不导入、不判 `CORRUPT`、不阻断同批其它行。
+  `synthetic` 成交永不导入；`recommendation` 永不变成成交。撤销复核只针对**已导入** fill：
+  其源行若现在 `reversed_by` 非 NULL（含空串）即报撤销告警并停写。
 - 源行 SHA 只覆盖 `account_event` 原生 19 列；不掺入任何合成 schema 键。
 - 若返回 `SOURCE_REVERSED_AFTER_IMPORT` 或 `SOURCE_FILL_MISSING_AFTER_IMPORT`：**暂停**，
   人工核对券商流水；不得改写或删除既有台账行。

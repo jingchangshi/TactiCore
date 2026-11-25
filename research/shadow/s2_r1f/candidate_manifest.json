@@ -1,0 +1,24 @@
+{
+  "candidate_id": "S2_R1F",
+  "status": "RESEARCH_ONLY",
+  "strategy": "multi_asset_trend_v2b / SIGNAL_CHANGE_ONLY / next observation execution",
+  "contract": "FREE_DATA_CONTRACT_V2; TDX category 9 + xdxr; cut events at the vintage's Shanghai as-of; 8 decimals",
+  "historical_cutoff": "2026-08-31",
+  "eligible_since": "2026-11-25",
+  "clock_starts": "First actual sealed S2_R1F monthly decision, never R1 evidence or nondecision vintages",
+  "historical_snapshot_sha256": "91539661cc308a7c411e0ffcf35d4993cb0e6efb963e387d4d0cae75d6e9f2cd",
+  "historical_prices_sha256": "c959f67f45adf9562db33f7af14d0c35ea45ebf268463cfd4f0df3a73d778135",
+  "calendar": {"path": "/home/jcshi/.rqalpha/bundle/trading_dates.npy", "sha256": "57dd7f539d1cdbefb528978a6c7bd79b118790f933ce63c37b10747b999f9585", "trusted_year": 2026, "use": "Month-end check only; not TDX, not price data"},
+  "result_commit": "2708b6043202bf3a9fd71b7cbbe6da81a4f89909",
+  "files": {
+    "config/strategy.toml": "9935dbdb54f3ea369574f2edfcdba2103c97d539697ff119c7ac9d084931c2ce",
+    "config/universe.csv": "190aacbca6feadd2ba825b1f284c06f48f30bdc3b5a4618f405711e5aadb8829",
+    "research/batches/free_data_contract_v1/EQUIVALENCE_RESULT_V2.json": "ee9b1651a94d20e9347a3db0ce122cba26a2a2b008cab70f014aa603021e35e6",
+    "research/batches/free_data_contract_v1/PROTOCOL_V2.md": "c74833f4194521c22920cceeb828dcda48ff089f7b9bbdd4b499f782aab62591",
+    "research/batches/free_data_contract_v1/contract_v2.py": "4843343012f494f4b5a408013b94d16512222dbf431817bfd49d51a7bae28460",
+    "research/batches/free_data_contract_v1/run_equivalence_v2.py": "f872a7ee274f661e0c09995906e74971e89dddeb53c38e450582d511f8df64bf",
+    "research/batches/free_data_contract_v1/fetch_tdx_history.py": "18cb6b2a81f0fc5071e6789fe00675039440ce8a43e8d5b6f8469830690b32ee",
+    "tacticore/strategies/multi_asset_trend.py": "2a11156f2f44f2cda9774b7c035bed9cb9757a83900b17028f6fd8c65eb7d1a6",
+    "research/experiments/run_s2_r1_shadow.py": "b5639e5714f19ffc5a9cdb9fcfae6765fd4c3346e3b1fd61ae24424cbf99a22c"
+  }
+}

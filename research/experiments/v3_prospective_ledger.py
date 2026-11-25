@@ -373,7 +373,7 @@ SIGNAL_DECONCENTRATION_TYPES: dict[str, tuple[str, frozenset[str] | None]] = {
     "take_profit_pct": ("number", None),
     "rebound_pct": ("number", None),
     "completed_swing_count": ("number", None),
-    "live_weight_pct": ("number", None),
+    "live_weight_pct": ("number?", None),
 }
 # 补遗 2 §2 + B 复验：SIGNAL 的 data_quality 只允许状态/摘要/缺失字段。
 # 任何 quality detail/notes/readiness 列表都不落盘，避免深层自由文本成为份数/价格后门。

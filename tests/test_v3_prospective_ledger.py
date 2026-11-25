@@ -3050,3 +3050,17 @@ def test_handwritten_illegal_holding_with_valid_hash_chain_is_corrupt(tmp_path: 
     )
     with pytest.raises(ledger.LedgerCorruption):
         ledger.verify_ledger(root)
+
+
+def test_no_plan_branch_null_live_weight_pct_is_accepted(tmp_path: Path) -> None:
+    """上游 deconcentrationPlan.ts:908 无计划分支输出 live_weight_pct=null（合法形状）。"""
+    root = init(tmp_path)
+    brief = make_brief()
+    deconcentration = brief["v3_cockpit"]["deconcentration"]
+    deconcentration["plan_present"] = False
+    deconcentration["live_weight_pct"] = None
+    result = ingest(tmp_path, brief)
+    assert result["status"] == "INGESTED"
+    signal = ledger.read_events(root, "SIGNAL")[0]
+    assert signal["content"]["deconcentration_state"]["live_weight_pct"] is None
+    assert ledger.verify_ledger(root)["status"] == "OK"

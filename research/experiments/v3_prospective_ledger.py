@@ -186,11 +186,17 @@ SIGNAL_ALLOWED_KEYS = frozenset(
 SIGNAL_DECISION_KEYS = frozenset(
     {
         "evidence_complete",
-        "no_action_reason",
+        "no_action_reason_code",
+        "no_action_reason_present",
         "suppressed_recommendation_count",
         "trigger_codes",
     }
 )
+# SIGNAL 不持久化 no_action_reason 自由文本：只留按 status 派生的封闭原因码。
+_NO_ACTION_REASON_CODES = {
+    "NO_ACTION": "NO_ACTION_REASON_RECORDED_IN_BRIEF",
+    "DATA_INSUFFICIENT": "DATA_INSUFFICIENT_REASON_RECORDED_IN_BRIEF",
+}
 # 封闭触发码枚举：上游目前只有自由文本，没有结构化码；键保留给未来结构化输入。
 TRIGGER_CODES = frozenset(
     {
@@ -807,18 +813,24 @@ def _scan_forbidden_keys(value: object, *, label: str, forbidden: frozenset[str]
 
 
 def _signal_scalar(value: object, *, label: str) -> Any:
-    """SIGNAL 状态/质量块只允许枚举、布尔、标量与标量数组；不得含腿、份数、价。"""
-    if value is None or isinstance(value, (str, bool, int)):
+    """SIGNAL 状态/质量块：递归按类型投影，字符串命中订单语义即拒绝。"""
+    if value is None or isinstance(value, (bool, int)):
+        return value
+    if isinstance(value, str):
+        if _text_has_state_order_semantics(value):
+            raise LedgerRefusal(f"{label} 含买卖腿/份额/价格语义，不得进入状态记录")
         return value
     if isinstance(value, float):
         if not math.isfinite(value):
             raise LedgerRefusal(f"{label} 不得是非有限数值")
         return value
     if isinstance(value, Mapping):
-        return {
-            str(key): _signal_scalar(item, label=f"{label}.{key}")
-            for key, item in sorted(value.items())
-        }
+        projected: dict[str, Any] = {}
+        for key, item in sorted(value.items()):
+            if _is_order_semantic_key(str(key)):
+                raise LedgerRefusal(f"{label}.{key} 是订单/价格语义键，不得进入状态记录")
+            projected[str(key)] = _signal_scalar(item, label=f"{label}.{key}")
+        return projected
     if isinstance(value, (list, tuple)):
         return [
             _signal_scalar(item, label=f"{label}[{index}]")
@@ -840,19 +852,72 @@ def _project_state_block(
     }
 
 
-def _text_has_order_semantics(text: str) -> bool:
-    """自由文本是否夹带份数/整手/目标价等可执行订单语义（补遗 2 §2）。
+_STATE_ORDER_TEXT_PATTERNS = (
+    # 数字 + 中文单位（份/股/手）
+    r"\d+\s*(?:份|股|手)",
+    # `@ 价格`
+    r"@\s*\d+(?:\.\d+)?",
+    # 买/卖 后 24 字内出现数字（如「卖出 777 份」「买入100」）
+    r"[买卖][^。；;\n]{0,24}\d+(?:\.\d+)?",
+    # 英文 BUY/SELL ... 数字 / shares
+    r"(?i)\b(?:buy|sell)\b[^.;\n]{0,40}\d",
+    r"(?i)\b\d+\s*shares?\b",
+    r"(?i)\bshares?\s*@",
+    r"目标价",
+)
+_ORDER_KEYS_EXACT = frozenset(
+    {
+        "price",
+        "prices",
+        "quantity",
+        "quantities",
+        "shares",
+        "share",
+        "lots",
+        "lot",
+        "lot_size",
+        "fees",
+        "fees_cents",
+        "fee_cents",
+        "executable",
+        "stance",
+        "leg",
+        "legs",
+        "action",
+        "actions",
+        "recommendation",
+        "recommendations",
+        "advice",
+        "reference_price",
+        "target_price",
+        "limit_price",
+        "stop_price",
+        "fill_price",
+        "order",
+        "orders",
+        "order_id",
+        "suggestion",
+        "suggestions",
+    }
+)
 
-    只匹配"数字 + 单位"或"目标价"；无数字的"按参考价计价"之类说明不算夹带价格。
+
+def _is_order_semantic_key(key: str) -> bool:
+    """深层键名：价格/份数/腿/动作/建议语义一律不得进入状态或估值记录。
+
+    只做**整键**匹配（小写），不做子串/分词匹配：`etf_price`（质量维度名）和
+    `diluted_cost_per_share`（估值事实）都不是订单语义，而 `reference_price`、
+    `recommended_action`、`recommended_sell_shares` 等是。
     """
-    patterns = (
-        r"\d+\s*份",
-        r"\d+\s*手",
-        r"目标价",
-        r"(?:参考价|价格|价位)[^\d]{0,6}\d",
-        r"\d+(?:\.\d+)?\s*元",
-    )
-    return any(re.search(pattern, text) for pattern in patterns)
+    normalized = str(key).strip().lower()
+    if normalized in VALUATION_HOLDING_KEYS or normalized in VALUATION_RECONCILIATION_KEYS:
+        return False
+    return normalized in NESTED_ORDER_SEMANTIC_KEYS or normalized in _ORDER_KEYS_EXACT
+
+
+def _text_has_state_order_semantics(text: str) -> bool:
+    """状态/估值叶子字符串：只拦“动作/单位 + 数字”与 `@价格`，避免误伤枚举标签。"""
+    return any(re.search(pattern, text) for pattern in _STATE_ORDER_TEXT_PATTERNS)
 
 
 def _project_data_quality(data_quality: Mapping[str, Any]) -> dict[str, Any]:
@@ -927,7 +992,12 @@ def _validate_signal_content(content: Mapping[str, Any], missing: tuple[str, ...
     decision = _require_mapping(content["decision"], label="SIGNAL decision")
     if not set(decision).issubset(SIGNAL_DECISION_KEYS):
         raise LedgerCorruption("SIGNAL decision 含未批准字段")
-    for required in ("evidence_complete", "no_action_reason", "suppressed_recommendation_count"):
+    for required in (
+        "evidence_complete",
+        "no_action_reason_code",
+        "no_action_reason_present",
+        "suppressed_recommendation_count",
+    ):
         if required not in decision:
             raise LedgerCorruption(f"SIGNAL decision.{required} 缺失")
     _require_bool(decision["evidence_complete"], label="SIGNAL decision.evidence_complete")
@@ -935,8 +1005,15 @@ def _validate_signal_content(content: Mapping[str, Any], missing: tuple[str, ...
         raise LedgerCorruption("DATA_INSUFFICIENT SIGNAL 不得声称 evidence_complete")
     if content["status"] != "DATA_INSUFFICIENT" and not decision["evidence_complete"]:
         raise LedgerCorruption("非 DATA_INSUFFICIENT SIGNAL 必须 evidence_complete")
-    if decision["no_action_reason"] is not None:
-        _require_str(decision["no_action_reason"], label="SIGNAL decision.no_action_reason")
+    if decision["no_action_reason_code"] is not None:
+        code = decision["no_action_reason_code"]
+        if not isinstance(code, str) or code not in _NO_ACTION_REASON_CODES.values():
+            raise LedgerCorruption(
+                f"SIGNAL decision.no_action_reason_code 不在封闭枚举内: {code!r}"
+            )
+    _require_bool(
+        decision["no_action_reason_present"], label="SIGNAL decision.no_action_reason_present"
+    )
     if "trigger_codes" in decision:
         codes = _require_sequence(decision["trigger_codes"], label="SIGNAL trigger_codes")
         if not codes:
@@ -1152,7 +1229,12 @@ def _project_holding(holding: object, *, index: int, missing: list[str]) -> dict
     payload: dict[str, Any] = {}
     for field in sorted(VALUATION_HOLDING_KEYS):
         if field in source:
-            payload[field] = copy.deepcopy(source[field])
+            value = source[field]
+            if isinstance(value, str) and _text_has_state_order_semantics(value):
+                payload[field] = None
+                missing.append(f"holdings[{index}].{field}")
+            else:
+                payload[field] = copy.deepcopy(value)
         else:
             payload[field] = None
     for field in HOLDING_EXPECTED_FIELDS:
@@ -1690,6 +1772,22 @@ def _reject_json_constant(value: str) -> Any:
     raise LedgerRefusal(f"输入 JSON 含非有限数值常量 {value}，拒绝")
 
 
+def _reject_non_finite_tree(value: object, *, path: str = "$") -> None:
+    """解码后全树检查：`1e999` 这类溢出 digit 会被 Python 解成 +Inf，必须拒绝。
+
+    `parse_constant` 只覆盖字面 NaN/Infinity/-Infinity；`1e999` 走普通 float 解析，
+    因此必须在整棵树（含未投影字段）上做有限性检查（B 终判 #8）。
+    """
+    if isinstance(value, float) and not math.isfinite(value):
+        raise LedgerRefusal(f"输入 JSON 在 {path} 处含非有限数值，拒绝")
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            _reject_non_finite_tree(item, path=f"{path}.{key}")
+    elif isinstance(value, (list, tuple)):
+        for index, item in enumerate(value):
+            _reject_non_finite_tree(item, path=f"{path}[{index}]")
+
+
 def _read_json_object(raw: bytes, *, label: str) -> dict[str, Any]:
     try:
         payload = json.loads(
@@ -1700,6 +1798,7 @@ def _read_json_object(raw: bytes, *, label: str) -> dict[str, Any]:
         raise LedgerRefusal(f"{label} 不是合法 UTF-8 JSON") from error
     if not isinstance(payload, dict):
         raise LedgerRefusal(f"{label} 必须是 JSON object")
+    _reject_non_finite_tree(payload, path=label)
     return payload
 
 
@@ -1954,14 +2053,16 @@ def _signal_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], list[
         if key not in data_quality:
             missing.append(f"data_quality.{key}")
     suppressed = len(validated["actions"]) if validated["status"] == "DATA_INSUFFICIENT" else 0
-    no_action_reason = first.get("no_action_reason")
-    if isinstance(no_action_reason, str) and _text_has_order_semantics(no_action_reason):
-        # A2:35：no_action_reason 是允许键，但不得成为份数/价格文本进入 SIGNAL 的后门。
-        missing.append("decision.no_action_reason_contains_order_semantics")
-        no_action_reason = None
+    # B 建议：no_action_reason 不再持久化任何自由文本，只保留状态原因码与缺失标志，
+    # 从根上消除「文本夹带份数/价格」的后门（关键词枚举不可靠）。
+    no_action_reason_code = _NO_ACTION_REASON_CODES.get(validated["status"])
+    no_action_reason_present = first.get("no_action_reason") is not None
+    if no_action_reason_present and no_action_reason_code is None:
+        missing.append("decision.no_action_reason_unclassified")
     decision: dict[str, Any] = {
         "evidence_complete": validated["status"] != "DATA_INSUFFICIENT",
-        "no_action_reason": no_action_reason,
+        "no_action_reason_code": no_action_reason_code,
+        "no_action_reason_present": no_action_reason_present,
         "suppressed_recommendation_count": suppressed,
     }
     if trigger_codes is not None:
@@ -2026,27 +2127,27 @@ def _recommendation_drafts(
 
 
 def _project_concentration(concentration: object) -> dict[str, Any] | None:
-    """concentration 只保留数值/权重；嵌套腿/份数/价/卖出提示一律剔除。"""
+    """concentration 只保留数值/权重/集中度事实；任何其它键（含 recommended_action）剔除。"""
     if concentration is None:
         return None
     payload = _require_mapping(concentration, label="brief.concentration")
     projected: dict[str, Any] = {}
     for key in sorted(payload):
+        if _is_order_semantic_key(str(key)):
+            continue
         value = payload[key]
-        if key in VALUATION_CONCENTRATION_KEYS:
-            if key == "top_position" and isinstance(value, Mapping):
-                projected[key] = {
-                    item: copy.deepcopy(value[item])
-                    for item in sorted(value)
-                    if item in VALUATION_TOP_POSITION_KEYS
-                }
-                _signal_scalar(projected[key], label="concentration.top_position")
-            elif isinstance(value, Mapping):
-                # 未批准的嵌套对象整体剔除，不落盘。
-                continue
-            else:
-                _signal_scalar(value, label=f"concentration.{key}")
-                projected[key] = copy.deepcopy(value)
+        if key == "top_position" and isinstance(value, Mapping):
+            top: dict[str, Any] = {}
+            for item in sorted(value):
+                if _is_order_semantic_key(str(item)):
+                    continue
+                if isinstance(value[item], str) and _text_has_state_order_semantics(value[item]):
+                    continue
+                top[item] = copy.deepcopy(value[item])
+            projected[key] = top
+        elif key in VALUATION_CONCENTRATION_KEYS and not isinstance(value, (Mapping, list)):
+            _signal_scalar(value, label=f"concentration.{key}")
+            projected[key] = copy.deepcopy(value)
     return projected
 
 
@@ -2075,32 +2176,95 @@ def _validate_concentration(concentration: object) -> None:
             _signal_scalar(value, label=f"concentration.{key}")
 
 
+def _project_valuation_data_quality(data_quality: Mapping[str, Any]) -> dict[str, Any]:
+    """VALUATION 的 data_quality：显式投影质量事实，剔除自由文本 detail/notes。
+
+    与 SIGNAL 的 data_quality 不同，估值侧需要完整质量维度（quotes/tiers 等），
+    但任何自由文本一律不落盘；结构按类型递归投影，字符串命中订单语义即剔除。
+    """
+    return _project_quality_block(
+        data_quality,
+        label="data_quality",
+        allowed=SIGNAL_DATA_QUALITY_KEYS | {"quotes", "market_report", "screening", "tiers"},
+    )
+
+
+def _project_quality_block(
+    block: object, *, label: str, allowed: frozenset[str] | set[str] | None
+) -> Any:
+    """递归质量块投影：顶层只保留允许键；更深层拒绝订单语义键与自由文本。
+
+    深层结构（`tiers.<tier>.<dimension>` 等）维度名由上游决定，不可能全部枚举；
+    因此顶层之外只做"拒绝订单语义键 / 丢弃自由文本 / 拒绝夹带字符串"的类型化清洗。
+    """
+    if isinstance(block, Mapping):
+        projected: dict[str, Any] = {}
+        for key in sorted(block):
+            name = str(key)
+            if allowed is not None and name not in allowed:
+                continue
+            if _is_order_semantic_key(name):
+                continue
+            if name in {"notes", "detail", "reasons", "messages"}:
+                continue
+            projected[name] = _project_quality_block(
+                block[key], label=f"{label}.{name}", allowed=None
+            )
+        return projected
+    if isinstance(block, (list, tuple)):
+        return [
+            _project_quality_block(item, label=f"{label}[{index}]", allowed=None)
+            for index, item in enumerate(block)
+        ]
+    if isinstance(block, str):
+        if _text_has_state_order_semantics(block):
+            raise LedgerRefusal(f"{label} 含买卖/份额/价格语义，不得进入估值记录")
+        return block
+    if isinstance(block, float) and not math.isfinite(block):
+        raise LedgerRefusal(f"{label} 不得是非有限数值")
+    return block
+
+
 def _project_reconciliation(reminder: object) -> dict[str, Any] | None:
     if reminder is None:
         return None
     payload = _require_mapping(reminder, label="v3_cockpit.reconciliation_reminder")
-    return {
-        key: copy.deepcopy(payload[key])
-        for key in sorted(payload)
-        if key in VALUATION_RECONCILIATION_KEYS
-    }
+    projected: dict[str, Any] = {}
+    for key in sorted(payload):
+        if key not in VALUATION_RECONCILIATION_KEYS or _is_order_semantic_key(str(key)):
+            continue
+        value = payload[key]
+        if isinstance(value, str) and _text_has_state_order_semantics(value):
+            continue
+        projected[key] = copy.deepcopy(value)
+    return projected
 
 
 def _validate_reconciliation(reminder: object) -> None:
     if reminder is None:
         return
-    payload = _require_mapping(reminder, label="VALUATION reconciliation_reminder")
-    unknown = set(payload).difference(VALUATION_RECONCILIATION_KEYS)
-    if unknown:
-        raise LedgerCorruption(
-            f"VALUATION reconciliation_reminder 含未批准字段: {sorted(unknown)}"
-        )
-    _signal_scalar(payload, label="reconciliation_reminder")
+    _reject_nested_order_semantics(reminder, label="VALUATION reconciliation_reminder")
+
+
+def _reject_nested_order_semantics(value: object, *, label: str) -> None:
+    """递归检查：键名为订单语义，或字符串含动作/份额/价格语义 → 拒绝。"""
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            if _is_order_semantic_key(str(key)):
+                raise LedgerRefusal(f"{label}.{key} 是订单/价格语义键，不得进入估值记录")
+            _reject_nested_order_semantics(item, label=f"{label}.{key}")
+    elif isinstance(value, (list, tuple)):
+        for index, item in enumerate(value):
+            _reject_nested_order_semantics(item, label=f"{label}[{index}]")
+    elif isinstance(value, str):
+        # 只对动作/单位+数字、@价格这类强模式拒绝；普通中文标签不误伤。
+        if _text_has_state_order_semantics(value):
+            raise LedgerRefusal(f"{label} 含买卖/份额/价格语义，不得进入估值记录")
 
 
 def _scan_nested_order_semantics(value: object, *, label: str) -> None:
-    """VALUATION 深层扫描：任何嵌套层出现腿/份数/成交/建议语义一律拒绝。"""
-    _scan_forbidden_keys(value, label=label, forbidden=NESTED_ORDER_SEMANTIC_KEYS)
+    """兼容旧名：深层扫描订单语义（现在复用 `_reject_nested_order_semantics`）。"""
+    _reject_nested_order_semantics(value, label=label)
 
 
 def _valuation_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], list[str]]:
@@ -2138,7 +2302,9 @@ def _valuation_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], li
             if projected_reconciliation is not None
             else None
         ),
-        "data_quality": copy.deepcopy(dict(validated["data_quality"])),
+        "data_quality": _project_valuation_data_quality(
+            _require_mapping(validated["data_quality"], label="brief.data_quality")
+        ),
     }
     return content, sorted(set(missing))
 

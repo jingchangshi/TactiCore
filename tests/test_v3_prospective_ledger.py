@@ -886,7 +886,7 @@ def test_concentration_rejects_nested_sell_hints_and_legs(tmp_path: Path) -> Non
 
 
 def test_no_action_reason_with_order_semantics_is_not_projected(tmp_path: Path) -> None:
-    """A2:35：no_action_reason 不得成为份数/价格文本进入 SIGNAL 的后门。"""
+    """B 建议：no_action_reason 自由文本不落盘，SIGNAL 只留封闭原因码与 present 标志。"""
     root = init(tmp_path)
     brief = make_brief(status="NO_ACTION", actions=[])
     brief["first_section"]["no_action_reason"] = (
@@ -894,13 +894,14 @@ def test_no_action_reason_with_order_semantics_is_not_projected(tmp_path: Path) 
     )
     ingest(tmp_path, brief)
     signal = ledger.read_events(root, "SIGNAL")[0]
-    assert signal["content"]["decision"]["no_action_reason"] is None
-    assert (
-        "decision.no_action_reason_contains_order_semantics" in signal["missing_fields"]
-    )
+    decision = signal["content"]["decision"]
+    assert "no_action_reason" not in decision
+    assert decision["no_action_reason_code"] == "NO_ACTION_REASON_RECORDED_IN_BRIEF"
+    assert decision["no_action_reason_present"] is True
     serialized = json.dumps(signal["content"], ensure_ascii=False)
     assert "300 份" not in serialized
     assert "1.234" not in serialized
+    assert "目标价" not in serialized
 
 
 def test_valid_financemcp_upstream_fields_are_projected_not_rejected(tmp_path: Path) -> None:
@@ -1090,8 +1091,10 @@ def test_no_action_brief_has_signal_and_valuation_but_no_recommendation(tmp_path
         "VALUATION": 1,
     }
     signal = ledger.read_events(root, "SIGNAL")[0]
-    assert signal["content"]["decision"]["no_action_reason"]
-    assert signal["content"]["decision"]["evidence_complete"] is True
+    decision = signal["content"]["decision"]
+    assert decision["no_action_reason_code"] == "NO_ACTION_REASON_RECORDED_IN_BRIEF"
+    assert decision["no_action_reason_present"] is True
+    assert decision["evidence_complete"] is True
 
 
 def test_data_insufficient_brief_records_signal_only_with_explicit_missing(tmp_path: Path) -> None:
@@ -2207,8 +2210,8 @@ def test_cli_refusal_returns_json_and_exit_code_two(tmp_path: Path, capsys) -> N
     assert "最早合格日" in payload["error"]
 
 
-def test_valuation_data_quality_nested_legs_is_refused(tmp_path: Path) -> None:
-    """B 反例 3：VALUATION 深层 data_quality 出现 legs 等动作语义 → CORRUPT。"""
+def test_valuation_data_quality_nested_legs_is_dropped(tmp_path: Path) -> None:
+    """B 反例 3：VALUATION 深层 data_quality 的 notes/legs 不落盘（显式投影剔除）。"""
     root = init(tmp_path)
     brief = make_brief()
     brief["data_quality"] = {
@@ -2217,7 +2220,117 @@ def test_valuation_data_quality_nested_legs_is_refused(tmp_path: Path) -> None:
         "missing_fields": [],
         "notes": [{"legs": [{"side": "SELL", "quantity": 100}]}],
     }
-    with pytest.raises(ledger.LedgerCorruption, match="legs"):
+    ingest(tmp_path, brief)
+    valuation = ledger.read_events(root, "VALUATION")[0]
+    quality = valuation["content"]["data_quality"]
+    assert "notes" not in quality
+    assert set(quality) <= {"status", "summary_status", "missing_fields"}
+    serialized = json.dumps(valuation["content"], ensure_ascii=False)
+    assert "legs" not in serialized
+    assert "SELL" not in serialized
+
+
+# --------------------------------------------------------------------------------------
+# B terminal review (a6b945f): four residual counterexamples
+# --------------------------------------------------------------------------------------
+
+
+def test_router_sub_strategies_nested_price_key_never_reaches_signal(tmp_path: Path) -> None:
+    """B 终判 #1：`router.sub_strategies.*.reference_price` 不得进入 SIGNAL。"""
+    root = init(tmp_path)
+    brief = make_brief()
+    brief["v3_cockpit"]["router"]["sub_strategies"]["unexpected"] = {"reference_price": 1.234}
+    with pytest.raises(ledger.LedgerRefusal, match="订单/价格语义"):
         ingest(tmp_path, brief)
     assert ledger.read_events(root, "SIGNAL") == []
-    assert ledger.read_events(root, "VALUATION") == []
+
+
+def test_english_order_text_in_state_block_never_reaches_signal(tmp_path: Path) -> None:
+    """B 终判 #1：`SELL 777 shares @ 1.234` 这类英文自由文本不得进入 SIGNAL。"""
+    root = init(tmp_path)
+    brief = make_brief()
+    brief["v3_cockpit"]["router"]["sub_strategies"]["s_stock_swing"] = (
+        "SELL 777 shares @ 1.234"
+    )
+    with pytest.raises(ledger.LedgerRefusal, match="买卖"):
+        ingest(tmp_path, brief)
+    assert ledger.read_events(root, "SIGNAL") == []
+    serialized = json.dumps(ledger.read_events(root, "SIGNAL"), ensure_ascii=False)
+    assert "777" not in serialized and "1.234" not in serialized
+
+
+def test_concentration_recommended_action_never_reaches_valuation(tmp_path: Path) -> None:
+    """B 终判 #1：`concentration.recommended_action` 不得进入 VALUATION。"""
+    root = init(tmp_path)
+    concentration = {
+        "hhi": 0.2,
+        "equity_weight": 0.7,
+        "cash_ratio": 0.3,
+        "recommended_action": "SELL 777 shares @ 1.234",
+    }
+    ingest(tmp_path, make_brief(concentration=concentration))
+    stored = ledger.read_events(root, "VALUATION")[0]["content"]["concentration"]
+    assert stored == {"hhi": 0.2, "equity_weight": 0.7, "cash_ratio": 0.3}
+    serialized = json.dumps(stored, ensure_ascii=False)
+    assert "recommended_action" not in serialized
+    assert "777" not in serialized
+    assert "1.234" not in serialized
+
+
+def test_trailing_newline_change_is_a_conflict_not_idempotent_noop(tmp_path: Path) -> None:
+    """B 终判 #2：同一 brief 末尾加一个 LF → 源 SHA 变 → CONFLICT，不得 NOOP。"""
+    root = init(tmp_path)
+    brief = make_brief(status="NO_ACTION", actions=[])
+    path = write_json(tmp_path / "brief.json", brief)
+    calendar_db = calendar(tmp_path)
+    ledger.ingest_brief(path, root=root, calendar_db=calendar_db)
+    before = snapshot_bytes(root)
+    path.write_bytes(path.read_bytes() + b"\n")
+    with pytest.raises(ledger.LedgerConflict, match="append-only"):
+        ledger.ingest_brief(path, root=root, calendar_db=calendar_db)
+    assert snapshot_bytes(root) == before
+
+
+def test_broken_baseline_blocks_confirmed_fill_append(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B 终判 #3：verify 报 baseline↔SIGNAL 不符后，`ingest-fills` 必须零写入。"""
+    root = init(tmp_path)
+    ingest(tmp_path, make_brief())
+    baseline = json.loads((root / ledger.POLICY_BASELINE_FILENAME).read_text(encoding="utf-8"))
+    baseline["content_hash"] = "d" * 64
+    write_json(root / ledger.POLICY_BASELINE_FILENAME, baseline)
+    with pytest.raises(ledger.LedgerCorruption, match="policy_baseline"):
+        ledger.verify_ledger(root)
+    before = snapshot_bytes(root)
+    monkeypatch.setattr(
+        ledger, "utc_now", lambda: datetime(2026, 11, 27, 2, 0, tzinfo=timezone.utc)
+    )
+    with pytest.raises(ledger.LedgerCorruption, match="policy_baseline"):
+        ledger.ingest_confirmed_fills(portfolio_db=make_account_db(tmp_path), root=root)
+    assert snapshot_bytes(root) == before
+    assert ledger.read_events(root, "CONFIRMED_FILL") == []
+
+
+def test_overflowing_json_number_in_unprojected_field_is_rejected(tmp_path: Path) -> None:
+    """B 终判 #4：`1e999` 解析为 +Inf；未投影字段也必须拒绝整份输入。"""
+    root = init(tmp_path)
+    brief = make_brief()
+    raw = json.dumps(brief, ensure_ascii=False)[:-1] + ', "spare": 1e999}'
+    path = tmp_path / "brief.json"
+    path.write_text(raw, encoding="utf-8")
+    with pytest.raises(ledger.LedgerRefusal, match="非有限"):
+        ledger.ingest_brief(path, root=root, calendar_db=calendar(tmp_path))
+    assert counts(root) == {record_type: 0 for record_type in ledger.RECORD_FILES}
+
+
+@pytest.mark.parametrize("literal", ["NaN", "Infinity", "-Infinity", "1e999", "-1e999"])
+def test_non_finite_json_literals_are_rejected(tmp_path: Path, literal: str) -> None:
+    root = init(tmp_path)
+    brief = make_brief()
+    raw = json.dumps(brief, ensure_ascii=False)[:-1] + f', "spare": {literal}}}'
+    path = tmp_path / "brief.json"
+    path.write_text(raw, encoding="utf-8")
+    with pytest.raises(ledger.LedgerRefusal):
+        ledger.ingest_brief(path, root=root, calendar_db=calendar(tmp_path))
+    assert ledger.read_events(root, "SIGNAL") == []

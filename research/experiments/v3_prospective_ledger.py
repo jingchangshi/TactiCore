@@ -19,14 +19,17 @@ from __future__ import annotations
 
 import argparse
 import copy
+import fcntl
 import hashlib
 import json
+import math
 import os
 import sqlite3
 import sys
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -75,6 +78,7 @@ RECORD_FILES = {
 }
 RECORD_ORDER = {name: index for index, name in enumerate(RECORD_FILES)}
 POLICY_BASELINE_FILENAME = "policy_baseline.json"
+WRITER_LOCK_FILENAME = ".writer.lock"
 POLICY_BASELINE_KEYS = frozenset(
     {
         "strategy_id",
@@ -127,6 +131,163 @@ FORBIDDEN_RECOMMENDATION_KEYS = frozenset(
 ACTION_PRIORITIES = frozenset({"P0", "P1", "P2", "P3"})
 ACTION_KINDS = frozenset({"REDUCE", "ROTATE", "ADD"})
 LEG_SIDES = frozenset({"BUY", "SELL"})
+# 补遗 2 §2：RECOMMENDATION 的 action / legs 显式允许键；未知键拒绝。
+ACTION_ALLOWED_KEYS = frozenset(
+    {
+        "priority",
+        "kind",
+        "code",
+        "rank",
+        "title",
+        "reasons",
+        "counter_evidence",
+        "triggers",
+        "invalidation_conditions",
+        "risk_impact",
+        "fees_cents",
+        "fees_assumed",
+        "legs",
+    }
+)
+LEG_ALLOWED_KEYS = frozenset({"side", "ts_code", "quantity", "price_milli", "executable"})
+# 上游 brief 中存在、但协议明确不投影进 RECOMMENDATION 的展示/派生字段。
+ACTION_STRIPPED_UPSTREAM_KEYS = frozenset({"illustrative", "fact_meta"})
+LEG_STRIPPED_UPSTREAM_KEYS = frozenset(
+    {
+        "name",
+        "lot_size",
+        "lots",
+        "gross_cents",
+        "fees_cents",
+        "net_cents",
+        "quote_trade_date",
+        "reason",
+    }
+)
+# 补遗 2 §2：SIGNAL 只允许状态/枚举/布尔/标量；不得含腿、份数、价或成交语义。
+SIGNAL_ALLOWED_KEYS = frozenset(
+    {
+        "brief_schema",
+        "report_id",
+        "status",
+        "actionable",
+        "generated_at",
+        "expected_next_trade_date",
+        "account_id_source",
+        "account_status",
+        "decision",
+        "market_regime",
+        "router",
+        "deconcentration_state",
+        "data_quality",
+    }
+)
+SIGNAL_DECISION_KEYS = frozenset(
+    {
+        "evidence_complete",
+        "no_action_reason",
+        "suppressed_recommendation_count",
+        "trigger_codes",
+    }
+)
+# 封闭触发码枚举：上游目前只有自由文本，没有结构化码；键保留给未来结构化输入。
+TRIGGER_CODES = frozenset(
+    {
+        "ACCOUNT_LIFELINE",
+        "CROSS_BORDER_PREMIUM",
+        "DECONCENTRATION_GRIND_GUARDS",
+        "DECONCENTRATION_MA60_PROTECT",
+        "DECONCENTRATION_MONTHLY_WINDOW",
+        "DECONCENTRATION_REBOUND",
+        "DECONCENTRATION_TACTICAL_TAKE_PROFIT",
+        "MARKET_COUNTER_EVIDENCE",
+        "POSITION_20D_LOW_BREAK",
+        "QUOTE_QUALITY_DEGRADED",
+    }
+)
+OBSERVATION_TRIGGERS_UNPROJECTED = "observation_triggers_text_unprojected"
+SIGNAL_MARKET_REGIME_KEYS = frozenset(
+    {
+        "regime",
+        "regime_label_zh",
+        "raw_regime",
+        "hysteresis_held",
+        "crash_override",
+        "style",
+        "style_label_zh",
+        "style_spread_20d_pp",
+        "target_equity_bps",
+        "defensive_cash_bps",
+        "target_equity_pct",
+        "defensive_cash_pct",
+        "pct_above_ma60",
+        "amount_vs_ma20",
+        "limit_down",
+        "hs300_above_ma60",
+        "zz500_above_ma60",
+        "cyb_above_ma60",
+    }
+)
+SIGNAL_ROUTER_KEYS = frozenset(
+    {
+        "effective_regime",
+        "circuit_breaker_status",
+        "circuit_breaker_label_zh",
+        "locked_until_trade_date",
+        "l2_trigger_drawdown_bps",
+        "post_breaker_equity_bps",
+        "deconcentration_preemptive_active",
+        "policy_version",
+        "hwm_nav_cents",
+        "hwm_date",
+        "hwm_drawdown_pct",
+        "lifeline_nav_cents",
+        "lifeline_buffer_cents",
+        "lifeline_buffer_pct",
+        "sub_strategies",
+        "sub_strategies_zh",
+    }
+)
+SIGNAL_DECONCENTRATION_KEYS = frozenset(
+    {
+        "plan_present",
+        "plan_status",
+        "plan_mode",
+        "target_keep_bps",
+        "target_keep_pct",
+        "tactical_slot_bps",
+        "tactical_slot_pct",
+        "max_grind_weight_pct",
+        "drift_harvest_trigger_pct",
+        "preemptive_weight_threshold_pct",
+        "normal_lifeline_pct",
+        "reload_discount_pct",
+        "take_profit_pct",
+        "rebound_pct",
+        "completed_swing_count",
+        "live_weight_pct",
+        "downside_protect_mode",
+        "breakdown_ma60_2d",
+        "next_monthly_trigger_date",
+    }
+)
+# 补遗 2 §2：VALUATION holdings 只保留估值事实。
+VALUATION_HOLDING_KEYS = frozenset(
+    {
+        "ts_code",
+        "name",
+        "quantity",
+        "weight",
+        "market_value_cents",
+        "price_milli",
+        "bar_quality",
+        "price_source",
+        "latest_bar_date",
+        "diluted_cost_per_share",
+        "diluted_total_cost_cents",
+        "cost_basis",
+    }
+)
 PRINCIPAL_FIELDS = (
     "initial_principal_cents",
     "current_nav_cents",
@@ -141,7 +302,6 @@ HOLDING_REQUIRED_FIELDS = (
     "market_value_cents",
     "price_milli",
     "bar_quality",
-    "stance",
 )
 HOLDING_EXPECTED_FIELDS = (
     "name",
@@ -200,8 +360,23 @@ def utc_now() -> datetime:
 # --------------------------------------------------------------------------------------
 
 
+def _reject_non_finite(value: object) -> None:
+    """canonical_json 拒绝 NaN/Infinity（补遗 2 §3）：先递归检查再序列化。"""
+    if isinstance(value, float) and not math.isfinite(value):
+        raise LedgerRefusal(f"canonical_json 拒绝非有限数值: {value!r}")
+    if isinstance(value, Mapping):
+        for item in value.values():
+            _reject_non_finite(item)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            _reject_non_finite(item)
+
+
 def canonical_json(value: object) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    _reject_non_finite(value)
+    return json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+    )
 
 
 def sha256_bytes(raw: bytes) -> str:
@@ -343,6 +518,9 @@ def init_ledger(root: Path | str | None = None) -> dict[str, Any]:
         target = resolved / name
         target.touch(mode=0o600, exist_ok=True)
         os.chmod(target, 0o600)
+    lock_file = resolved / WRITER_LOCK_FILENAME
+    lock_file.touch(mode=0o600, exist_ok=True)
+    os.chmod(lock_file, 0o600)
     return {"status": "INITIALIZED", "root": str(resolved), **payload}
 
 
@@ -498,7 +676,10 @@ def _require_int(value: object, *, label: str, minimum: int | None = None) -> in
 def _require_number(value: object, *, label: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise LedgerRefusal(f"{label} 必须是数值")
-    return float(value)
+    number = float(value)
+    if not math.isfinite(number):
+        raise LedgerRefusal(f"{label} 必须是有限数值")
+    return number
 
 
 def _validate_source(source: object) -> Mapping[str, Any]:
@@ -534,10 +715,10 @@ def _validate_batch(batch: object) -> Mapping[str, Any]:
     identifier = _require_str(payload["id"], label="event.ingest_batch.id")
     if not identifier.startswith(BATCH_ID_PREFIX):
         raise LedgerCorruption("event.ingest_batch.id 必须带 BATCH- 前缀")
-    ordinal = _require_int(payload["ordinal"], label="event.ingest_batch.ordinal", minimum=0)
+    ordinal = _require_int(payload["ordinal"], label="event.ingest_batch.ordinal", minimum=1)
     count = _require_int(payload["count"], label="event.ingest_batch.count", minimum=1)
-    if ordinal >= count:
-        raise LedgerCorruption("event.ingest_batch.ordinal 必须小于 count")
+    if ordinal > count:
+        raise LedgerCorruption("event.ingest_batch.ordinal 必须在 1..count 内")
     return payload
 
 
@@ -550,23 +731,101 @@ def _validate_missing_fields(value: object) -> tuple[str, ...]:
     return tuple(str(item) for item in fields)
 
 
-def _validate_signal_content(content: Mapping[str, Any], missing: tuple[str, ...]) -> None:
-    required = {
-        "brief_schema",
-        "report_id",
-        "status",
-        "actionable",
-        "generated_at",
-        "expected_next_trade_date",
-        "account_id_source",
-        "account_status",
-        "decision",
-        "market_regime",
-        "router",
-        "deconcentration_state",
-        "data_quality",
+SIGNAL_FORBIDDEN_KEYS = frozenset(
+    {
+        "legs",
+        "quantity",
+        "price_milli",
+        "fees_cents",
+        "gross_cents",
+        "net_cents",
+        "executable",
+        "filled_quantity",
+        "filled_price_milli",
+        "executed_quantity",
+        "executed_price_milli",
+        "fills",
+        "actual_fill",
+        "execution_status",
     }
-    if set(content) != required:
+)
+
+
+def _scan_forbidden_keys(value: object, *, label: str, forbidden: frozenset[str]) -> None:
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            if str(key) in forbidden:
+                raise LedgerRefusal(f"{label} 不得包含 {key}（混类或成交语义）")
+            _scan_forbidden_keys(item, label=f"{label}.{key}", forbidden=forbidden)
+    elif isinstance(value, (list, tuple)):
+        for index, item in enumerate(value):
+            _scan_forbidden_keys(item, label=f"{label}[{index}]", forbidden=forbidden)
+
+
+def _signal_scalar(value: object, *, label: str) -> Any:
+    """SIGNAL 状态块只允许枚举/布尔/标量与纯状态映射；不得含腿、份数、价。"""
+    if value is None or isinstance(value, (str, bool, int)):
+        return value
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise LedgerRefusal(f"{label} 不得是非有限数值")
+        return value
+    if isinstance(value, Mapping):
+        return {
+            str(key): _signal_scalar(item, label=f"{label}.{key}")
+            for key, item in sorted(value.items())
+        }
+    raise LedgerRefusal(f"{label} 必须是标量或状态映射，不能是 {type(value).__name__}")
+
+
+def _project_state_block(
+    block: object, *, label: str, allowed: frozenset[str]
+) -> dict[str, Any] | None:
+    if block is None:
+        return None
+    payload = _require_mapping(block, label=label)
+    return {
+        key: _signal_scalar(payload[key], label=f"{label}.{key}")
+        for key in sorted(payload)
+        if key in allowed
+    }
+
+
+def _validate_state_block(
+    block: object, *, label: str, allowed: frozenset[str]
+) -> Mapping[str, Any] | None:
+    if block is None:
+        return None
+    payload = _require_mapping(block, label=label)
+    unknown = set(payload).difference(allowed)
+    if unknown:
+        raise LedgerCorruption(f"{label} 含未批准字段: {sorted(unknown)}")
+    for key, value in payload.items():
+        _signal_scalar(value, label=f"{label}.{key}")
+    return payload
+
+
+def _project_trigger_codes(first_section: Mapping[str, Any]) -> list[str] | None:
+    raw = first_section.get("trigger_codes")
+    if raw is None:
+        return None
+    codes = _require_sequence(raw, label="brief.first_section.trigger_codes")
+    if not codes:
+        # 空数组等同于上游未提供结构化码：省略该键并显式记缺失。
+        return None
+    projected: list[str] = []
+    for index, code in enumerate(codes):
+        value = _require_str(code, label=f"brief.first_section.trigger_codes[{index}]")
+        if value not in TRIGGER_CODES:
+            raise LedgerRefusal(f"trigger_codes 不在封闭枚举内: {value!r}")
+        projected.append(value)
+    if len(set(projected)) != len(projected):
+        raise LedgerRefusal("trigger_codes 不得重复")
+    return projected
+
+
+def _validate_signal_content(content: Mapping[str, Any], missing: tuple[str, ...]) -> None:
+    if set(content) != SIGNAL_ALLOWED_KEYS:
         raise LedgerCorruption("SIGNAL content 字段集合与协议不一致")
     if content["brief_schema"] != BRIEF_SCHEMA:
         raise LedgerCorruption("SIGNAL brief_schema 与协议不一致")
@@ -580,13 +839,11 @@ def _validate_signal_content(content: Mapping[str, Any], missing: tuple[str, ...
     if content["expected_next_trade_date"] is not None:
         _parse_ymd(content["expected_next_trade_date"], label="SIGNAL expected_next_trade_date")
     decision = _require_mapping(content["decision"], label="SIGNAL decision")
-    if set(decision) != {
-        "evidence_complete",
-        "no_action_reason",
-        "observation_triggers",
-        "suppressed_recommendation_count",
-    }:
-        raise LedgerCorruption("SIGNAL decision 字段集合与协议不一致")
+    if not set(decision).issubset(SIGNAL_DECISION_KEYS):
+        raise LedgerCorruption("SIGNAL decision 含未批准字段")
+    for required in ("evidence_complete", "no_action_reason", "suppressed_recommendation_count"):
+        if required not in decision:
+            raise LedgerCorruption(f"SIGNAL decision.{required} 缺失")
     _require_bool(decision["evidence_complete"], label="SIGNAL decision.evidence_complete")
     if content["status"] == "DATA_INSUFFICIENT" and decision["evidence_complete"]:
         raise LedgerCorruption("DATA_INSUFFICIENT SIGNAL 不得声称 evidence_complete")
@@ -594,26 +851,44 @@ def _validate_signal_content(content: Mapping[str, Any], missing: tuple[str, ...
         raise LedgerCorruption("非 DATA_INSUFFICIENT SIGNAL 必须 evidence_complete")
     if decision["no_action_reason"] is not None:
         _require_str(decision["no_action_reason"], label="SIGNAL decision.no_action_reason")
-    triggers = _require_sequence(
-        decision["observation_triggers"], label="SIGNAL decision.observation_triggers"
-    )
-    if any(not isinstance(item, str) for item in triggers):
-        raise LedgerCorruption("SIGNAL observation_triggers 必须是字符串数组")
+    if "trigger_codes" in decision:
+        codes = _require_sequence(decision["trigger_codes"], label="SIGNAL trigger_codes")
+        if not codes:
+            raise LedgerCorruption("SIGNAL trigger_codes 存在时不得为空")
+        for code in codes:
+            if not isinstance(code, str) or code not in TRIGGER_CODES:
+                raise LedgerCorruption(f"SIGNAL trigger_codes 不在封闭枚举内: {code!r}")
+        if len(set(codes)) != len(codes):
+            raise LedgerCorruption("SIGNAL trigger_codes 不得重复")
+        if OBSERVATION_TRIGGERS_UNPROJECTED in missing:
+            raise LedgerCorruption("SIGNAL 已有 trigger_codes 却声明文本未投影")
+    elif OBSERVATION_TRIGGERS_UNPROJECTED not in missing:
+        raise LedgerCorruption(
+            "SIGNAL 缺少 trigger_codes 时必须把 "
+            f"{OBSERVATION_TRIGGERS_UNPROJECTED} 记入 missing_fields"
+        )
     _require_int(
         decision["suppressed_recommendation_count"],
         label="SIGNAL decision.suppressed_recommendation_count",
         minimum=0,
     )
-    if content["market_regime"] is not None:
-        _require_mapping(content["market_regime"], label="SIGNAL market_regime")
-    if content["router"] is not None:
-        _require_mapping(content["router"], label="SIGNAL router")
-    if content["deconcentration_state"] is not None:
-        _require_mapping(content["deconcentration_state"], label="SIGNAL deconcentration_state")
+    market_regime = _validate_state_block(
+        content["market_regime"],
+        label="SIGNAL market_regime",
+        allowed=SIGNAL_MARKET_REGIME_KEYS,
+    )
+    router = _validate_state_block(
+        content["router"], label="SIGNAL router", allowed=SIGNAL_ROUTER_KEYS
+    )
+    deconcentration = _validate_state_block(
+        content["deconcentration_state"],
+        label="SIGNAL deconcentration_state",
+        allowed=SIGNAL_DECONCENTRATION_KEYS,
+    )
     for name, value in (
-        ("v3_cockpit.market_regime", content["market_regime"]),
-        ("v3_cockpit.router", content["router"]),
-        ("v3_cockpit.deconcentration", content["deconcentration_state"]),
+        ("v3_cockpit.market_regime", market_regime),
+        ("v3_cockpit.router", router),
+        ("v3_cockpit.deconcentration", deconcentration),
     ):
         if value is None and name not in missing:
             raise LedgerCorruption(f"SIGNAL {name} 为空但未记入 missing_fields")
@@ -621,27 +896,82 @@ def _validate_signal_content(content: Mapping[str, Any], missing: tuple[str, ...
     for key in ("status", "summary_status", "missing_fields"):
         if key not in data_quality and f"data_quality.{key}" not in missing:
             raise LedgerCorruption(f"SIGNAL data_quality.{key} 缺失但未记入 missing_fields")
+    _scan_forbidden_keys(content, label="SIGNAL", forbidden=SIGNAL_FORBIDDEN_KEYS)
     complete = decision["evidence_complete"]
-    if complete and (content["market_regime"] is None or content["router"] is None):
+    if complete and (market_regime is None or router is None):
         raise LedgerCorruption("SIGNAL evidence_complete 但缺少核心 V3 状态")
     if not complete and not missing:
         raise LedgerCorruption("不完整的 SIGNAL 必须显式列出 missing_fields")
 
 
-def _validate_action(action: object) -> Mapping[str, Any]:
+def _project_action(action: object) -> dict[str, Any]:
+    """上游 action → RECOMMENDATION action：显式键白名单。
+
+    已知的上游展示/派生键（`illustrative`、`fact_meta`、腿的 `name/lots/...`）被剥离；
+    其余未批准键（含所有成交字段）一律拒绝。
+    """
     payload = _require_mapping(action, label="RECOMMENDATION action")
     for key in payload:
         if key in FORBIDDEN_RECOMMENDATION_KEYS:
             raise LedgerRefusal(f"recommendation 不得混入成交字段: {key}")
-    priority = _require_str(payload.get("priority"), label="action.priority")
+    unknown = set(payload).difference(ACTION_ALLOWED_KEYS).difference(
+        ACTION_STRIPPED_UPSTREAM_KEYS
+    )
+    if unknown:
+        raise LedgerRefusal(
+            f"action 含未批准字段: {sorted(unknown)}；RECOMMENDATION 只允许 "
+            f"{sorted(ACTION_ALLOWED_KEYS)}"
+        )
+    legs_raw = _require_sequence(payload.get("legs"), label="action.legs")
+    projected_legs: list[dict[str, Any]] = []
+    for index, raw_leg in enumerate(legs_raw):
+        leg = _require_mapping(raw_leg, label=f"action.legs[{index}]")
+        for key in leg:
+            if key in FORBIDDEN_RECOMMENDATION_KEYS:
+                raise LedgerRefusal(f"recommendation leg 不得混入成交字段: {key}")
+        unknown_leg = set(leg).difference(LEG_ALLOWED_KEYS).difference(
+            LEG_STRIPPED_UPSTREAM_KEYS
+        )
+        if unknown_leg:
+            raise LedgerRefusal(
+                f"action.legs[{index}] 含未批准字段: {sorted(unknown_leg)}；"
+                f"腿只允许 {sorted(LEG_ALLOWED_KEYS)}"
+            )
+        projected_legs.append(
+            {key: copy.deepcopy(leg[key]) for key in LEG_ALLOWED_KEYS if key in leg}
+        )
+    projected = {
+        key: copy.deepcopy(payload[key])
+        for key in ACTION_ALLOWED_KEYS.difference({"legs"})
+        if key in payload
+    }
+    projected["legs"] = projected_legs
+    # 上游 `ActionPlan.priority` 可选；与 cockpit actions_summary 一致回退 P3。
+    if projected.get("priority") is None:
+        projected["priority"] = "P3"
+    return projected
+
+
+def _validate_action(action: object) -> Mapping[str, Any]:
+    payload = _require_mapping(action, label="RECOMMENDATION action")
+    unknown = set(payload).difference(ACTION_ALLOWED_KEYS)
+    if unknown:
+        raise LedgerRefusal(f"action 含未批准字段: {sorted(unknown)}")
+    for key in payload:
+        if key in FORBIDDEN_RECOMMENDATION_KEYS:
+            raise LedgerRefusal(f"recommendation 不得混入成交字段: {key}")
+    missing = ACTION_ALLOWED_KEYS.difference(payload)
+    if missing:
+        raise LedgerRefusal(f"action 缺少必需字段: {sorted(missing)}")
+    priority = _require_str(payload["priority"], label="action.priority")
     if priority not in ACTION_PRIORITIES:
         raise LedgerRefusal(f"action.priority 不在协议枚举内: {priority}")
-    kind = _require_str(payload.get("kind"), label="action.kind")
+    kind = _require_str(payload["kind"], label="action.kind")
     if kind not in ACTION_KINDS:
         raise LedgerRefusal(f"action.kind 不在协议枚举内: {kind}")
-    _require_str(payload.get("code"), label="action.code")
-    _require_int(payload.get("rank"), label="action.rank", minimum=1)
-    _require_str(payload.get("title"), label="action.title")
+    _require_str(payload["code"], label="action.code")
+    _require_int(payload["rank"], label="action.rank", minimum=1)
+    _require_str(payload["title"], label="action.title")
     for key in (
         "reasons",
         "counter_evidence",
@@ -649,26 +979,41 @@ def _validate_action(action: object) -> Mapping[str, Any]:
         "invalidation_conditions",
         "risk_impact",
     ):
-        values = _require_sequence(payload.get(key), label=f"action.{key}")
+        values = _require_sequence(payload[key], label=f"action.{key}")
         if any(not isinstance(item, str) for item in values):
             raise LedgerRefusal(f"action.{key} 必须是字符串数组")
-    _require_int(payload.get("fees_cents"), label="action.fees_cents", minimum=0)
-    _require_bool(payload.get("fees_assumed"), label="action.fees_assumed")
-    legs = _require_sequence(payload.get("legs"), label="action.legs")
+    if payload["fees_cents"] is not None:
+        _require_int(payload["fees_cents"], label="action.fees_cents", minimum=0)
+    _require_bool(payload["fees_assumed"], label="action.fees_assumed")
+    legs = _require_sequence(payload["legs"], label="action.legs")
     if not legs:
         raise LedgerRefusal("action.legs 不得为空：没有腿的动作不是 recommendation")
     for index, raw_leg in enumerate(legs):
         leg = _require_mapping(raw_leg, label=f"action.legs[{index}]")
+        unknown_leg = set(leg).difference(LEG_ALLOWED_KEYS)
+        if unknown_leg:
+            raise LedgerRefusal(f"action.legs[{index}] 含未批准字段: {sorted(unknown_leg)}")
         for key in leg:
             if key in FORBIDDEN_RECOMMENDATION_KEYS:
                 raise LedgerRefusal(f"recommendation leg 不得混入成交字段: {key}")
-        side = _require_str(leg.get("side"), label=f"action.legs[{index}].side")
+        if set(leg) != LEG_ALLOWED_KEYS:
+            raise LedgerRefusal(
+                f"action.legs[{index}] 缺少必需字段: {sorted(LEG_ALLOWED_KEYS.difference(leg))}"
+            )
+        side = _require_str(leg["side"], label=f"action.legs[{index}].side")
         if side not in LEG_SIDES:
             raise LedgerRefusal(f"action.legs[{index}].side 不在协议枚举内: {side}")
-        _require_str(leg.get("ts_code"), label=f"action.legs[{index}].ts_code")
-        _require_int(leg.get("quantity"), label=f"action.legs[{index}].quantity", minimum=0)
-        _require_int(leg.get("price_milli"), label=f"action.legs[{index}].price_milli", minimum=0)
-        _require_bool(leg.get("executable"), label=f"action.legs[{index}].executable")
+        _require_str(leg["ts_code"], label=f"action.legs[{index}].ts_code")
+        executable = _require_bool(leg["executable"], label=f"action.legs[{index}].executable")
+        for field in ("quantity", "price_milli"):
+            value = leg[field]
+            if value is None:
+                if executable:
+                    raise LedgerRefusal(
+                        f"action.legs[{index}].{field} 不得为 null：executable leg 必须有数值"
+                    )
+                continue
+            _require_int(value, label=f"action.legs[{index}].{field}", minimum=0)
     return payload
 
 
@@ -703,26 +1048,54 @@ def _validate_recommendation_content(content: Mapping[str, Any], missing: tuple[
         raise LedgerCorruption(f"RECOMMENDATION action 非法: {error}") from error
 
 
-def _validate_holding(holding: object, *, index: int, missing: list[str]) -> Mapping[str, Any]:
+def _project_holding(holding: object, *, index: int, missing: list[str]) -> dict[str, Any]:
+    """上游 holding → VALUATION 估值事实白名单；`stance`/理由/研究块一律移除。"""
     source = _require_mapping(holding, label=f"valuation holdings[{index}]")
-    payload = dict(source)
     for field in HOLDING_REQUIRED_FIELDS:
-        if field not in payload:
+        if field not in source:
             raise LedgerRefusal(f"valuation holdings[{index}].{field} 缺失")
-    _require_str(payload["ts_code"], label=f"holdings[{index}].ts_code")
-    _require_int(payload["quantity"], label=f"holdings[{index}].quantity", minimum=0)
-    _require_number(payload["weight"], label=f"holdings[{index}].weight")
+    _require_str(source["ts_code"], label=f"holdings[{index}].ts_code")
+    _require_int(source["quantity"], label=f"holdings[{index}].quantity", minimum=0)
+    _require_number(source["weight"], label=f"holdings[{index}].weight")
     _require_int(
-        payload["market_value_cents"], label=f"holdings[{index}].market_value_cents", minimum=0
+        source["market_value_cents"], label=f"holdings[{index}].market_value_cents", minimum=0
     )
-    _require_int(payload["price_milli"], label=f"holdings[{index}].price_milli", minimum=0)
-    _require_str(payload["bar_quality"], label=f"holdings[{index}].bar_quality")
-    _require_str(payload["stance"], label=f"holdings[{index}].stance")
+    _require_int(source["price_milli"], label=f"holdings[{index}].price_milli", minimum=0)
+    _require_str(source["bar_quality"], label=f"holdings[{index}].bar_quality")
+    payload: dict[str, Any] = {}
+    for field in sorted(VALUATION_HOLDING_KEYS):
+        if field in source:
+            payload[field] = copy.deepcopy(source[field])
+        else:
+            payload[field] = None
     for field in HOLDING_EXPECTED_FIELDS:
         if payload.get(field) is None:
             missing.append(f"holdings[{index}].{field}")
-            payload[field] = None
     return payload
+
+
+def _validate_holding(holding: object, *, index: int, missing: list[str]) -> Mapping[str, Any]:
+    source = _require_mapping(holding, label=f"valuation holdings[{index}]")
+    if set(source) != VALUATION_HOLDING_KEYS:
+        raise LedgerCorruption(
+            f"valuation holdings[{index}] 字段集合与补遗 2 不一致: "
+            f"{sorted(set(source).symmetric_difference(VALUATION_HOLDING_KEYS))}"
+        )
+    for field in HOLDING_REQUIRED_FIELDS:
+        if source[field] is None:
+            raise LedgerCorruption(f"valuation holdings[{index}].{field} 不得为 null")
+    _require_str(source["ts_code"], label=f"holdings[{index}].ts_code")
+    _require_int(source["quantity"], label=f"holdings[{index}].quantity", minimum=0)
+    _require_number(source["weight"], label=f"holdings[{index}].weight")
+    _require_int(
+        source["market_value_cents"], label=f"holdings[{index}].market_value_cents", minimum=0
+    )
+    _require_int(source["price_milli"], label=f"holdings[{index}].price_milli", minimum=0)
+    _require_str(source["bar_quality"], label=f"holdings[{index}].bar_quality")
+    for field in HOLDING_EXPECTED_FIELDS:
+        if source[field] is None:
+            missing.append(f"holdings[{index}].{field}")
+    return source
 
 
 def _validate_valuation_content(content: Mapping[str, Any], missing: tuple[str, ...]) -> None:
@@ -978,9 +1351,15 @@ def _read_all_events(
 
 
 def _verify_batches(events_by_type: Mapping[str, Sequence[Mapping[str, Any]]]) -> dict[str, int]:
+    """跨五文件按批分组：拒绝缺序号/重复序号/count 不一致/重复自然键（补遗 2 §3）。"""
     batches: dict[str, tuple[int, set[int]]] = {}
+    natural_keys: set[str] = set()
     for events in events_by_type.values():
         for event in events:
+            key = str(event["natural_key"])
+            if key in natural_keys:
+                raise LedgerCorruption(f"跨文件出现重复 natural_key: {key}")
+            natural_keys.add(key)
             batch = event["ingest_batch"]
             identifier = str(batch["id"])
             count = int(batch["count"])
@@ -994,14 +1373,42 @@ def _verify_batches(events_by_type: Mapping[str, Sequence[Mapping[str, Any]]]) -
                 raise LedgerCorruption(f"batch {identifier} 的 ordinal {ordinal} 重复")
             ordinals.add(ordinal)
     for identifier, (count, ordinals) in batches.items():
-        if ordinals != set(range(count)):
-            raise LedgerCorruption(f"batch {identifier} 不完整: {sorted(ordinals)} / {count}")
+        if ordinals != set(range(1, count + 1)):
+            raise LedgerCorruption(
+                f"batch {identifier} 不完整: {sorted(ordinals)} / 1..{count}；"
+                "部分批已停写，拒绝重放、截断或静默修复"
+            )
     return {identifier: count for identifier, (count, _) in batches.items()}
 
 
 # --------------------------------------------------------------------------------------
 # Append machinery
 # --------------------------------------------------------------------------------------
+
+
+@contextmanager
+def _writer_lock(root: Path, *, create: bool = True) -> Generator[None, None, None]:
+    """单写者排他锁；覆盖 verify、整批预检、全部 append 与最后一次 fsync。
+
+    `create=False` 时（只读 `verify` 路径）若锁文件不存在则不加锁，绝不向账本目录
+    新增文件；`init` 会预先创建该锁文件，正常账本两条路径都加锁。
+    """
+    path = root / WRITER_LOCK_FILENAME
+    if not create and not path.exists():
+        yield
+        return
+    flags = os.O_RDWR | (os.O_CREAT if create else 0)
+    descriptor = os.open(path, flags, 0o600)
+    try:
+        if create:
+            os.chmod(path, 0o600)
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        yield
+    finally:
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+        finally:
+            os.close(descriptor)
 
 
 def _sort_drafts(drafts: Sequence[Draft]) -> list[Draft]:
@@ -1020,86 +1427,148 @@ def _batch_id(kind: str, source_sha: str, ordered: Sequence[Draft]) -> str:
     return BATCH_ID_PREFIX + sha256_text(material)[:24]
 
 
+def _append_line(path: Path, payload: Mapping[str, Any]) -> None:
+    """一行一次 append + flush + fsync；测试用此函数注入 I/O 故障。"""
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(canonical_json(payload) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
+def _apply_policy_gate(
+    root: Path,
+    *,
+    policy: Mapping[str, str] | None,
+    existing_signals: Sequence[Mapping[str, Any]],
+) -> None:
+    """补遗 1：baseline 缺失但已有**携带 policy 身份**的 SIGNAL 时不得静默重建。
+
+    `DATA_INSUFFICIENT` 的 SIGNAL 没有 policy 身份，不构成"已有证据"，允许在其后
+    首次钉住 baseline（补遗 1 §1）。
+    """
+    if policy is None:
+        return
+    policy_signals = [signal for signal in existing_signals if signal.get("policy")]
+    if load_policy_baseline(root) is None and policy_signals:
+        raise LedgerRefusal(
+            "POLICY_BASELINE_MISSING_WITH_EVIDENCE: 已有 SIGNAL 但 policy_baseline 缺失；"
+            "不得静默重建，须所有者人工复核"
+        )
+    _check_policy_baseline(root, policy)
+
+
 def _append_drafts(
     root: Path | str | None,
     drafts: Sequence[Draft],
     *,
     batch_kind: str,
     batch_source_sha: str,
+    policy: Mapping[str, str] | None = None,
+    policy_source_sha256: str | None = None,
+    policy_as_of_trade_date: str | None = None,
+    precheck: Callable[[Mapping[str, list[dict[str, Any]]]], None] | None = None,
 ) -> dict[str, Any]:
-    """先完成全部校验，再按固定顺序追加；被拒绝时既有 bytes 不变。"""
+    """单写者锁内 verify 全账 → 整批预检 → 追加；预检拒绝字节不变。
+
+    - 同自然键 + 同 `content_hash` → 幂等 no-op，不新增行；
+    - 同自然键 + 不同 `content_hash` → 整批拒绝，既有字节不变；
+    - 只为新行分配批 ID 与 `ordinal=1..count`；
+    - I/O/崩溃：既有前缀不变，可能留下不完整新尾；停止写入并报错，`verify` 拒绝重放。
+    """
     resolved = ledger_root(root)
-    manifest = load_manifest(resolved)
-    ordered = _sort_drafts(drafts)
-    batch_id = _batch_id(batch_kind, batch_source_sha, ordered)
-    events_by_type = _read_all_events(resolved, manifest)
-    existing_by_key: dict[str, Mapping[str, Any]] = {}
-    for events in events_by_type.values():
-        for event in events:
-            existing_by_key[str(event["natural_key"])] = event
-    seen_drafts: dict[str, Draft] = {}
-    for draft in ordered:
-        _parse_ymd(draft.as_of_trade_date, label="draft.as_of_trade_date")
-        _validate_source(draft.source)
-        policy_required = draft.record_type in {"RECOMMENDATION", "VALUATION"} or (
-            draft.record_type == "SIGNAL"
-            and not any(
-                field == "v3_cockpit" or field.startswith("v3_cockpit.")
-                for field in draft.missing_fields
-            )
+    with _writer_lock(resolved):
+        manifest = load_manifest(resolved)
+        events_by_type = _read_all_events(resolved, manifest)
+        _verify_batches(events_by_type)
+        if precheck is not None:
+            precheck(events_by_type)
+        _apply_policy_gate(
+            resolved, policy=policy, existing_signals=events_by_type["SIGNAL"]
         )
-        _validate_policy(draft.policy, required=policy_required)
-        if draft.missing_fields != tuple(sorted(set(draft.missing_fields))):
-            raise LedgerCorruption("draft.missing_fields 必须排序且去重")
-        _validate_content(draft.record_type, draft.content, draft.missing_fields)
-        if draft.natural_key in seen_drafts:
-            raise LedgerConflict(f"同一批输入产生重复 natural_key: {draft.natural_key}")
-        seen_drafts[draft.natural_key] = draft
-        prior = existing_by_key.get(draft.natural_key)
-        if prior is not None and prior["content_hash"] != draft.content_hash:
-            raise LedgerConflict(
-                f"{draft.record_type} natural_key={draft.natural_key} 已存在不同内容；"
-                "append-only 协议拒绝覆盖"
+        ordered = _sort_drafts(drafts)
+        existing_by_key: dict[str, Mapping[str, Any]] = {}
+        for events in events_by_type.values():
+            for event in events:
+                existing_by_key[str(event["natural_key"])] = event
+        seen_drafts: dict[str, Draft] = {}
+        new_drafts: list[Draft] = []
+        skipped = {record_type: 0 for record_type in RECORD_FILES}
+        for draft in ordered:
+            _parse_ymd(draft.as_of_trade_date, label="draft.as_of_trade_date")
+            _validate_source(draft.source)
+            policy_required = draft.record_type in {"RECOMMENDATION", "VALUATION"} or (
+                draft.record_type == "SIGNAL"
+                and not any(
+                    field == "v3_cockpit" or field.startswith("v3_cockpit.")
+                    for field in draft.missing_fields
+                )
             )
-    recorded_at = utc_now()
-    appended = {record_type: 0 for record_type in RECORD_FILES}
-    skipped = {record_type: 0 for record_type in RECORD_FILES}
-    count = len(ordered)
-    last_hashes = {
-        record_type: (events[-1]["event_hash"] if events else ZERO_HASH)
-        for record_type, events in events_by_type.items()
-    }
-    for ordinal, draft in enumerate(ordered):
-        if draft.natural_key in existing_by_key:
-            skipped[draft.record_type] += 1
-            continue
-        event = {
-            "ledger_version": LEDGER_VERSION,
-            "protocol_commit": PROTOCOL_COMMIT,
-            "record_type": draft.record_type,
-            "event_id": event_id_for(draft.content_hash),
-            "natural_key": draft.natural_key,
-            "account_id": manifest.account_id,
-            "as_of_trade_date": draft.as_of_trade_date,
-            "source": draft.source,
-            "policy": draft.policy,
-            "missing_fields": list(draft.missing_fields),
-            "ingest_batch": {"id": batch_id, "ordinal": ordinal, "count": count},
-            "recorded_at": recorded_at.isoformat(),
-            "content_hash": draft.content_hash,
-            "content": draft.content,
-            "prev_event_hash": last_hashes[draft.record_type],
+            _validate_policy(draft.policy, required=policy_required)
+            if draft.missing_fields != tuple(sorted(set(draft.missing_fields))):
+                raise LedgerCorruption("draft.missing_fields 必须排序且去重")
+            _validate_content(draft.record_type, draft.content, draft.missing_fields)
+            if draft.natural_key in seen_drafts:
+                raise LedgerConflict(f"同一批输入产生重复 natural_key: {draft.natural_key}")
+            seen_drafts[draft.natural_key] = draft
+            prior = existing_by_key.get(draft.natural_key)
+            if prior is not None:
+                if prior["content_hash"] != draft.content_hash:
+                    raise LedgerConflict(
+                        f"{draft.record_type} natural_key={draft.natural_key} 已存在不同内容；"
+                        "append-only 协议拒绝覆盖"
+                    )
+                skipped[draft.record_type] += 1
+                continue
+            new_drafts.append(draft)
+        batch_id = _batch_id(batch_kind, batch_source_sha, new_drafts)
+        recorded_at = utc_now()
+        appended = {record_type: 0 for record_type in RECORD_FILES}
+        last_hashes = {
+            record_type: (events[-1]["event_hash"] if events else ZERO_HASH)
+            for record_type, events in events_by_type.items()
         }
-        event["event_hash"] = sha256_text(canonical_json(event))
-        _validate_event(event, record_type=draft.record_type, manifest=manifest)
-        with _record_path(resolved, draft.record_type).open("a", encoding="utf-8") as handle:
-            handle.write(canonical_json(event) + "\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-        last_hashes[draft.record_type] = str(event["event_hash"])
-        existing_by_key[draft.natural_key] = event
-        appended[draft.record_type] += 1
-    total_appended = sum(appended.values())
+        count = len(new_drafts)
+        for ordinal, draft in enumerate(new_drafts, start=1):
+            event = {
+                "ledger_version": LEDGER_VERSION,
+                "protocol_commit": PROTOCOL_COMMIT,
+                "record_type": draft.record_type,
+                "event_id": event_id_for(draft.content_hash),
+                "natural_key": draft.natural_key,
+                "account_id": manifest.account_id,
+                "as_of_trade_date": draft.as_of_trade_date,
+                "source": draft.source,
+                "policy": draft.policy,
+                "missing_fields": list(draft.missing_fields),
+                "ingest_batch": {"id": batch_id, "ordinal": ordinal, "count": count},
+                "recorded_at": recorded_at.isoformat(),
+                "content_hash": draft.content_hash,
+                "content": draft.content,
+                "prev_event_hash": last_hashes[draft.record_type],
+            }
+            event["event_hash"] = sha256_text(canonical_json(event))
+            _validate_event(event, record_type=draft.record_type, manifest=manifest)
+            try:
+                _append_line(_record_path(resolved, draft.record_type), event)
+            except OSError as error:
+                raise LedgerRefusal(
+                    f"APPEND_IO_FAILURE: 批 {batch_id} 在 ordinal {ordinal}/{count} 写入失败"
+                    f"（{error}）；既有前缀不变但可能留下不完整新尾，停止写入；"
+                    "运行 verify 复核，不得截断或重试补行"
+                ) from error
+            last_hashes[draft.record_type] = str(event["event_hash"])
+            appended[draft.record_type] += 1
+        if policy is not None and count:
+            if policy_source_sha256 is None or policy_as_of_trade_date is None:
+                raise LedgerCorruption("写入 policy_baseline 缺少来源 SHA 或 as_of")
+            _write_policy_baseline(
+                resolved,
+                policy,
+                as_of_trade_date=policy_as_of_trade_date,
+                source_sha256=policy_source_sha256,
+                created_at=recorded_at,
+            )
+        total_appended = sum(appended.values())
     return {
         "status": "INGESTED" if total_appended else "IDEMPOTENT_NOOP",
         "batch_id": batch_id,
@@ -1142,7 +1611,48 @@ def _policy_identity(brief: Mapping[str, Any]) -> dict[str, str] | None:
     return identity
 
 
-def _validate_brief(brief: Mapping[str, Any], *, account_id: str, now: datetime) -> dict[str, Any]:
+def _validate_close_window(
+    *,
+    as_of: str,
+    generated_at: datetime,
+    now: datetime,
+    open_days: Sequence[str] | None,
+) -> None:
+    """补遗 2 §1：只接受已确认开市日，且必须为 D 15:00 <= generated_at <= now < D+1 00:00。
+
+    - `open_days` 为 None 表示受信交易日历不可用/未知：整次拒绝。
+    - `open_days` 为空表示日历确认当日休市：整次拒绝。
+    - 比较真实瞬间；不使用 UTC 日期字符串或“同一上海日历日”作为充分条件。
+    """
+    if open_days is None:
+        raise LedgerRefusal(
+            "交易日历未知：无法确认 as_of_trade_date 是开市日；整次拒绝（不写任何 event）"
+        )
+    if as_of not in set(open_days):
+        raise LedgerRefusal(f"as_of_trade_date={as_of} 不是受信交易日历中的开市日；整次拒绝")
+    day = date.fromisoformat(_iso_day(as_of))
+    close = datetime.combine(day, time(15, 0, 0), tzinfo=SHANGHAI)
+    next_midnight = datetime.combine(day + timedelta(days=1), time(0, 0, 0), tzinfo=SHANGHAI)
+    if _shanghai(generated_at) < close:
+        raise LedgerRefusal(
+            f"brief.generated_at 上海时间 {_shanghai(generated_at).isoformat()} 早于 "
+            f"{as_of} 15:00:00 收盘窗口；不得消费盘中生成的日报"
+        )
+    if not (_shanghai(generated_at) <= _shanghai(now) < next_midnight):
+        raise LedgerRefusal(
+            f"台账运行时钟上海时间 {_shanghai(now).isoformat()} 不在 "
+            f"[{_shanghai(generated_at).isoformat()}, {next_midnight.isoformat()}) 窗口内；"
+            "跨午夜不得补录，过期即 MISSED"
+        )
+
+
+def _validate_brief(
+    brief: Mapping[str, Any],
+    *,
+    account_id: str,
+    now: datetime,
+    calendar_db: Path | str | None = None,
+) -> dict[str, Any]:
     if brief.get("schema") != BRIEF_SCHEMA:
         raise LedgerRefusal(f"brief schema 必须是 {BRIEF_SCHEMA}")
     report_id = _verify_hex64(brief.get("report_id"), label="brief.report_id")
@@ -1158,13 +1668,14 @@ def _validate_brief(brief: Mapping[str, Any], *, account_id: str, now: datetime)
     generated_at = _require_aware_instant(brief.get("generated_at"), label="brief.generated_at")
     if _ymd_of(generated_at) != as_of:
         raise LedgerRefusal("brief.generated_at 的上海日历日必须等于 as_of_trade_date")
-    now_shanghai = _shanghai(now)
-    if now_shanghai.strftime("%Y%m%d") != as_of:
-        raise LedgerRefusal(
-            "brief 只能在其 as_of 的上海日历日当天追加；当天未运行即永久 MISSED，不得次日补录或回填"
-        )
-    if now < generated_at:
-        raise LedgerRefusal("台账运行时钟早于 brief.generated_at：不得消费尚未生成的日报")
+    if now.tzinfo is None:
+        raise LedgerRefusal("台账运行时钟必须是带时区的时间")
+    _validate_close_window(
+        as_of=as_of,
+        generated_at=generated_at,
+        now=now,
+        open_days=_calendar_open_days(calendar_db, as_of),
+    )
     if brief.get("account_id") != account_id:
         raise LedgerRefusal(f"brief.account_id 必须是 {account_id}")
     if brief.get("account_status") != REAL_ACCOUNT_STATUS:
@@ -1194,6 +1705,7 @@ def _validate_brief(brief: Mapping[str, Any], *, account_id: str, now: datetime)
     )
     if any(not isinstance(item, str) for item in triggers):
         raise LedgerRefusal("brief.first_section.observation_triggers 必须是字符串数组")
+    trigger_codes = _project_trigger_codes(first_section)
     account_id_source = brief.get("account_id_source")
     if account_id_source is not None and (
         not isinstance(account_id_source, str) or not account_id_source
@@ -1208,7 +1720,7 @@ def _validate_brief(brief: Mapping[str, Any], *, account_id: str, now: datetime)
         raise LedgerRefusal("brief.execution_plan.count 与 actions 长度不一致")
     for index, action in enumerate(actions):
         try:
-            _validate_action(action)
+            _validate_action(_project_action(action))
         except LedgerRefusal as error:
             raise LedgerRefusal(f"brief.execution_plan.actions[{index}] 非法: {error}") from error
     if not isinstance(brief.get("holdings"), list):
@@ -1233,7 +1745,9 @@ def _validate_brief(brief: Mapping[str, Any], *, account_id: str, now: datetime)
     ]
     if status == "ACTIONABLE" and not executable_legs:
         raise LedgerRefusal("ACTIONABLE brief 必须至少有一条 executable leg")
-    if status == "ACTIONABLE" and not any(leg.get("quantity", 0) > 0 for leg in executable_legs):
+    if status == "ACTIONABLE" and not any(
+        (leg.get("quantity") or 0) > 0 for leg in executable_legs
+    ):
         raise LedgerRefusal("ACTIONABLE brief 的 executable leg 数量必须为正")
     if status != "ACTIONABLE" and executable_legs:
         raise LedgerRefusal(f"{status} brief 不得包含 executable leg")
@@ -1257,6 +1771,7 @@ def _validate_brief(brief: Mapping[str, Any], *, account_id: str, now: datetime)
         "account_id_source": brief.get("account_id_source"),
         "account_status": brief.get("account_status"),
         "first_section": first_section,
+        "trigger_codes": trigger_codes,
         "actions": actions,
         "holdings": brief.get("holdings"),
         "concentration": brief.get("concentration"),
@@ -1291,25 +1806,26 @@ def _signal_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], list[
         missing.append("expected_next_trade_date")
     if validated["account_id_source"] is None:
         missing.append("account_id_source")
-    triggers = first.get("observation_triggers")
-    if triggers is None:
-        missing.append("first_section.observation_triggers")
-        triggers = []
+    trigger_codes = validated.get("trigger_codes")
+    if trigger_codes is None:
+        missing.append(OBSERVATION_TRIGGERS_UNPROJECTED)
     cockpit = validated["cockpit"]
     market_regime: Mapping[str, Any] | None = None
     router: Mapping[str, Any] | None = None
     deconcentration_state: Mapping[str, Any] | None = None
     if isinstance(cockpit, Mapping):
-        market_regime = (
-            cockpit.get("market_regime")
-            if isinstance(cockpit.get("market_regime"), Mapping)
-            else None
+        market_regime = _project_state_block(
+            cockpit.get("market_regime"),
+            label="v3_cockpit.market_regime",
+            allowed=SIGNAL_MARKET_REGIME_KEYS,
         )
-        router = cockpit.get("router") if isinstance(cockpit.get("router"), Mapping) else None
-        deconcentration_state = (
-            cockpit.get("deconcentration")
-            if isinstance(cockpit.get("deconcentration"), Mapping)
-            else None
+        router = _project_state_block(
+            cockpit.get("router"), label="v3_cockpit.router", allowed=SIGNAL_ROUTER_KEYS
+        )
+        deconcentration_state = _project_state_block(
+            cockpit.get("deconcentration"),
+            label="v3_cockpit.deconcentration",
+            allowed=SIGNAL_DECONCENTRATION_KEYS,
         )
     else:
         missing.extend(["v3_cockpit", "v3_cockpit.policy_release"])
@@ -1325,6 +1841,13 @@ def _signal_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], list[
         if key not in data_quality:
             missing.append(f"data_quality.{key}")
     suppressed = len(validated["actions"]) if validated["status"] == "DATA_INSUFFICIENT" else 0
+    decision: dict[str, Any] = {
+        "evidence_complete": validated["status"] != "DATA_INSUFFICIENT",
+        "no_action_reason": first.get("no_action_reason"),
+        "suppressed_recommendation_count": suppressed,
+    }
+    if trigger_codes is not None:
+        decision["trigger_codes"] = list(trigger_codes)
     content = {
         "brief_schema": BRIEF_SCHEMA,
         "report_id": validated["report_id"],
@@ -1334,17 +1857,10 @@ def _signal_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], list[
         "expected_next_trade_date": validated["expected_next_trade_date"],
         "account_id_source": validated["account_id_source"],
         "account_status": validated["account_status"],
-        "decision": {
-            "evidence_complete": validated["status"] != "DATA_INSUFFICIENT",
-            "no_action_reason": first.get("no_action_reason"),
-            "observation_triggers": [str(item) for item in triggers],
-            "suppressed_recommendation_count": suppressed,
-        },
-        "market_regime": copy.deepcopy(market_regime) if market_regime is not None else None,
-        "router": copy.deepcopy(router) if router is not None else None,
-        "deconcentration_state": (
-            copy.deepcopy(deconcentration_state) if deconcentration_state is not None else None
-        ),
+        "decision": decision,
+        "market_regime": market_regime,
+        "router": router,
+        "deconcentration_state": deconcentration_state,
         "data_quality": data_quality,
     }
     return content, sorted(set(missing))
@@ -1365,13 +1881,14 @@ def _recommendation_drafts(
         () if expected_execution is not None else ("expected_execution_date",)
     )
     for action in validated["actions"]:
+        projected_action = _project_action(action)
         content = {
             "brief_schema": BRIEF_SCHEMA,
             "report_id": validated["report_id"],
             "status": validated["status"],
             "generated_at": validated["generated_at"].isoformat(),
             "expected_execution_date": expected_execution,
-            "action": copy.deepcopy(dict(action)),
+            "action": projected_action,
         }
         drafts.append(
             Draft(
@@ -1399,7 +1916,7 @@ def _valuation_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], li
             raise LedgerRefusal(f"v3_cockpit.principal.{field} 缺失")
     holdings: list[dict[str, Any]] = []
     for index, holding in enumerate(validated["holdings"]):
-        holdings.append(dict(_validate_holding(holding, index=index, missing=missing)))
+        holdings.append(_project_holding(holding, index=index, missing=missing))
     concentration = validated.get("concentration")
     if concentration is None:
         missing.append("concentration")
@@ -1427,8 +1944,13 @@ def ingest_brief(
     *,
     root: Path | str | None = None,
     account_id: str = LEDGER_ACCOUNT_ID,
+    calendar_db: Path | str | None = None,
 ) -> dict[str, Any]:
-    """读取一份 FinanceMCP compact brief，追加 SIGNAL / RECOMMENDATION / VALUATION。"""
+    """读取一份 FinanceMCP compact brief，追加 SIGNAL / RECOMMENDATION / VALUATION。
+
+    `calendar_db` 是受信交易日历（只读 `trade_cal`）；缺省或未知时整次拒绝，
+    这是补遗 2 §1 的收盘窗口硬门槛。
+    """
     resolved_root = ledger_root(root)
     manifest = load_manifest(resolved_root)
     if manifest.account_id != account_id:
@@ -1439,7 +1961,9 @@ def ingest_brief(
     raw = path.read_bytes()
     raw_sha = sha256_bytes(raw)
     brief = _read_json_object(raw, label="brief")
-    validated = _validate_brief(brief, account_id=account_id, now=utc_now())
+    validated = _validate_brief(
+        brief, account_id=account_id, now=utc_now(), calendar_db=calendar_db
+    )
     source = _brief_source_identity(
         brief, path=path, raw_sha=raw_sha, generated_at=validated["generated_at"].isoformat()
     )
@@ -1475,26 +1999,15 @@ def ingest_brief(
                 missing_fields=tuple(valuation_missing),
             )
         )
-    if policy is not None:
-        if load_policy_baseline(resolved_root) is None and read_events(
-            resolved_root, "SIGNAL", manifest=manifest
-        ):
-            raise LedgerRefusal(
-                "POLICY_BASELINE_MISSING_WITH_EVIDENCE: 已有 SIGNAL 但 policy_baseline 缺失；"
-                "不得静默重建，须所有者人工复核"
-            )
-        _check_policy_baseline(resolved_root, policy)
     result = _append_drafts(
-        resolved_root, drafts, batch_kind="daily_brief", batch_source_sha=raw_sha
+        resolved_root,
+        drafts,
+        batch_kind="daily_brief",
+        batch_source_sha=raw_sha,
+        policy=dict(policy) if policy is not None else None,
+        policy_source_sha256=raw_sha,
+        policy_as_of_trade_date=validated["as_of_trade_date"],
     )
-    if policy is not None:
-        _write_policy_baseline(
-            resolved_root,
-            policy,
-            as_of_trade_date=validated["as_of_trade_date"],
-            source_sha256=raw_sha,
-            created_at=utc_now(),
-        )
     return {
         **result,
         "brief": {
@@ -1660,22 +2173,6 @@ def ingest_confirmed_fills(
     try:
         _require_verified_account(connection, account_id)
         schema_fingerprint = _account_event_schema_fingerprint(connection)
-        imported = [
-            str(event["content"]["event_id"])
-            for event in read_events(resolved_root, "CONFIRMED_FILL", manifest=manifest)
-        ]
-        reversed_imported = _reversed_imported_fill_ids(connection, imported)
-        if reversed_imported:
-            raise LedgerRefusal(
-                "SOURCE_REVERSED_AFTER_IMPORT: 已导入成交在源库被撤销 "
-                f"{reversed_imported}；建议暂停并人工复核，不得改写既有台账行"
-            )
-        missing_imported = _missing_imported_fill_ids(connection, imported)
-        if missing_imported:
-            raise LedgerRefusal(
-                "SOURCE_FILL_MISSING_AFTER_IMPORT: 已导入成交在源库消失 "
-                f"{missing_imported}；建议暂停并人工复核，不得删除既有台账行"
-            )
         drafts, skipped = _fill_drafts(
             connection,
             account_id=account_id,
@@ -1683,22 +2180,49 @@ def ingest_confirmed_fills(
             db_path=db_path,
             now_ymd=_now_shanghai().strftime("%Y%m%d"),
         )
+
+        def _source_precheck(
+            events_by_type: Mapping[str, list[dict[str, Any]]],
+        ) -> None:
+            """锁内复核：已导入成交在源库不得被撤销或消失（只读查询）。"""
+            imported = [
+                str(event["content"]["event_id"])
+                for event in events_by_type["CONFIRMED_FILL"]
+            ]
+            reversed_imported = _reversed_imported_fill_ids(connection, imported)
+            if reversed_imported:
+                raise LedgerRefusal(
+                    "SOURCE_REVERSED_AFTER_IMPORT: 已导入成交在源库被撤销 "
+                    f"{reversed_imported}；建议暂停并人工复核，不得改写既有台账行"
+                )
+            missing_imported = _missing_imported_fill_ids(connection, imported)
+            if missing_imported:
+                raise LedgerRefusal(
+                    "SOURCE_FILL_MISSING_AFTER_IMPORT: 已导入成交在源库消失 "
+                    f"{missing_imported}；建议暂停并人工复核，不得删除既有台账行"
+                )
+
+        if not drafts:
+            _source_precheck(_read_all_events(resolved_root, manifest))
+            return {
+                "status": "NO_NEW_FILLS",
+                "appended": {record_type: 0 for record_type in RECORD_FILES},
+                "skipped_idempotent": {record_type: 0 for record_type in RECORD_FILES},
+                "skipped_rows": skipped,
+                "source_schema_fingerprint": schema_fingerprint,
+            }
+        source_sha = sha256_text(
+            canonical_json([draft.content["event_id"] for draft in _sort_drafts(drafts)])
+        )
+        result = _append_drafts(
+            resolved_root,
+            drafts,
+            batch_kind="confirmed_fills",
+            batch_source_sha=source_sha,
+            precheck=_source_precheck,
+        )
     finally:
         connection.close()
-    if not drafts:
-        return {
-            "status": "NO_NEW_FILLS",
-            "appended": {record_type: 0 for record_type in RECORD_FILES},
-            "skipped_idempotent": {record_type: 0 for record_type in RECORD_FILES},
-            "skipped_rows": skipped,
-            "source_schema_fingerprint": schema_fingerprint,
-        }
-    source_sha = sha256_text(
-        canonical_json([draft.content["event_id"] for draft in _sort_drafts(drafts)])
-    )
-    result = _append_drafts(
-        resolved_root, drafts, batch_kind="confirmed_fills", batch_source_sha=source_sha
-    )
     return {
         **result,
         "skipped_rows": skipped,
@@ -1795,9 +2319,10 @@ def ingest_unexecuted_reason(
 def verify_ledger(root: Path | str | None = None) -> dict[str, Any]:
     resolved = ledger_root(root)
     manifest = load_manifest(resolved)
-    events_by_type = _read_all_events(resolved, manifest)
-    batches = _verify_batches(events_by_type)
-    baseline = load_policy_baseline(resolved)
+    with _writer_lock(resolved, create=False):
+        events_by_type = _read_all_events(resolved, manifest)
+        batches = _verify_batches(events_by_type)
+        baseline = load_policy_baseline(resolved)
     if baseline is not None:
         for signal in events_by_type["SIGNAL"]:
             policy = signal["policy"]
@@ -1825,6 +2350,38 @@ def verify_ledger(root: Path | str | None = None) -> dict[str, Any]:
         "last_event_hash": last_hashes,
         "policy_baseline": baseline,
     }
+
+
+def _default_calendar_db() -> Path | None:
+    configured = os.environ.get("TACTICORE_V3_LEDGER_CALENDAR_DB")
+    if configured:
+        return Path(configured)
+    return None
+
+
+def _calendar_open_days(calendar_db: Path | str | None, day: str) -> list[str] | None:
+    """只读取信交易日历，确认 `day` 是开市日。
+
+    返回 `[day]`（开市）、`[]`（日历明确休市/未知日期）、`None`（日历不可用/未配置）。
+    调用方对 `None`/`[]` 一律整次拒绝（补遗 2 §1）。
+    """
+    resolved = Path(calendar_db) if calendar_db is not None else _default_calendar_db()
+    if resolved is None:
+        return None
+    if not resolved.is_file():
+        raise LedgerRefusal(f"受信交易日历库不存在: {resolved}")
+    connection = _open_readonly_sqlite(resolved)
+    try:
+        rows = connection.execute(
+            "SELECT cal_date, is_open FROM trade_cal WHERE cal_date = ?", (day,)
+        ).fetchall()
+    except sqlite3.DatabaseError as error:
+        raise LedgerRefusal("交易日历库缺少 trade_cal 表") from error
+    finally:
+        connection.close()
+    if not rows:
+        return []
+    return [day] if int(rows[0]["is_open"] or 0) == 1 else []
 
 
 def _open_days(calendar_db: Path | str, *, start: str, end: str) -> list[str]:
@@ -1906,8 +2463,9 @@ def status_report(
     """只读复核：计数、逾期未执行建议、MISSED 日与暂停建议。"""
     resolved = ledger_root(root)
     manifest = load_manifest(resolved)
-    events_by_type = _read_all_events(resolved, manifest)
-    _verify_batches(events_by_type)
+    with _writer_lock(resolved, create=False):
+        events_by_type = _read_all_events(resolved, manifest)
+        _verify_batches(events_by_type)
     counts = {record_type: len(events) for record_type, events in events_by_type.items()}
     signals = events_by_type["SIGNAL"]
     recommendations = _recommendations(events_by_type["RECOMMENDATION"])
@@ -1975,21 +2533,7 @@ def status_report(
     for signal in signals:
         day = str(signal["as_of_trade_date"])
         content = signal["content"]
-        deconcentration = content["deconcentration_state"] or {}
-        legs_today = [
-            leg
-            for recommendation in recommendations
-            if recommendation.as_of_trade_date == day
-            for leg in recommendation.legs
-        ]
-        if int(deconcentration.get("recommended_sell_shares") or 0) > 0 and not any(
-            leg["side"] == "SELL" for leg in legs_today
-        ):
-            warnings.append(f"SIGNAL_ACTION_WITHOUT_RECOMMENDATION:{day}:SELL")
-        if int(deconcentration.get("recommended_buy_shares") or 0) > 0 and not any(
-            leg["side"] == "BUY" for leg in legs_today
-        ):
-            warnings.append(f"SIGNAL_ACTION_WITHOUT_RECOMMENDATION:{day}:BUY")
+        # 补遗 2：SIGNAL 不再携带份数/价格，状态一致性只核对动作与建议数量。
         if content["status"] == "ACTIONABLE" and not any(
             recommendation.as_of_trade_date == day for recommendation in recommendations
         ):
@@ -2113,6 +2657,14 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("init", help="初始化台账目录（仅首次）")
     brief = subparsers.add_parser("ingest-brief", help="追加一份当日 FinanceMCP brief")
     brief.add_argument("--brief", required=True, help="daily-briefs/YYYYMMDD.json 路径")
+    brief.add_argument(
+        "--calendar-db",
+        default=None,
+        help=(
+            "受信只读交易日历（ashare.sqlite 的 trade_cal）；缺省 "
+            "TACTICORE_V3_LEDGER_CALENDAR_DB；未知即拒绝整次运行"
+        ),
+    )
     fills = subparsers.add_parser("ingest-fills", help="只读导入券商确认成交")
     fills.add_argument("--portfolio-db", default=None, help="portfolio.sqlite 路径")
     reason = subparsers.add_parser("ingest-unexecuted-reason", help="追加显式未执行原因")
@@ -2130,7 +2682,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "init":
             _print(init_ledger(root))
         elif args.command == "ingest-brief":
-            _print(ingest_brief(args.brief, root=root))
+            _print(
+                ingest_brief(args.brief, root=root, calendar_db=args.calendar_db)
+            )
         elif args.command == "ingest-fills":
             _print(
                 ingest_confirmed_fills(

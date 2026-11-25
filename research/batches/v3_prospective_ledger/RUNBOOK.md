@@ -1,6 +1,7 @@
 # V3 前瞻台账 — 人工运行手册
 
-对应协议：[PROTOCOL_V1.md](PROTOCOL_V1.md) + [AMENDMENT_1_PRE_IMPLEMENTATION.md](AMENDMENT_1_PRE_IMPLEMENTATION.md)。
+对应协议：[PROTOCOL_V1.md](PROTOCOL_V1.md) + [AMENDMENT_1_PRE_IMPLEMENTATION.md](AMENDMENT_1_PRE_IMPLEMENTATION.md)
++ [AMENDMENT_2_PRE_IMPLEMENTATION.md](AMENDMENT_2_PRE_IMPLEMENTATION.md)。
 实现：`research/experiments/v3_prospective_ledger.py`，测试：`tests/test_v3_prospective_ledger.py`。
 
 本手册只描述**人工/受控运行**。台账不注册任何 systemd/cron/daemon；不得为它新建定时器。
@@ -50,21 +51,28 @@ EOF
 ```
 
 必须满足：`schema == ashare-daily-brief/1.0`、`as_of_trade_date == $DATE`、
-`account_status == REAL_ACCOUNT_VERIFIED`。**若当天没有日报或日期不符：当天记为 MISSED，
-永久不补录；不要用前一交易日的日报替代，也不要次日补跑。**
+`account_status == REAL_ACCOUNT_VERIFIED`、`generated_at` 的上海时间 `>= 15:00:00`，且
+`$DATE` 被受信只读交易日历确认为开市日。**若当天没有日报、日期不符、日报早于 15:00、
+日历不可用/未知或当天不是开市日：整次拒绝，当天记为 MISSED，永久不补录；不要用前一交易日
+的日报替代，也不要次日补跑。**
 
 ### 2.2 追加当日信号 / 建议 / 估值
 
 ```bash
-$PY -m research.experiments.v3_prospective_ledger ingest-brief --brief "$BRIEF"
+CAL=~/.local/share/finance-mcp-ashare/ashare.sqlite   # 受信只读交易日历（trade_cal）
+$PY -m research.experiments.v3_prospective_ledger ingest-brief --brief "$BRIEF" --calendar-db "$CAL"
 ```
 
+- **必须提供 `--calendar-db`**（或设置 `TACTICORE_V3_LEDGER_CALENDAR_DB`）；缺省/不可用时
+  `REFUSED: 交易日历未知`，不写任何 event。台账只读该库，不写日历。
 - 成功：返回 `INGESTED`，`appended` 里是 SIGNAL / RECOMMENDATION / VALUATION 的数量。
 - `IDEMPOTENT_NOOP`：同一份 brief 已追加过，字节未变；正常。
 - `CONFLICT`：同一天出现了不同内容的 brief（通常是重新生成的日报）。**不要删除旧行、
   不要换文件重试**；停止并报告所有者。
-- `REFUSED`：日期、账户、schema、缺失字段或时间链不合法；按 error 修正输入或记录 MISSED。
+- `REFUSED`：日期、账户、schema、缺失字段、收盘窗口或时间链不合法；按 error 修正输入或记录 MISSED。
 - `POLICY_RELEASE_CHANGED`：规则包与首次 baseline 不一致；停止并报告所有者裁决。
+- `APPEND_IO_FAILURE` / `CORRUPT`：写入中断或既有账本不完整；**停止写入**，运行 `verify`
+  复核并保留现场，不得截断、删除或重试补行（见 §3）。
 
 ### 2.3 只读导入券商确认成交（可晚于成交日）
 
@@ -145,6 +153,7 @@ $PY -m research.experiments.v3_prospective_ledger status \
 <ledger_root>/
   manifest.json                 不可变：协议版本、commit、最早合格日、账户
   policy_baseline.json          首次合格 brief 钉住的规则包身份（补遗 1）
+  .writer.lock                  单写者 flock；init 创建，不是证据事件
   signals.jsonl                 SIGNAL
   recommendations.jsonl         RECOMMENDATION
   confirmed_fills.jsonl         CONFIRMED_FILL

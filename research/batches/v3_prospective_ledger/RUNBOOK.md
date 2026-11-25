@@ -1,0 +1,156 @@
+# V3 前瞻台账 — 人工运行手册
+
+对应协议：[PROTOCOL_V1.md](PROTOCOL_V1.md) + [AMENDMENT_1_PRE_IMPLEMENTATION.md](AMENDMENT_1_PRE_IMPLEMENTATION.md)。
+实现：`research/experiments/v3_prospective_ledger.py`，测试：`tests/test_v3_prospective_ledger.py`。
+
+本手册只描述**人工/受控运行**。台账不注册任何 systemd/cron/daemon；不得为它新建定时器。
+
+## 0. 前置
+
+- 工作目录：TactiCore worktree 根（例如 `/home/jcshi/workspace/TactiCore-wt/v3e-ledger`）。
+- 解释器：`/home/jcshi/workspace/TactiCore/.venv/bin/python`（不要用 worktree 内 `.venv/bin/pytest`，
+  不要对共享环境 `uv sync`）。
+- 台账目录：默认 `~/.local/share/tacticore-v3-prospective-ledger`（0700，私有，不提交 git）。
+  可用 `TACTICORE_V3_LEDGER_ROOT` 或全局参数 `--ledger-root` 覆盖。
+- 只读输入：FinanceMCP 私有目录 `~/.local/share/ashare-private/` 下的
+  `daily-briefs/YYYYMMDD.json` 与 `portfolio.sqlite`。本工具只读，不调用任何 FinanceMCP CLI。
+
+```bash
+cd /home/jcshi/workspace/TactiCore-wt/v3e-ledger
+PY=/home/jcshi/workspace/TactiCore/.venv/bin/python
+$PY -m research.experiments.v3_prospective_ledger --help
+```
+
+## 1. 首次初始化（只做一次）
+
+```bash
+$PY -m research.experiments.v3_prospective_ledger init
+```
+
+成功返回 `{"status":"INITIALIZED", ...}`，创建 `manifest.json`（0600）与五个空的
+`*.jsonl`。**不要删除或重建**；重复 `init` 会被拒绝。
+
+## 2. 每个合格交易日（收盘后、日报生成后）
+
+**顺序：brief → fills → reasons → verify/status。任何一步失败即停止并报告，不重试写入。**
+
+### 2.1 确认当日日报存在且是当天的
+
+日报由 FinanceMCP 每日流水线在收盘后生成（通常 19:30–20:30 Asia/Shanghai）：
+
+```bash
+DATE=$(TZ=Asia/Shanghai date +%Y%m%d)
+BRIEF=~/.local/share/ashare-private/daily-briefs/$DATE.json
+ls -l "$BRIEF"
+$PY - <<EOF
+import json
+d=json.load(open("$BRIEF"))
+print(d["schema"], d["as_of_trade_date"], d["status"], d["generated_at"])
+EOF
+```
+
+必须满足：`schema == ashare-daily-brief/1.0`、`as_of_trade_date == $DATE`、
+`account_status == REAL_ACCOUNT_VERIFIED`。**若当天没有日报或日期不符：当天记为 MISSED，
+永久不补录；不要用前一交易日的日报替代，也不要次日补跑。**
+
+### 2.2 追加当日信号 / 建议 / 估值
+
+```bash
+$PY -m research.experiments.v3_prospective_ledger ingest-brief --brief "$BRIEF"
+```
+
+- 成功：返回 `INGESTED`，`appended` 里是 SIGNAL / RECOMMENDATION / VALUATION 的数量。
+- `IDEMPOTENT_NOOP`：同一份 brief 已追加过，字节未变；正常。
+- `CONFLICT`：同一天出现了不同内容的 brief（通常是重新生成的日报）。**不要删除旧行、
+  不要换文件重试**；停止并报告所有者。
+- `REFUSED`：日期、账户、schema、缺失字段或时间链不合法；按 error 修正输入或记录 MISSED。
+- `POLICY_RELEASE_CHANGED`：规则包与首次 baseline 不一致；停止并报告所有者裁决。
+
+### 2.3 只读导入券商确认成交（可晚于成交日）
+
+```bash
+$PY -m research.experiments.v3_prospective_ledger ingest-fills
+```
+
+- 只导入 `account_event` 中 `source='broker_statement'`、未撤销的 `TRADE_BUY/TRADE_SELL`。
+- `synthetic` 成交永不导入；`recommendation` 永不变成成交。
+- 若返回 `SOURCE_REVERSED_AFTER_IMPORT` 或 `SOURCE_FILL_MISSING_AFTER_IMPORT`：**暂停**，
+  人工核对券商流水；不得改写或删除既有台账行。
+- 可在成交发生后任意一天运行；`occurred_on` 必须不早于最早合格日。
+
+### 2.4 显式未执行原因（只在人类确知原因时）
+
+原因输入 JSON（示例）：
+
+```json
+{
+  "schema": "v3-prospective-unexecuted-reason/1.0",
+  "recommendation_event_id": "V3L-xxxxxxxxxxxxxxxxxxxxxxxx",
+  "reason_code": "PRICE_INVALIDATED",
+  "scope": "FULL",
+  "reason_note": "次日高开超过 +2%，按失效条件未执行",
+  "decided_on": "YYYYMMDD"
+}
+```
+
+`reason_code` 只能取：
+
+```text
+PRICE_INVALIDATED / PREMIUM_BLOCKED / INSUFFICIENT_CASH / MARKET_STATE_CHANGED
+BROKER_REJECTED / USER_DEFERRED / OTHER_EXPLICIT
+```
+
+```bash
+$PY -m research.experiments.v3_prospective_ledger ingest-unexecuted-reason --input reason-YYYYMMDD.json
+```
+
+- 一条 recommendation 至多一条原因；不同原因重复提交会被拒绝（append-only）。
+- 不确定原因时**不要编造**；留为 `UNRESOLVED`，由 `status` 显示。
+- `decided_on` 不得早于 recommendation 的 signal 日，也不得晚于今天。
+
+### 2.5 只读复核
+
+```bash
+$PY -m research.experiments.v3_prospective_ledger verify
+$PY -m research.experiments.v3_prospective_ledger status \
+  --calendar-db ~/.local/share/finance-mcp-ashare/ashare.sqlite
+```
+
+- `verify` 必须返回 `status=OK`；哈希链、schema、batch、policy baseline 任一不一致即 `CORRUPT`。
+- `status` 报告：
+  - 五类事件计数与日期；
+  - `missed`：最早合格日至昨日、交易日历开市但没有 SIGNAL 的日期；
+  - `recommendation_review`：每条建议的派生匹配状态（MATCHED / PARTIAL / UNMATCHED /
+    NOT_DUE / NOT_EXECUTABLE / NO_EXPECTED_DATE）；这是复核视图，不是执行证明；
+  - `unresolved_recommendation_event_ids`：已到期、无匹配成交且无显式原因；
+  - `warnings`：信号与建议不一致、reason 与成交矛盾等；
+  - `pause.recommended` 与 `pause.reasons`。
+
+## 3. 暂停建议
+
+出现以下任一情况时：停止继续追加，保留现状，报告所有者；**不要**通过编辑 JSONL、
+删除行、重建台账或换一份输入来"修复"：
+
+1. `verify` 失败（哈希链 / schema / batch / baseline）；
+2. 来源冲突（同日不同 brief）或 `POLICY_RELEASE_CHANGED`；
+3. 已导入成交在源库被撤销或消失；
+4. 连续 5 个交易日 MISSED；
+5. 3 条以上建议已到期超过 3 个交易日，既无确认成交也无显式未执行原因。
+
+恢复需所有者明确指示并记录原因；历史事件保持不变。
+
+## 4. 账本文件
+
+```text
+<ledger_root>/
+  manifest.json                 不可变：协议版本、commit、最早合格日、账户
+  policy_baseline.json          首次合格 brief 钉住的规则包身份（补遗 1）
+  signals.jsonl                 SIGNAL
+  recommendations.jsonl         RECOMMENDATION
+  confirmed_fills.jsonl         CONFIRMED_FILL
+  unexecuted_reasons.jsonl      UNEXECUTED_REASON
+  valuations.jsonl              VALUATION
+```
+
+- 只追加；不手工编辑、不排序、不合并、不提交到 git。
+- 备份只做目录级复制，不做跨机器重写。

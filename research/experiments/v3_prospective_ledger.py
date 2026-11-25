@@ -24,6 +24,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import sqlite3
 import sys
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
@@ -270,6 +271,27 @@ SIGNAL_DECONCENTRATION_KEYS = frozenset(
         "breakdown_ma60_2d",
         "next_monthly_trigger_date",
     }
+)
+# 补遗 2 §2：SIGNAL 的 data_quality 只投影质量事实，丢弃自由文本 detail/notes，
+# 避免其成为份数/价格文本或深层成交语义进入 SIGNAL 的后门。
+SIGNAL_DATA_QUALITY_KEYS = frozenset(
+    {
+        "status",
+        "summary_status",
+        "missing_fields",
+        "quotes",
+        "market_report",
+        "screening",
+        "tiers",
+    }
+)
+SIGNAL_DATA_QUALITY_QUOTES_KEYS = frozenset({"ready", "stale", "not_ready", "missing"})
+SIGNAL_DATA_QUALITY_MARKET_REPORT_KEYS = frozenset(
+    {"available", "report_id", "as_of_trade_date", "freshness"}
+)
+SIGNAL_DATA_QUALITY_SCREENING_KEYS = frozenset({"status", "missing_tables"})
+SIGNAL_DATA_QUALITY_TIER_KEYS = frozenset(
+    {"status", "as_of", "verified", "ready", "not_ready"}
 )
 # 补遗 2 §2：VALUATION holdings 只保留估值事实。
 VALUATION_HOLDING_KEYS = frozenset(
@@ -763,7 +785,7 @@ def _scan_forbidden_keys(value: object, *, label: str, forbidden: frozenset[str]
 
 
 def _signal_scalar(value: object, *, label: str) -> Any:
-    """SIGNAL 状态块只允许枚举/布尔/标量与纯状态映射；不得含腿、份数、价。"""
+    """SIGNAL 状态/质量块只允许枚举、布尔、标量与标量数组；不得含腿、份数、价。"""
     if value is None or isinstance(value, (str, bool, int)):
         return value
     if isinstance(value, float):
@@ -775,7 +797,12 @@ def _signal_scalar(value: object, *, label: str) -> Any:
             str(key): _signal_scalar(item, label=f"{label}.{key}")
             for key, item in sorted(value.items())
         }
-    raise LedgerRefusal(f"{label} 必须是标量或状态映射，不能是 {type(value).__name__}")
+    if isinstance(value, (list, tuple)):
+        return [
+            _signal_scalar(item, label=f"{label}[{index}]")
+            for index, item in enumerate(value)
+        ]
+    raise LedgerRefusal(f"{label} 必须是标量、状态映射或标量数组，不能是 {type(value).__name__}")
 
 
 def _project_state_block(
@@ -789,6 +816,99 @@ def _project_state_block(
         for key in sorted(payload)
         if key in allowed
     }
+
+
+def _text_has_order_semantics(text: str) -> bool:
+    """自由文本是否夹带份数/整手/目标价等可执行订单语义（补遗 2 §2）。
+
+    只匹配"数字 + 单位"或"目标价"；无数字的"按参考价计价"之类说明不算夹带价格。
+    """
+    patterns = (
+        r"\d+\s*份",
+        r"\d+\s*手",
+        r"目标价",
+        r"(?:参考价|价格|价位)[^\d]{0,6}\d",
+        r"\d+(?:\.\d+)?\s*元",
+    )
+    return any(re.search(pattern, text) for pattern in patterns)
+
+
+def _project_data_quality(data_quality: Mapping[str, Any]) -> dict[str, Any]:
+    """SIGNAL 的 data_quality 只保留质量事实，丢弃自由文本 `detail` / `notes`。"""
+    payload: dict[str, Any] = {}
+    for key in ("status", "summary_status", "missing_fields"):
+        if key in data_quality:
+            payload[key] = _signal_scalar(data_quality[key], label=f"data_quality.{key}")
+    quotes = data_quality.get("quotes")
+    if isinstance(quotes, Mapping):
+        payload["quotes"] = {
+            key: _signal_scalar(quotes[key], label=f"data_quality.quotes.{key}")
+            for key in sorted(quotes)
+            if key in SIGNAL_DATA_QUALITY_QUOTES_KEYS
+        }
+    market_report = data_quality.get("market_report")
+    if isinstance(market_report, Mapping):
+        payload["market_report"] = {
+            key: _signal_scalar(market_report[key], label=f"data_quality.market_report.{key}")
+            for key in sorted(market_report)
+            if key in SIGNAL_DATA_QUALITY_MARKET_REPORT_KEYS
+        }
+    screening = data_quality.get("screening")
+    if isinstance(screening, Mapping):
+        payload["screening"] = {
+            key: _signal_scalar(screening[key], label=f"data_quality.screening.{key}")
+            for key in sorted(screening)
+            if key in SIGNAL_DATA_QUALITY_SCREENING_KEYS
+        }
+    tiers = data_quality.get("tiers")
+    if isinstance(tiers, Mapping):
+        payload["tiers"] = {
+            tier: {
+                key: _signal_scalar(value[key], label=f"data_quality.tiers.{tier}.{key}")
+                for key in sorted(value)
+                if key in SIGNAL_DATA_QUALITY_TIER_KEYS
+            }
+            for tier, value in sorted(tiers.items())
+            if isinstance(value, Mapping)
+        }
+    return payload
+
+
+def _validate_data_quality(data_quality: Mapping[str, Any]) -> None:
+    unknown = set(data_quality).difference(SIGNAL_DATA_QUALITY_KEYS)
+    if unknown:
+        raise LedgerCorruption(f"SIGNAL data_quality 含未批准字段: {sorted(unknown)}")
+    for key, value in data_quality.items():
+        if key == "quotes" and isinstance(value, Mapping):
+            unknown_quotes = set(value).difference(SIGNAL_DATA_QUALITY_QUOTES_KEYS)
+            if unknown_quotes:
+                raise LedgerCorruption(
+                    f"SIGNAL data_quality.quotes 含未批准字段: {sorted(unknown_quotes)}"
+                )
+        elif key == "market_report" and isinstance(value, Mapping):
+            unknown_report = set(value).difference(SIGNAL_DATA_QUALITY_MARKET_REPORT_KEYS)
+            if unknown_report:
+                raise LedgerCorruption(
+                    "SIGNAL data_quality.market_report 含未批准字段: "
+                    f"{sorted(unknown_report)}"
+                )
+        elif key == "screening" and isinstance(value, Mapping):
+            unknown_screening = set(value).difference(SIGNAL_DATA_QUALITY_SCREENING_KEYS)
+            if unknown_screening:
+                raise LedgerCorruption(
+                    f"SIGNAL data_quality.screening 含未批准字段: {sorted(unknown_screening)}"
+                )
+        elif key == "tiers" and isinstance(value, Mapping):
+            for tier_name, tier in value.items():
+                if not isinstance(tier, Mapping):
+                    raise LedgerCorruption("SIGNAL data_quality.tiers 每项必须是 JSON object")
+                unknown_tier = set(tier).difference(SIGNAL_DATA_QUALITY_TIER_KEYS)
+                if unknown_tier:
+                    raise LedgerCorruption(
+                        f"SIGNAL data_quality.tiers.{tier_name} 含未批准字段: "
+                        f"{sorted(unknown_tier)}"
+                    )
+        _signal_scalar(value, label=f"SIGNAL.data_quality.{key}")
 
 
 def _validate_state_block(
@@ -893,6 +1013,7 @@ def _validate_signal_content(content: Mapping[str, Any], missing: tuple[str, ...
         if value is None and name not in missing:
             raise LedgerCorruption(f"SIGNAL {name} 为空但未记入 missing_fields")
     data_quality = _require_mapping(content["data_quality"], label="SIGNAL data_quality")
+    _validate_data_quality(data_quality)
     for key in ("status", "summary_status", "missing_fields"):
         if key not in data_quality and f"data_quality.{key}" not in missing:
             raise LedgerCorruption(f"SIGNAL data_quality.{key} 缺失但未记入 missing_fields")
@@ -1275,9 +1396,9 @@ def _validate_event(event: object, *, record_type: str, manifest: Manifest) -> M
             f"{record_type} source.kind 必须是 {expected_source_kind}，实际 {source['kind']!r}"
         )
     missing = _validate_missing_fields(payload["missing_fields"])
+    status = payload["content"].get("status") if isinstance(payload["content"], Mapping) else None
     policy_required = record_type in {"RECOMMENDATION", "VALUATION"} or (
-        record_type == "SIGNAL"
-        and not any(field == "v3_cockpit" or field.startswith("v3_cockpit.") for field in missing)
+        record_type == "SIGNAL" and status != "DATA_INSUFFICIENT"
     )
     _validate_policy(payload["policy"], required=policy_required)
     _validate_batch(payload["ingest_batch"])
@@ -1326,9 +1447,11 @@ def read_events(
         if not line.strip():
             raise LedgerCorruption(f"{path.name} 第 {line_number} 行为空")
         try:
-            event = json.loads(line)
+            event = json.loads(line, parse_constant=_reject_json_constant)
         except json.JSONDecodeError as error:
             raise LedgerCorruption(f"{path.name} 第 {line_number} 行不是合法 JSON") from error
+        except LedgerRefusal as error:
+            raise LedgerCorruption(f"{path.name} 第 {line_number} 行非法: {error}") from error
         validated = _validate_event(event, record_type=record_type, manifest=active)
         if validated["prev_event_hash"] != previous:
             raise LedgerCorruption(f"{path.name} 第 {line_number} 行哈希链断裂")
@@ -1441,10 +1564,11 @@ def _apply_policy_gate(
     policy: Mapping[str, str] | None,
     existing_signals: Sequence[Mapping[str, Any]],
 ) -> None:
-    """补遗 1：baseline 缺失但已有**携带 policy 身份**的 SIGNAL 时不得静默重建。
+    """补遗 1 §1：baseline 在首个非不足日钉住，之后不得静默改变。
 
-    `DATA_INSUFFICIENT` 的 SIGNAL 没有 policy 身份，不构成"已有证据"，允许在其后
-    首次钉住 baseline（补遗 1 §1）。
+    - `DATA_INSUFFICIENT` 日的 SIGNAL 没有 policy 身份，不构成"已有证据"；
+    - 只有**已钉住**了携带 policy 身份的 SIGNAL 而 baseline 缺失时才拒绝（不得静默重建）；
+    - 首个非不足日之前只写不足日 SIGNAL 是合法状态，不会被拒。
     """
     if policy is None:
         return
@@ -1467,12 +1591,14 @@ def _append_drafts(
     policy_source_sha256: str | None = None,
     policy_as_of_trade_date: str | None = None,
     precheck: Callable[[Mapping[str, list[dict[str, Any]]]], None] | None = None,
+    clock_precheck: Callable[[datetime], None] | None = None,
 ) -> dict[str, Any]:
-    """单写者锁内 verify 全账 → 整批预检 → 追加；预检拒绝字节不变。
+    """单写者锁内 verify 全账 → 整批预检 → 实际时钟校钟 → 追加；预检拒绝字节不变。
 
     - 同自然键 + 同 `content_hash` → 幂等 no-op，不新增行；
     - 同自然键 + 不同 `content_hash` → 整批拒绝，既有字节不变；
     - 只为新行分配批 ID 与 `ordinal=1..count`；
+    - `clock_precheck` 在锁内、真正追加前以**实际时钟**重校窗口（等锁到次日即拒绝）；
     - I/O/崩溃：既有前缀不变，可能留下不完整新尾；停止写入并报错，`verify` 拒绝重放。
     """
     resolved = ledger_root(root)
@@ -1496,12 +1622,13 @@ def _append_drafts(
         for draft in ordered:
             _parse_ymd(draft.as_of_trade_date, label="draft.as_of_trade_date")
             _validate_source(draft.source)
+            draft_status = (
+                draft.content.get("status")
+                if isinstance(draft.content, Mapping)
+                else None
+            )
             policy_required = draft.record_type in {"RECOMMENDATION", "VALUATION"} or (
-                draft.record_type == "SIGNAL"
-                and not any(
-                    field == "v3_cockpit" or field.startswith("v3_cockpit.")
-                    for field in draft.missing_fields
-                )
+                draft.record_type == "SIGNAL" and draft_status != "DATA_INSUFFICIENT"
             )
             _validate_policy(draft.policy, required=policy_required)
             if draft.missing_fields != tuple(sorted(set(draft.missing_fields))):
@@ -1522,6 +1649,8 @@ def _append_drafts(
             new_drafts.append(draft)
         batch_id = _batch_id(batch_kind, batch_source_sha, new_drafts)
         recorded_at = utc_now()
+        if clock_precheck is not None:
+            clock_precheck(recorded_at)
         appended = {record_type: 0 for record_type in RECORD_FILES}
         last_hashes = {
             record_type: (events[-1]["event_hash"] if events else ZERO_HASH)
@@ -1585,9 +1714,17 @@ def _append_drafts(
 # --------------------------------------------------------------------------------------
 
 
+def _reject_json_constant(value: str) -> Any:
+    """`json.loads` 对 NaN/Infinity 的钩子：一律拒绝，不静默接受非有限数。"""
+    raise LedgerRefusal(f"输入 JSON 含非有限数值常量 {value}，拒绝")
+
+
 def _read_json_object(raw: bytes, *, label: str) -> dict[str, Any]:
     try:
-        payload = json.loads(raw.decode("utf-8"))
+        payload = json.loads(
+            raw.decode("utf-8"),
+            parse_constant=_reject_json_constant,
+        )
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise LedgerRefusal(f"{label} 不是合法 UTF-8 JSON") from error
     if not isinstance(payload, dict):
@@ -1759,7 +1896,12 @@ def _validate_brief(
                 raise LedgerRefusal(f"brief.v3_cockpit.{key} 缺失")
     elif cockpit is not None and not isinstance(cockpit, Mapping):
         raise LedgerRefusal("brief.v3_cockpit 必须是 JSON object 或 null")
-    policy = _policy_identity(brief) if isinstance(cockpit, Mapping) else None
+    # 补遗 1 §1：不足日不得读取/绑定 policy 身份；validate 仍原样记录供审计。
+    policy = (
+        _policy_identity(brief)
+        if status != "DATA_INSUFFICIENT" and isinstance(cockpit, Mapping)
+        else None
+    )
     if status != "DATA_INSUFFICIENT" and policy is None:
         raise LedgerRefusal("非 DATA_INSUFFICIENT brief 必须携带 V3 policy_release 身份")
     return {
@@ -1836,14 +1978,19 @@ def _signal_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], list[
     ):
         if value is None:
             missing.append(name)
-    data_quality = copy.deepcopy(dict(validated["data_quality"]))
+    data_quality = _project_data_quality(validated["data_quality"])
     for key in ("status", "summary_status", "missing_fields"):
         if key not in data_quality:
             missing.append(f"data_quality.{key}")
     suppressed = len(validated["actions"]) if validated["status"] == "DATA_INSUFFICIENT" else 0
+    no_action_reason = first.get("no_action_reason")
+    if isinstance(no_action_reason, str) and _text_has_order_semantics(no_action_reason):
+        # A2:35：no_action_reason 是允许键，但不得成为份数/价格文本进入 SIGNAL 的后门。
+        missing.append("decision.no_action_reason_contains_order_semantics")
+        no_action_reason = None
     decision: dict[str, Any] = {
         "evidence_complete": validated["status"] != "DATA_INSUFFICIENT",
-        "no_action_reason": first.get("no_action_reason"),
+        "no_action_reason": no_action_reason,
         "suppressed_recommendation_count": suppressed,
     }
     if trigger_codes is not None:
@@ -1968,8 +2115,14 @@ def ingest_brief(
         brief, path=path, raw_sha=raw_sha, generated_at=validated["generated_at"].isoformat()
     )
     policy = validated["policy"]
+    if validated["status"] == "DATA_INSUFFICIENT":
+        # 补遗 1 §1：baseline 只在**首个非不足日**钉住；不足日即使 cockpit 带
+        # policy_release 也不得提前绑定，SIGNAL 的 policy 身份置空并显式记缺失。
+        policy = None
     drafts: list[Draft] = []
     signal_content, signal_missing = _signal_content(validated)
+    if policy is None and validated["status"] == "DATA_INSUFFICIENT":
+        signal_missing = sorted({*signal_missing, "v3_cockpit.policy_release"})
     signal_policy = dict(policy) if policy is not None else None
     drafts.append(
         Draft(
@@ -1999,6 +2152,15 @@ def ingest_brief(
                 missing_fields=tuple(valuation_missing),
             )
         )
+    def _locked_clock_recheck(moment: datetime) -> None:
+        """锁内、真正追加前用实际时钟重校窗口（等待锁到次日即整批拒绝）。"""
+        _validate_close_window(
+            as_of=validated["as_of_trade_date"],
+            generated_at=validated["generated_at"],
+            now=moment,
+            open_days=_calendar_open_days(calendar_db, validated["as_of_trade_date"]),
+        )
+
     result = _append_drafts(
         resolved_root,
         drafts,
@@ -2007,6 +2169,7 @@ def ingest_brief(
         policy=dict(policy) if policy is not None else None,
         policy_source_sha256=raw_sha,
         policy_as_of_trade_date=validated["as_of_trade_date"],
+        clock_precheck=_locked_clock_recheck,
     )
     return {
         **result,
@@ -2054,26 +2217,15 @@ def _account_event_schema_fingerprint(connection: sqlite3.Connection) -> str:
     return sha256_text(canonical_json(columns))
 
 
-def _require_verified_account(connection: sqlite3.Connection, account_id: str) -> None:
-    try:
-        row = connection.execute(
-            "SELECT value FROM account_meta WHERE key = ?",
-            (f"real_account_verified:{account_id}",),
-        ).fetchone()
-    except sqlite3.DatabaseError as error:
-        raise LedgerRefusal("只读账户库缺少 account_meta 表") from error
-    if row is None or str(row["value"]) != "1":
-        raise LedgerRefusal(f"账户 {account_id} 未经 real_account_verified 确认；拒绝导入成交")
-
-
 def _reversed_imported_fill_ids(
     connection: sqlite3.Connection, imported: Iterable[str]
 ) -> list[str]:
+    """严格 `reversed_by IS NULL`：SQL NULL 之外（含空串）一律视为已撤销。"""
     imported_set = set(imported)
     if not imported_set:
         return []
     rows = connection.execute(
-        "SELECT event_id FROM account_event WHERE reversed_by IS NOT NULL AND reversed_by != ''"
+        "SELECT event_id FROM account_event WHERE reversed_by IS NOT NULL"
     ).fetchall()
     return sorted(str(row["event_id"]) for row in rows if str(row["event_id"]) in imported_set)
 
@@ -2116,7 +2268,8 @@ def _fill_drafts(
         if event_source not in CONFIRMED_FILL_SOURCES:
             skipped["not_broker_statement"] += 1
             continue
-        if record.get("reversed_by") not in (None, ""):
+        if record.get("reversed_by") is not None:
+            # 严格 reversed_by IS NULL：空串也是非 NULL，视为已撤销，不导入。
             skipped["reversed"] += 1
             continue
         if record.get("account_id") != account_id:
@@ -2130,8 +2283,10 @@ def _fill_drafts(
             skipped["after_now"] += 1
             continue
         record["schema"] = "financemcp.account_event/1.0"
+        # 源行 SHA 只覆盖 account_event 原生 19 列；不掺入合成 schema 键。
+        native_row = {column: record[column] for column in ACCOUNT_EVENT_COLUMNS}
+        row_sha = sha256_text(canonical_json(native_row))
         content = {key: record[key] for key in sorted(record)}
-        row_sha = sha256_text(canonical_json(content))
         source = {
             "kind": "financemcp_portfolio_sqlite",
             "identity": {
@@ -2171,7 +2326,6 @@ def ingest_confirmed_fills(
     db_path = Path(portfolio_db)
     connection = _open_readonly_sqlite(db_path)
     try:
-        _require_verified_account(connection, account_id)
         schema_fingerprint = _account_event_schema_fingerprint(connection)
         drafts, skipped = _fill_drafts(
             connection,
@@ -2430,15 +2584,18 @@ def _recommendations(events: Sequence[Mapping[str, Any]]) -> list[_Recommendatio
     return result
 
 
-def _fill_matches_by_leg(
+def _fill_coincidences_by_leg(
     recommendation: _Recommendation, fills: Sequence[Mapping[str, Any]]
 ) -> tuple[dict[int, list[str]], list[str]]:
-    """派生视图：按腿匹配同日同码同向的确认成交；不声称执行比例或成交归属。"""
+    """派生视图：仅按同日同码同向找出**候选重合**，绝不声称成交归属或执行（补遗 2 §2）。
+
+    结果只能提示人工复核；不把成交自动匹配给 recommendation，也不据此解除 UNRESOLVED。
+    """
     expected = recommendation.expected_execution_date
     if expected is None:
         return {}, []
     by_leg: dict[int, list[str]] = {}
-    all_matched: list[str] = []
+    all_coincident: list[str] = []
     for fill in fills:
         content = fill["content"]
         if str(fill["as_of_trade_date"]) != expected:
@@ -2449,10 +2606,10 @@ def _fill_matches_by_leg(
                 continue
             if leg["ts_code"] == content["ts_code"] and leg["side"] == side:
                 by_leg.setdefault(index, []).append(str(fill["event_id"]))
-                all_matched.append(str(fill["event_id"]))
+                all_coincident.append(str(fill["event_id"]))
                 break
     normalized = {index: sorted(set(ids)) for index, ids in by_leg.items()}
-    return normalized, sorted(set(all_matched))
+    return normalized, sorted(set(all_coincident))
 
 
 def status_report(
@@ -2488,29 +2645,33 @@ def status_report(
         warnings.append("POLICY_BASELINE_MISSING_WITH_SIGNALS")
     matches_by_recommendation: dict[str, list[str]] = {}
     for recommendation in recommendations:
-        matched_by_leg, matched = _fill_matches_by_leg(recommendation, fills)
-        matches_by_recommendation[recommendation.event_id] = matched
+        coincident_by_leg, coincident = _fill_coincidences_by_leg(recommendation, fills)
+        matches_by_recommendation[recommendation.event_id] = coincident
         expected = recommendation.expected_execution_date
         executable_indices = [
             index for index, leg in enumerate(recommendation.legs) if leg["executable"]
         ]
-        matched_legs = [index for index in executable_indices if index in matched_by_leg]
+        coincident_legs = [
+            index for index in executable_indices if index in coincident_by_leg
+        ]
+        # 补遗 2 §2：同日同码同向只是"候选重合"，不自动判 MATCHED，也不是执行证明。
         if expected is None:
             match_status = "NO_EXPECTED_DATE"
         elif not executable_indices:
             match_status = "NOT_EXECUTABLE"
         elif expected > now_ymd:
             match_status = "NOT_DUE"
-        elif len(matched_legs) == len(executable_indices):
-            match_status = "MATCHED"
-        elif matched_legs:
-            match_status = "PARTIAL"
+        elif coincident_legs:
+            match_status = "COINCIDENT_FILLS_UNATTRIBUTED"
         else:
-            match_status = "UNMATCHED"
+            match_status = "NO_COINCIDENT_FILL"
         reason_id = reasons_by_recommendation.get(recommendation.event_id)
-        if reason_id is not None and recommendation.event_id in full_reason_ids and matched:
+        if reason_id is not None and recommendation.event_id in full_reason_ids and coincident:
             warnings.append(f"REASON_VS_FILL_CONTRADICTION:{recommendation.event_id}")
-        if match_status in {"UNMATCHED", "PARTIAL"} and reason_id is None:
+        # 任何未给出显式原因的已到期建议都留在 UNRESOLVED；重合成交不解除它。
+        if match_status in {"COINCIDENT_FILLS_UNATTRIBUTED", "NO_COINCIDENT_FILL"} and (
+            reason_id is None
+        ):
             unresolved.append(recommendation.event_id)
         review.append(
             {
@@ -2519,15 +2680,16 @@ def status_report(
                 "expected_execution_date": expected,
                 "action_code": recommendation.action_code,
                 "match_status": match_status,
-                "matched_fill_event_ids": matched,
-                "matched_leg_indices": matched_legs,
+                "coincident_fill_event_ids": coincident,
+                "coincident_leg_indices": coincident_legs,
                 "executable_leg_indices": executable_indices,
                 "unexecuted_reason_event_id": reason_id,
+                "attribution": "NOT_ATTRIBUTED",
             }
         )
-    matched_fill_ids = {fill_id for ids in matches_by_recommendation.values() for fill_id in ids}
-    unmatched_fills = sorted(
-        str(fill["event_id"]) for fill in fills if str(fill["event_id"]) not in matched_fill_ids
+    coincident_fill_ids = {fill_id for ids in matches_by_recommendation.values() for fill_id in ids}
+    unattributed_fills = sorted(
+        str(fill["event_id"]) for fill in fills if str(fill["event_id"]) not in coincident_fill_ids
     )
     signal_by_day = {str(event["as_of_trade_date"]): event for event in signals}
     for signal in signals:
@@ -2609,7 +2771,7 @@ def status_report(
         "recommendation_review": review,
         "unresolved_recommendation_event_ids": unresolved,
         "stale_unresolved_recommendation_event_ids": stale_unresolved,
-        "unmatched_fill_event_ids": unmatched_fills,
+        "unattributed_fill_event_ids": unattributed_fills,
         "warnings": sorted(set(warnings)),
         "pause": {
             "recommended": bool(pause_reasons),

@@ -492,6 +492,33 @@ def test_brief_generated_1459_imported_1501_is_rejected(
     assert snapshot_bytes(root) == before
 
 
+def test_locked_clock_crossing_midnight_while_waiting_for_lock_is_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """等锁跨午夜：初读时窗口合法，实际追加时钟已越界 → 整批拒绝、字节不变。"""
+    root = init(tmp_path)
+    before = snapshot_bytes(root)
+    brief = make_brief(generated_at="2026-11-26T20:00:00+08:00")
+    clock = {"now": NOW}
+    monkeypatch.setattr(ledger, "utc_now", lambda: clock["now"])
+    real_lock = ledger._writer_lock
+
+    from contextlib import contextmanager
+
+    @contextmanager
+    def slow_lock(path, *, create=True):
+        # 模拟等待其他写者：拿到锁时已是 D+1 00:00:30（上海）。
+        clock["now"] = datetime(2026, 11, 26, 16, 0, 30, tzinfo=timezone.utc)
+        with real_lock(path, create=create):
+            yield
+
+    monkeypatch.setattr(ledger, "_writer_lock", slow_lock)
+    with pytest.raises(ledger.LedgerRefusal, match="跨午夜"):
+        ingest(tmp_path, brief)
+    assert snapshot_bytes(root) == before
+    assert ledger.read_events(root, "SIGNAL") == []
+
+
 def test_brief_imported_after_midnight_is_rejected(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -658,6 +685,102 @@ def test_valuation_holding_drops_stance_and_recommendation_semantics(tmp_path: P
         assert stripped not in holding
     assert set(holding) <= ledger.VALUATION_HOLDING_KEYS
     assert "REDUCE" not in json.dumps(valuation, ensure_ascii=False)
+
+
+def test_data_quality_free_text_is_not_projected_into_signal(tmp_path: Path) -> None:
+    """A2:35 不得用 data_quality/detail 作份数/价格自由文本后门。"""
+    root = init(tmp_path)
+    brief = make_brief()
+    brief["data_quality"] = {
+        "status": "OK",
+        "summary_status": "OK",
+        "missing_fields": [],
+        "quotes": {
+            "ready": ["511010.SH"],
+            "stale": [],
+            "not_ready": [],
+            "missing": [],
+            "detail": "行情：300 份 目标价 1.234 元",
+        },
+        "market_report": {
+            "available": True,
+            "report_id": "f" * 64,
+            "as_of_trade_date": AS_OF,
+            "freshness": "same_day",
+            "detail": "市场日报 500 份 参考价 9.99 元",
+        },
+        "screening": {"status": "READY", "missing_tables": []},
+        "tiers": {
+            "market_data": {"status": "READY", "as_of": AS_OF, "detail": "目标价 1.234"},
+        },
+        "notes": ["目标价 1.234 元，300 份"],
+    }
+    ingest(tmp_path, brief)
+    signal = ledger.read_events(root, "SIGNAL")[0]
+    serialized = json.dumps(signal["content"], ensure_ascii=False)
+    for leaked in ("300 份", "目标价", "1.234", "参考价", "9.99"):
+        assert leaked not in serialized
+    data_quality = signal["content"]["data_quality"]
+    assert data_quality["quotes"] == {
+        "ready": ["511010.SH"],
+        "stale": [],
+        "not_ready": [],
+        "missing": [],
+    }
+    assert "detail" not in data_quality["market_report"]
+    assert "detail" not in data_quality["tiers"]["market_data"]
+    assert "notes" not in data_quality
+
+
+def test_no_action_reason_with_order_semantics_is_not_projected(tmp_path: Path) -> None:
+    """A2:35：no_action_reason 不得成为份数/价格文本进入 SIGNAL 的后门。"""
+    root = init(tmp_path)
+    brief = make_brief(status="NO_ACTION", actions=[])
+    brief["first_section"]["no_action_reason"] = (
+        "没有可复核的证据支持下一交易日的交易动作：300 份目标价 1.234 元未达门槛"
+    )
+    ingest(tmp_path, brief)
+    signal = ledger.read_events(root, "SIGNAL")[0]
+    assert signal["content"]["decision"]["no_action_reason"] is None
+    assert (
+        "decision.no_action_reason_contains_order_semantics" in signal["missing_fields"]
+    )
+    serialized = json.dumps(signal["content"], ensure_ascii=False)
+    assert "300 份" not in serialized
+    assert "1.234" not in serialized
+
+
+def test_valid_financemcp_upstream_fields_are_projected_not_rejected(tmp_path: Path) -> None:
+    """B-d-review：真实 ActionPlan/Holding 的已知展示字段必须可识别并投影，不能整份拒绝。"""
+    root = init(tmp_path)
+    brief = make_brief()  # _action() 已带 illustrative/fact_meta/腿的 name/lots/fees_cents 等
+    holdings = [_holding()]  # 已带 stance/reasons/counter_evidence/research
+    brief["holdings"] = holdings
+    result = ingest(tmp_path, brief)
+    assert result["status"] == "INGESTED"
+    recommendation = ledger.read_events(root, "RECOMMENDATION")[0]
+    action = recommendation["content"]["action"]
+    assert set(action) <= ledger.ACTION_ALLOWED_KEYS
+    leg = action["legs"][0]
+    assert set(leg) == ledger.LEG_ALLOWED_KEYS
+    assert "name" not in leg and "lot_size" not in leg and "fees_cents" not in leg
+    valuation = ledger.read_events(root, "VALUATION")[0]
+    assert "stance" not in valuation["content"]["holdings"][0]
+
+
+def test_unknown_persisted_signal_state_key_is_refused(tmp_path: Path) -> None:
+    """已落盘的 SIGNAL 状态块出现未批准键（例如数量/价格语义）必须 CORRUPT。"""
+    root = init(tmp_path)
+    ingest(tmp_path, make_brief())
+    signal = ledger.read_events(root, "SIGNAL")[0]
+    forged = copy.deepcopy(signal["content"])
+    forged["deconcentration_state"]["order_quantity"] = 300
+    with pytest.raises(ledger.LedgerCorruption, match="未批准字段"):
+        ledger._validate_signal_content(forged, tuple(signal["missing_fields"]))
+    forged_quality = copy.deepcopy(signal["content"])
+    forged_quality["data_quality"]["notes"] = "目标价 1.234"
+    with pytest.raises(ledger.LedgerCorruption, match="未批准字段"):
+        ledger._validate_signal_content(forged_quality, tuple(signal["missing_fields"]))
 
 
 def test_recommendation_projects_whitelisted_action_keys_only(tmp_path: Path) -> None:
@@ -891,6 +1014,29 @@ def test_data_insufficient_first_day_does_not_block_the_baseline(
     assert ledger.load_policy_baseline(root)["first_as_of_trade_date"] == NEXT_DAY
 
 
+def test_data_insufficient_day_with_cockpit_does_not_bind_the_baseline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """补遗 1 §1：不足日即使 cockpit 带 policy_release 也不得提前钉住 baseline。"""
+    root = init(tmp_path)
+    brief = make_brief(status="DATA_INSUFFICIENT", actions=[])
+    assert brief["v3_cockpit"]["policy_release"]["content_hash"] == POLICY_HASH
+    ingest(tmp_path, brief)
+    assert ledger.load_policy_baseline(root) is None
+    signal = ledger.read_events(root, "SIGNAL")[0]
+    assert signal["policy"] is None
+    assert "v3_cockpit.policy_release" in signal["missing_fields"]
+    monkeypatch.setattr(
+        ledger, "utc_now", lambda: datetime(2026, 11, 27, 13, 0, tzinfo=timezone.utc)
+    )
+    second = make_brief(as_of=NEXT_DAY, generated_at="2026-11-27T20:00:00+08:00")
+    second["report_id"] = "e" * 64
+    ingest(tmp_path, second, name="second.json")
+    baseline = ledger.load_policy_baseline(root)
+    assert baseline is not None
+    assert baseline["first_as_of_trade_date"] == NEXT_DAY
+
+
 # --------------------------------------------------------------------------------------
 # Anti-backfill and temporal rules
 # --------------------------------------------------------------------------------------
@@ -1023,22 +1169,41 @@ def test_fill_import_never_writes_to_the_source_database(
     assert hashlib.sha256(db.read_bytes()).hexdigest() == before
 
 
-def test_fill_import_requires_a_verified_real_account(tmp_path: Path) -> None:
+def test_fill_import_reads_only_account_event_table(tmp_path: Path) -> None:
+    """P:40–41 只读边界：成交库无需（也不读）account_meta 表。"""
     root = init(tmp_path)
     db = make_account_db(tmp_path)
     connection = sqlite3.connect(db)
     try:
-        connection.execute("DELETE FROM account_meta")
+        connection.execute("DROP TABLE account_meta")
         connection.commit()
     finally:
         connection.close()
-    with pytest.raises(ledger.LedgerRefusal, match="real_account_verified"):
+    result = ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
+    assert result["status"] in {"INGESTED", "NO_NEW_FILLS"}
+
+    statements: list[str] = []
+    real_connect = sqlite3.connect
+
+    def tracing_connect(*args, **kwargs):
+        traced = real_connect(*args, **kwargs)
+        traced.set_trace_callback(statements.append)
+        return traced
+
+    sqlite3.connect = tracing_connect
+    try:
         ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
+    finally:
+        sqlite3.connect = real_connect
+    assert statements
+    assert all("account_meta" not in statement for statement in statements)
 
 
+@pytest.mark.parametrize("reversed_value", ["rev-9", ""])
 def test_fill_reversed_after_import_blocks_further_ingest(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reversed_value: str
 ) -> None:
+    """严格 `reversed_by IS NULL`：空串也是非 NULL，同样视为已撤销。"""
     monkeypatch.setattr(
         ledger, "utc_now", lambda: datetime(2026, 11, 27, 2, 0, tzinfo=timezone.utc)
     )
@@ -1048,13 +1213,52 @@ def test_fill_reversed_after_import_blocks_further_ingest(
     connection = sqlite3.connect(db)
     try:
         connection.execute(
-            "UPDATE account_event SET reversed_by = 'rev-9' WHERE event_id = 'fill-1'"
+            "UPDATE account_event SET reversed_by = ? WHERE event_id = 'fill-1'",
+            (reversed_value,),
         )
         connection.commit()
     finally:
         connection.close()
     with pytest.raises(ledger.LedgerRefusal, match="SOURCE_REVERSED_AFTER_IMPORT"):
         ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
+
+
+def test_empty_string_reversed_by_row_is_not_imported(tmp_path: Path) -> None:
+    root = init(tmp_path)
+    db = make_account_db(tmp_path)
+    connection = sqlite3.connect(db)
+    try:
+        connection.execute("UPDATE account_event SET reversed_by = '' WHERE event_id = 'fill-1'")
+        connection.commit()
+    finally:
+        connection.close()
+    result = ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
+    assert result["skipped_rows"]["reversed"] == 2  # fill-reversed + 空串的 fill-1
+    assert ledger.read_events(root, "CONFIRMED_FILL") == []
+
+
+def test_fill_source_sha_covers_only_the_native_sql_columns(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """源行 SHA 只哈希 account_event 原生 19 列，不掺入合成 schema 键。"""
+    import hashlib
+
+    monkeypatch.setattr(
+        ledger, "utc_now", lambda: datetime(2026, 11, 27, 2, 0, tzinfo=timezone.utc)
+    )
+    root = init(tmp_path)
+    db = make_account_db(tmp_path)
+    ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
+    fill = ledger.read_events(root, "CONFIRMED_FILL")[0]
+    native = {
+        column: fill["content"][column] for column in ledger.ACCOUNT_EVENT_COLUMNS
+    }
+    expected = hashlib.sha256(
+        ledger.canonical_json(native).encode("utf-8")
+    ).hexdigest()
+    assert fill["source"]["sha256"] == expected
+    assert "schema" not in native
+    assert fill["content"]["schema"] == "financemcp.account_event/1.0"
 
 
 def test_fill_missing_after_import_blocks_further_ingest(
@@ -1545,9 +1749,10 @@ def test_status_reports_unresolved_recommendations_without_inventing_reasons(
     assert report["pause"]["no_automatic_actions"] is True
 
 
-def test_status_matches_confirmed_fills_but_does_not_call_them_execution(
+def test_status_never_auto_attributes_a_coincident_fill(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """补遗 2 §2 / A2:65：同日同码同向只能报候选重合，不得自动 MATCHED 或解除 UNRESOLVED。"""
     root = init(tmp_path)
     ingest(tmp_path, make_brief())
     db = make_account_db(tmp_path)
@@ -1557,9 +1762,11 @@ def test_status_matches_confirmed_fills_but_does_not_call_them_execution(
     ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
     report = ledger.status_report(root)
     review = report["recommendation_review"][0]
-    assert review["match_status"] == "MATCHED"
-    assert review["matched_fill_event_ids"]
-    assert report["unresolved_recommendation_event_ids"] == []
+    assert review["match_status"] == "COINCIDENT_FILLS_UNATTRIBUTED"
+    assert review["attribution"] == "NOT_ATTRIBUTED"
+    assert review["coincident_fill_event_ids"]
+    assert review["unexecuted_reason_event_id"] is None
+    assert report["unresolved_recommendation_event_ids"] == [review["recommendation_event_id"]]
 
 
 def test_illustrative_recommendations_do_not_absorb_confirmed_fills(
@@ -1575,11 +1782,11 @@ def test_illustrative_recommendations_do_not_absorb_confirmed_fills(
     report = ledger.status_report(root)
     review = report["recommendation_review"][0]
     assert review["match_status"] == "NOT_EXECUTABLE"
-    assert review["matched_fill_event_ids"] == []
-    assert report["unmatched_fill_event_ids"]
+    assert review["coincident_fill_event_ids"] == []
+    assert report["unattributed_fill_event_ids"]
 
 
-def test_status_reports_partial_when_only_one_leg_has_a_fill(
+def test_status_reports_partial_leg_coincidence_without_attribution(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     root = init(tmp_path)
@@ -1595,9 +1802,10 @@ def test_status_reports_partial_when_only_one_leg_has_a_fill(
     ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
     report = ledger.status_report(root)
     review = report["recommendation_review"][0]
-    assert review["match_status"] == "PARTIAL"
-    assert review["matched_leg_indices"] == [0]
+    assert review["match_status"] == "COINCIDENT_FILLS_UNATTRIBUTED"
+    assert review["coincident_leg_indices"] == [0]
     assert review["executable_leg_indices"] == [0, 1]
+    assert review["attribution"] == "NOT_ATTRIBUTED"
     assert report["unresolved_recommendation_event_ids"]
 
 
@@ -1633,6 +1841,25 @@ def test_status_derives_missed_days_from_the_read_only_calendar(
     assert any(
         reason.startswith("CONSECUTIVE_MISSED_DAYS") for reason in report["pause"]["reasons"]
     )
+
+
+def test_status_does_not_mark_today_as_missed_before_the_day_ends(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """补遗 2 §1：当天截止前不得判 MISSED，MISSED 只对已过去的开市日派生。"""
+    root = init(tmp_path)
+    ingest(tmp_path, make_brief())
+    calendar_db = make_calendar_db(tmp_path, [AS_OF, NEXT_DAY])
+    monkeypatch.setattr(
+        ledger, "utc_now", lambda: datetime(2026, 11, 27, 18, 0, tzinfo=timezone.utc)
+    )  # 上海 2026-11-28 02:00；11-27 已过去但日报可能尚未生成
+    report = ledger.status_report(root, calendar_db=calendar_db)
+    assert "20261127" in report["days"]["missed"]
+    monkeypatch.setattr(
+        ledger, "utc_now", lambda: datetime(2026, 11, 27, 2, 0, tzinfo=timezone.utc)
+    )  # 上海 2026-11-27 10:00，当天未截止
+    report_same_day = ledger.status_report(root, calendar_db=calendar_db)
+    assert "20261127" not in (report_same_day["days"]["missed"] or [])
 
 
 def test_status_flags_actionable_signal_without_recommendation(tmp_path: Path) -> None:

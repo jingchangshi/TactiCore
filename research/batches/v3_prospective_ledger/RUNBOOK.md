@@ -80,8 +80,9 @@ $PY -m research.experiments.v3_prospective_ledger ingest-brief --brief "$BRIEF" 
 $PY -m research.experiments.v3_prospective_ledger ingest-fills
 ```
 
-- 只导入 `account_event` 中 `source='broker_statement'`、未撤销的 `TRADE_BUY/TRADE_SELL`。
-- `synthetic` 成交永不导入；`recommendation` 永不变成成交。
+- 只导入 `account_event` 中 `source='broker_statement'`、严格 `reversed_by IS NULL`
+  （空串也算非 NULL，视为已撤销）的 `TRADE_BUY/TRADE_SELL`；只读该表，不读 `account_meta`。
+  `synthetic` 成交永不导入；`recommendation` 永不变成成交。
 - 若返回 `SOURCE_REVERSED_AFTER_IMPORT` 或 `SOURCE_FILL_MISSING_AFTER_IMPORT`：**暂停**，
   人工核对券商流水；不得改写或删除既有台账行。
 - 可在成交发生后任意一天运行；`occurred_on` 必须不早于最早合格日。
@@ -127,10 +128,16 @@ $PY -m research.experiments.v3_prospective_ledger status \
 - `verify` 必须返回 `status=OK`；哈希链、schema、batch、policy baseline 任一不一致即 `CORRUPT`。
 - `status` 报告：
   - 五类事件计数与日期；
-  - `missed`：最早合格日至昨日、交易日历开市但没有 SIGNAL 的日期；
-  - `recommendation_review`：每条建议的派生匹配状态（MATCHED / PARTIAL / UNMATCHED /
-    NOT_DUE / NOT_EXECUTABLE / NO_EXPECTED_DATE）；这是复核视图，不是执行证明；
-  - `unresolved_recommendation_event_ids`：已到期、无匹配成交且无显式原因；
+  - `missed`：最早合格日至昨日、交易日历开市但没有 SIGNAL 的日期；**当天截止前不判
+    MISSED**（补遗 2 §1）；
+  - `recommendation_review`：每条建议的派生**候选重合**状态
+    （`COINCIDENT_FILLS_UNATTRIBUTED` / `NO_COINCIDENT_FILL` / `NOT_DUE` /
+    `NOT_EXECUTABLE` / `NO_EXPECTED_DATE`），并固定标注 `attribution: NOT_ATTRIBUTED`。
+    同日同码同向**不自动匹配、不解除 UNRESOLVED**；这只是人工复核线索，不是执行证明
+    （补遗 2 §2 / A2:65）；
+  - `unresolved_recommendation_event_ids`：已到期、未给出显式原因的建议（候选重合成交
+    不解除它）；
+  - `unattributed_fill_event_ids`：未与任何建议形成候选重合的确认成交；
   - `warnings`：信号与建议不一致、reason 与成交矛盾等；
   - `pause.recommended` 与 `pause.reasons`。
 

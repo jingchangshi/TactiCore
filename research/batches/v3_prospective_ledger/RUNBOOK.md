@@ -66,6 +66,12 @@ $PY -m research.experiments.v3_prospective_ledger ingest-brief --brief "$BRIEF" 
 - **必须提供 `--calendar-db`**（或设置 `TACTICORE_V3_LEDGER_CALENDAR_DB`）；缺省/不可用时
   `REFUSED: 交易日历未知`，不写任何 event。台账只读该库，不写日历。
 - 成功：返回 `INGESTED`，`appended` 里是 SIGNAL / RECOMMENDATION / VALUATION 的数量。
+- **落盘按键白名单**：SIGNAL 的 `market_regime/router/deconcentration_state` 只落已知状态键
+  （枚举/数值/布尔/日期/机器码），未知键被剔除；VALUATION 的 `data_quality` 只落
+  `status/summary_status/missing_fields`，`principal` 只落协议五个数值列，`concentration`
+  只落数值/权重；`holdings[]` 只落补遗 2 列的估值事实（展示标签 `name` 若含数字或
+  买卖/份数/仓位/价格字样会被置空并记入 `missing_fields`）。自由文本一律不落盘；
+  `principal` 出现协议外键属输入错误，整份 `REFUSED`。
 - `IDEMPOTENT_NOOP`：同一份 brief 已追加过，字节未变；正常。
 - `CONFLICT`：同一天出现了不同内容的 brief（通常是重新生成的日报）。**不要删除旧行、
   不要换文件重试**；停止并报告所有者。

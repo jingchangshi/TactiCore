@@ -213,15 +213,41 @@ TRIGGER_CODES = frozenset(
     }
 )
 OBSERVATION_TRIGGERS_UNPROJECTED = "observation_triggers_text_unprojected"
+_SAFE_CODE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:+/-]{0,63}$")
+
+
+def _is_safe_code(value: object) -> bool:
+    """状态/估值叶子字符串只允许机器码（枚举、日期、代码、版本号）。
+
+    ASCII 码形判定是**白名单**：中文自由文本（如「减仓三百股，限价一元二角」）、
+    空白与标点一律不满足，因此无需枚举坏词。
+    """
+    return isinstance(value, str) and bool(_SAFE_CODE_RE.match(value))
+
+
+def _require_safe_code(value: object, *, label: str) -> str:
+    if not _is_safe_code(value):
+        raise LedgerRefusal(f"{label} 必须是机器码字符串，拒绝自由文本: {value!r}")
+    return str(value)
+
+
+MARKET_REGIME_TIERS = frozenset({"OFFENSIVE", "STRUCTURAL", "DEFENSIVE"})
+MARKET_STYLE_TIERS = frozenset({"GROWTH_LEADING", "VALUE_LEADING", "BALANCED"})
+CIRCUIT_BREAKER_STATUSES = frozenset({"NORMAL", "L1_WARN", "L2_LOCKED"})
+SUB_STRATEGY_STATUSES = frozenset(
+    {"ACTIVE", "STOP_ONLY", "REDUCE_ONLY", "LOCKED_PENDING_VALIDATION"}
+)
+SUB_STRATEGY_KEYS = frozenset({"s_deconcentrate", "s_base_super_etf", "s_stock_swing"})
+DECONCENTRATION_PLAN_STATUSES = frozenset({"ACTIVE", "COMPLETED", "CANCELLED", "UNINITIALIZED"})
+DECONCENTRATION_PLAN_MODES = frozenset({"STANDARD", "BOTTOM_GRIND_25"})
+DOWNSIDE_PROTECT_MODES = frozenset({"MA60", "SUPPORT_FLOOR"})
 SIGNAL_MARKET_REGIME_KEYS = frozenset(
     {
         "regime",
-        "regime_label_zh",
         "raw_regime",
         "hysteresis_held",
         "crash_override",
         "style",
-        "style_label_zh",
         "style_spread_20d_pp",
         "target_equity_bps",
         "defensive_cash_bps",
@@ -235,11 +261,29 @@ SIGNAL_MARKET_REGIME_KEYS = frozenset(
         "cyb_above_ma60",
     }
 )
+# 每个允许键必须恰好归属一个类型组：白名单优先，不再是“命中坏模式才拒”。
+SIGNAL_MARKET_REGIME_TYPES: dict[str, tuple[str, frozenset[str] | None]] = {
+    "regime": ("enum", MARKET_REGIME_TIERS),
+    "raw_regime": ("enum", MARKET_REGIME_TIERS),
+    "style": ("enum", MARKET_STYLE_TIERS),
+    "hysteresis_held": ("bool", None),
+    "crash_override": ("bool", None),
+    "hs300_above_ma60": ("bool?", None),
+    "zz500_above_ma60": ("bool?", None),
+    "cyb_above_ma60": ("bool?", None),
+    "style_spread_20d_pp": ("number?", None),
+    "target_equity_bps": ("number", None),
+    "defensive_cash_bps": ("number", None),
+    "target_equity_pct": ("number", None),
+    "defensive_cash_pct": ("number", None),
+    "pct_above_ma60": ("number?", None),
+    "amount_vs_ma20": ("number?", None),
+    "limit_down": ("number?", None),
+}
 SIGNAL_ROUTER_KEYS = frozenset(
     {
         "effective_regime",
         "circuit_breaker_status",
-        "circuit_breaker_label_zh",
         "locked_until_trade_date",
         "l2_trigger_drawdown_bps",
         "post_breaker_equity_bps",
@@ -252,9 +296,24 @@ SIGNAL_ROUTER_KEYS = frozenset(
         "lifeline_buffer_cents",
         "lifeline_buffer_pct",
         "sub_strategies",
-        "sub_strategies_zh",
     }
 )
+SIGNAL_ROUTER_TYPES: dict[str, tuple[str, frozenset[str] | None]] = {
+    "effective_regime": ("enum", MARKET_REGIME_TIERS),
+    "circuit_breaker_status": ("enum", CIRCUIT_BREAKER_STATUSES),
+    "deconcentration_preemptive_active": ("bool", None),
+    "policy_version": ("code", None),
+    "locked_until_trade_date": ("date?", None),
+    "hwm_date": ("date", None),
+    "l2_trigger_drawdown_bps": ("number", None),
+    "post_breaker_equity_bps": ("number", None),
+    "hwm_nav_cents": ("number", None),
+    "hwm_drawdown_pct": ("number", None),
+    "lifeline_nav_cents": ("number", None),
+    "lifeline_buffer_cents": ("number", None),
+    "lifeline_buffer_pct": ("number", None),
+    "sub_strategies": ("sub_strategies", None),
+}
 SIGNAL_DECONCENTRATION_KEYS = frozenset(
     {
         "plan_present",
@@ -278,6 +337,27 @@ SIGNAL_DECONCENTRATION_KEYS = frozenset(
         "next_monthly_trigger_date",
     }
 )
+SIGNAL_DECONCENTRATION_TYPES: dict[str, tuple[str, frozenset[str] | None]] = {
+    "plan_present": ("bool", None),
+    "breakdown_ma60_2d": ("bool", None),
+    "plan_status": ("enum", DECONCENTRATION_PLAN_STATUSES),
+    "plan_mode": ("enum", DECONCENTRATION_PLAN_MODES),
+    "downside_protect_mode": ("enum?", DOWNSIDE_PROTECT_MODES),
+    "next_monthly_trigger_date": ("date?", None),
+    "target_keep_bps": ("number", None),
+    "target_keep_pct": ("number", None),
+    "tactical_slot_bps": ("number", None),
+    "tactical_slot_pct": ("number", None),
+    "max_grind_weight_pct": ("number", None),
+    "drift_harvest_trigger_pct": ("number", None),
+    "preemptive_weight_threshold_pct": ("number", None),
+    "normal_lifeline_pct": ("number", None),
+    "reload_discount_pct": ("number", None),
+    "take_profit_pct": ("number", None),
+    "rebound_pct": ("number", None),
+    "completed_swing_count": ("number", None),
+    "live_weight_pct": ("number", None),
+}
 # 补遗 2 §2 + B 复验：SIGNAL 的 data_quality 只允许状态/摘要/缺失字段。
 # 任何 quality detail/notes/readiness 列表都不落盘，避免深层自由文本成为份数/价格后门。
 SIGNAL_DATA_QUALITY_KEYS = frozenset({"status", "summary_status", "missing_fields"})
@@ -303,32 +383,19 @@ VALUATION_CONCENTRATION_KEYS = frozenset(
     {"hhi", "effective_positions", "equity_weight", "cash_ratio", "top_position"}
 )
 VALUATION_TOP_POSITION_KEYS = frozenset({"ts_code", "weight"})
+CONCENTRATION_NUMBER_KEYS = VALUATION_CONCENTRATION_KEYS.difference({"top_position"})
+CONCENTRATION_TOP_POSITION_TYPES: dict[str, str] = {
+    "ts_code": "code",
+    "weight": "number",
+}
 VALUATION_RECONCILIATION_KEYS = frozenset(
     {"lag_trade_days", "needs_reminder", "last_reconciled_on"}
 )
-NESTED_ORDER_SEMANTIC_KEYS = frozenset(
-    {
-        "legs",
-        "lot_size",
-        "lots",
-        "recommended_sell_shares",
-        "recommended_buy_shares",
-        "tactical_shares",
-        "sell_shares",
-        "buy_shares",
-        "fees_cents",
-        "executable",
-        "action",
-        "actions",
-        "recommendation",
-        "recommendations",
-        "stance",
-        "suggested_action",
-        "advice",
-        "sell_note",
-        "buy_note",
-    }
-)
+RECONCILIATION_TYPES: dict[str, tuple[str, frozenset[str] | None]] = {
+    "lag_trade_days": ("number?", None),
+    "needs_reminder": ("bool", None),
+    "last_reconciled_on": ("date?", None),
+}
 PRINCIPAL_FIELDS = (
     "initial_principal_cents",
     "current_nav_cents",
@@ -336,6 +403,13 @@ PRINCIPAL_FIELDS = (
     "to_principal_return_needed_pct",
     "loss_from_principal_pct",
 )
+PRINCIPAL_TYPES: dict[str, tuple[str, int | None]] = {
+    "initial_principal_cents": ("int", 1),
+    "current_nav_cents": ("int", 1),
+    "to_principal_gap_cents": ("int", None),
+    "to_principal_return_needed_pct": ("number", None),
+    "loss_from_principal_pct": ("number", None),
+}
 HOLDING_REQUIRED_FIELDS = (
     "ts_code",
     "quantity",
@@ -352,6 +426,22 @@ HOLDING_EXPECTED_FIELDS = (
     "diluted_total_cost_cents",
     "cost_basis",
 )
+# holdings[] 的逐字段叶类型：白名单只对 holdings[] 生效，不豁免任何其它路径。
+# `label` 只用于展示名称；其余字符串必须是机器码/日期。
+HOLDING_TYPES: dict[str, str] = {
+    "ts_code": "code",
+    "name": "label",
+    "quantity": "int",
+    "weight": "number",
+    "market_value_cents": "int",
+    "price_milli": "int",
+    "bar_quality": "code",
+    "price_source": "code",
+    "latest_bar_date": "date",
+    "diluted_cost_per_share": "number",
+    "diluted_total_cost_cents": "int",
+    "cost_basis": "code",
+}
 ACCOUNT_EVENT_COLUMNS = (
     "event_id",
     "account_id",
@@ -812,44 +902,98 @@ def _scan_forbidden_keys(value: object, *, label: str, forbidden: frozenset[str]
             _scan_forbidden_keys(item, label=f"{label}[{index}]", forbidden=forbidden)
 
 
-def _signal_scalar(value: object, *, label: str) -> Any:
-    """SIGNAL 状态/质量块：递归按类型投影，字符串命中订单语义即拒绝。"""
-    if value is None or isinstance(value, (bool, int)):
+def _project_typed_value(
+    value: object, *, label: str, kind: str, enum: frozenset[str] | None = None
+) -> Any:
+    """白名单优先的类型化叶子投影：只接受明确的机器码/枚举/数值/布尔/日期。
+
+    自由文本（含中文「减仓三百股，限价一元二角」）在任何层级都不放行；这里不依赖
+    坏词正则，而是要求字符串属于明确枚举或 ASCII 机器码集合。`kind` 末尾的 `?`
+    表示该字段允许为 null（上游 `number | null`）。
+    """
+    nullable = kind.endswith("?")
+    base = kind.rstrip("?")
+    if value is None:
+        if nullable:
+            return None
+        raise LedgerRefusal(f"{label} 不得为 null")
+    if base == "bool":
+        if not isinstance(value, bool):
+            raise LedgerRefusal(f"{label} 必须是布尔值")
         return value
-    if isinstance(value, str):
-        if _text_has_state_order_semantics(value):
-            raise LedgerRefusal(f"{label} 含买卖腿/份额/价格语义，不得进入状态记录")
+    if base == "int":
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise LedgerRefusal(f"{label} 必须是整数")
+        if value < 0:
+            raise LedgerRefusal(f"{label} 必须 >= 0")
         return value
-    if isinstance(value, float):
-        if not math.isfinite(value):
+    if base == "number":
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise LedgerRefusal(f"{label} 必须是数值")
+        number = float(value)
+        if not math.isfinite(number):
             raise LedgerRefusal(f"{label} 不得是非有限数值")
         return value
-    if isinstance(value, Mapping):
-        projected: dict[str, Any] = {}
-        for key, item in sorted(value.items()):
-            if _is_order_semantic_key(str(key)):
-                raise LedgerRefusal(f"{label}.{key} 是订单/价格语义键，不得进入状态记录")
-            projected[str(key)] = _signal_scalar(item, label=f"{label}.{key}")
-        return projected
-    if isinstance(value, (list, tuple)):
-        return [
-            _signal_scalar(item, label=f"{label}[{index}]")
-            for index, item in enumerate(value)
-        ]
-    raise LedgerRefusal(f"{label} 必须是标量、状态映射或标量数组，不能是 {type(value).__name__}")
+    if base == "enum":
+        if not isinstance(value, str) or enum is None or value not in enum:
+            raise LedgerRefusal(f"{label} 不在封闭枚举内: {value!r}")
+        return value
+    if base == "code":
+        return _require_safe_code(value, label=label)
+    if base == "date":
+        return _parse_ymd(value, label=label)
+    if base == "sub_strategies":
+        payload = _require_mapping(value, label=label)
+        unknown = set(payload).difference(SUB_STRATEGY_KEYS)
+        if unknown:
+            raise LedgerRefusal(f"{label} 含未批准子策略键: {sorted(unknown)}")
+        return {
+            key: _project_typed_value(
+                payload[key], label=f"{label}.{key}", kind="enum", enum=SUB_STRATEGY_STATUSES
+            )
+            for key in sorted(payload)
+        }
+    raise LedgerRefusal(f"{label} 未知的投影类型: {kind}")
 
 
-def _project_state_block(
-    block: object, *, label: str, allowed: frozenset[str]
+def _project_typed_block(
+    block: object,
+    *,
+    label: str,
+    types: Mapping[str, tuple[str, frozenset[str] | None]],
 ) -> dict[str, Any] | None:
+    """状态块：键白名单 + 每键显式类型。未知键直接剔除（不落盘），不接受任意字符串。"""
     if block is None:
         return None
     payload = _require_mapping(block, label=label)
-    return {
-        key: _signal_scalar(payload[key], label=f"{label}.{key}")
-        for key in sorted(payload)
-        if key in allowed
-    }
+    projected: dict[str, Any] = {}
+    for key in sorted(payload):
+        spec = types.get(str(key))
+        if spec is None:
+            continue
+        kind, enum = spec
+        projected[str(key)] = _project_typed_value(
+            payload[key], label=f"{label}.{key}", kind=kind, enum=enum
+        )
+    return projected
+
+
+def _validate_typed_block(
+    block: object,
+    *,
+    label: str,
+    types: Mapping[str, tuple[str, frozenset[str] | None]],
+) -> Mapping[str, Any] | None:
+    if block is None:
+        return None
+    payload = _require_mapping(block, label=label)
+    unknown = set(payload).difference(types)
+    if unknown:
+        raise LedgerCorruption(f"{label} 含未批准字段: {sorted(unknown)}")
+    for key, value in payload.items():
+        kind, enum = types[str(key)]
+        _project_typed_value(value, label=f"{label}.{key}", kind=kind, enum=enum)
+    return payload
 
 
 _STATE_ORDER_TEXT_PATTERNS = (
@@ -865,72 +1009,47 @@ _STATE_ORDER_TEXT_PATTERNS = (
     r"(?i)\bshares?\s*@",
     r"目标价",
 )
-_ORDER_KEYS_EXACT = frozenset(
-    {
-        "price",
-        "prices",
-        "quantity",
-        "quantities",
-        "shares",
-        "share",
-        "lots",
-        "lot",
-        "lot_size",
-        "fees",
-        "fees_cents",
-        "fee_cents",
-        "executable",
-        "stance",
-        "leg",
-        "legs",
-        "action",
-        "actions",
-        "recommendation",
-        "recommendations",
-        "advice",
-        "reference_price",
-        "target_price",
-        "limit_price",
-        "stop_price",
-        "fill_price",
-        "order",
-        "orders",
-        "order_id",
-        "suggestion",
-        "suggestions",
-    }
-)
-
-
-def _is_order_semantic_key(key: str) -> bool:
-    """深层键名：价格/份数/腿/动作/建议语义一律不得进入状态或估值记录。
-
-    只做**整键**匹配（小写），不做子串/分词匹配：`etf_price`（质量维度名）和
-    `diluted_cost_per_share`（估值事实）都不是订单语义，而 `reference_price`、
-    `recommended_action`、`recommended_sell_shares` 等是。
-    """
-    normalized = str(key).strip().lower()
-    if normalized in VALUATION_HOLDING_KEYS or normalized in VALUATION_RECONCILIATION_KEYS:
-        return False
-    return normalized in NESTED_ORDER_SEMANTIC_KEYS or normalized in _ORDER_KEYS_EXACT
-
-
 def _text_has_state_order_semantics(text: str) -> bool:
-    """状态/估值叶子字符串：只拦“动作/单位 + 数字”与 `@价格`，避免误伤枚举标签。"""
+    """持仓名称等少数自由文本字段的次级防线（主防线是键白名单）。"""
     return any(re.search(pattern, text) for pattern in _STATE_ORDER_TEXT_PATTERNS)
 
 
-def _project_data_quality(data_quality: Mapping[str, Any]) -> dict[str, Any]:
-    """SIGNAL 的 data_quality 只保留状态/摘要/缺失字段三个标量（B 反例 3）。
+DQ_STATUSES = frozenset({"OK", "DEGRADED", "INSUFFICIENT"})
+# summary_status 上游是 ResearchSummaryStatus 字符串；台账只要求它是机器码（无自由文本）。
+DATA_QUALITY_TYPES: dict[str, tuple[str, frozenset[str] | None]] = {
+    "status": ("enum", DQ_STATUSES),
+    "summary_status": ("code", None),
+    "missing_fields": ("codes", None),
+}
 
-    `quotes`/`market_report`/`screening`/`tiers`/`notes`/`detail` 等深层结构一律不投影，
-    避免其中夹带份数、价格或卖出提示进入 SIGNAL。其余质量事实保留在 brief 原文与
-    VALUATION 的 `data_quality` 中。
+
+def _project_missing_field_codes(value: object, *, label: str) -> list[str]:
+    items = _require_sequence(value, label=label)
+    return [
+        _require_safe_code(item, label=f"{label}[{index}]")
+        for index, item in enumerate(items)
+    ]
+
+
+def _project_data_quality(data_quality: Mapping[str, Any]) -> dict[str, Any]:
+    """SIGNAL/VALUATION 的 data_quality 只保留状态/摘要/缺失字段（键白名单优先）。
+
+    `quotes`/`market_report`/`screening`/`tiers`/`notes` 等深层结构一律不落盘，
+    从根上消除「深层自由文本夹带份数/价格」的通道；完整质量事实保留在 brief 原文。
     """
     payload: dict[str, Any] = {}
     for key in ("status", "summary_status", "missing_fields"):
-        if key in data_quality:
-            payload[key] = _signal_scalar(data_quality[key], label=f"data_quality.{key}")
+        if key not in data_quality:
+            continue
+        kind, enum = DATA_QUALITY_TYPES[key]
+        if key == "missing_fields":
+            payload[key] = _project_missing_field_codes(
+                data_quality[key], label="data_quality.missing_fields"
+            )
+        else:
+            payload[key] = _project_typed_value(
+                data_quality[key], label=f"data_quality.{key}", kind=kind, enum=enum
+            )
     return payload
 
 
@@ -939,21 +1058,25 @@ def _validate_data_quality(data_quality: Mapping[str, Any]) -> None:
     if unknown:
         raise LedgerCorruption(f"SIGNAL data_quality 含未批准字段: {sorted(unknown)}")
     for key, value in data_quality.items():
-        _signal_scalar(value, label=f"SIGNAL.data_quality.{key}")
+        kind, enum = DATA_QUALITY_TYPES[key]
+        if key == "missing_fields":
+            _project_missing_field_codes(value, label=f"SIGNAL.data_quality.{key}")
+        else:
+            _project_typed_value(
+                value,
+                label=f"SIGNAL.data_quality.{key}",
+                kind=kind,
+                enum=enum,
+            )
 
 
 def _validate_state_block(
-    block: object, *, label: str, allowed: frozenset[str]
+    block: object,
+    *,
+    label: str,
+    types: Mapping[str, tuple[str, frozenset[str] | None]],
 ) -> Mapping[str, Any] | None:
-    if block is None:
-        return None
-    payload = _require_mapping(block, label=label)
-    unknown = set(payload).difference(allowed)
-    if unknown:
-        raise LedgerCorruption(f"{label} 含未批准字段: {sorted(unknown)}")
-    for key, value in payload.items():
-        _signal_scalar(value, label=f"{label}.{key}")
-    return payload
+    return _validate_typed_block(block, label=label, types=types)
 
 
 def _project_trigger_codes(first_section: Mapping[str, Any]) -> list[str] | None:
@@ -989,6 +1112,12 @@ def _validate_signal_content(content: Mapping[str, Any], missing: tuple[str, ...
     _require_aware_instant(content["generated_at"], label="SIGNAL generated_at")
     if content["expected_next_trade_date"] is not None:
         _parse_ymd(content["expected_next_trade_date"], label="SIGNAL expected_next_trade_date")
+    if content["account_id_source"] is not None:
+        _require_safe_code(content["account_id_source"], label="SIGNAL account_id_source")
+    elif "account_id_source" not in missing:
+        raise LedgerCorruption("SIGNAL account_id_source 为空但未记入 missing_fields")
+    if content["account_status"] != REAL_ACCOUNT_STATUS:
+        raise LedgerCorruption("SIGNAL account_status 与协议不一致")
     decision = _require_mapping(content["decision"], label="SIGNAL decision")
     if not set(decision).issubset(SIGNAL_DECISION_KEYS):
         raise LedgerCorruption("SIGNAL decision 含未批准字段")
@@ -1038,15 +1167,15 @@ def _validate_signal_content(content: Mapping[str, Any], missing: tuple[str, ...
     market_regime = _validate_state_block(
         content["market_regime"],
         label="SIGNAL market_regime",
-        allowed=SIGNAL_MARKET_REGIME_KEYS,
+        types=SIGNAL_MARKET_REGIME_TYPES,
     )
     router = _validate_state_block(
-        content["router"], label="SIGNAL router", allowed=SIGNAL_ROUTER_KEYS
+        content["router"], label="SIGNAL router", types=SIGNAL_ROUTER_TYPES
     )
     deconcentration = _validate_state_block(
         content["deconcentration_state"],
         label="SIGNAL deconcentration_state",
-        allowed=SIGNAL_DECONCENTRATION_KEYS,
+        types=SIGNAL_DECONCENTRATION_TYPES,
     )
     for name, value in (
         ("v3_cockpit.market_regime", market_regime),
@@ -1213,7 +1342,11 @@ def _validate_recommendation_content(content: Mapping[str, Any], missing: tuple[
 
 
 def _project_holding(holding: object, *, index: int, missing: list[str]) -> dict[str, Any]:
-    """上游 holding → VALUATION 估值事实白名单；`stance`/理由/研究块一律移除。"""
+    """上游 holding → VALUATION 估值事实白名单；`stance`/理由/研究块一律移除。
+
+    白名单**只对 holdings[] 生效**：这里逐字段显式类型化，未知键不读取；
+    非字符串/错误类型一律置 null 并记缺失，而不是原样落盘。
+    """
     source = _require_mapping(holding, label=f"valuation holdings[{index}]")
     for field in HOLDING_REQUIRED_FIELDS:
         if field not in source:
@@ -1228,19 +1361,47 @@ def _project_holding(holding: object, *, index: int, missing: list[str]) -> dict
     _require_str(source["bar_quality"], label=f"holdings[{index}].bar_quality")
     payload: dict[str, Any] = {}
     for field in sorted(VALUATION_HOLDING_KEYS):
-        if field in source:
-            value = source[field]
-            if isinstance(value, str) and _text_has_state_order_semantics(value):
-                payload[field] = None
-                missing.append(f"holdings[{index}].{field}")
-            else:
-                payload[field] = copy.deepcopy(value)
-        else:
+        if field not in source or source[field] is None:
             payload[field] = None
+            continue
+        value = source[field]
+        kind = HOLDING_TYPES[field]
+        if field in HOLDING_REQUIRED_FIELDS:
+            payload[field] = _project_holding_leaf(
+                value, label=f"holdings[{index}].{field}", kind=kind
+            )
+            continue
+        try:
+            payload[field] = _project_holding_leaf(
+                value, label=f"holdings[{index}].{field}", kind=kind
+            )
+        except LedgerRefusal:
+            payload[field] = None
+            missing.append(f"holdings[{index}].{field}")
     for field in HOLDING_EXPECTED_FIELDS:
         if payload.get(field) is None:
             missing.append(f"holdings[{index}].{field}")
     return payload
+
+
+# `name` 是 holdings[] 里唯一允许的展示标签。除主防线（键白名单）外，标签本身
+# 不得含数字或买卖/份数/仓位/价格字样——中文自由文本（「减仓三百股，限价一元二角」）
+# 因而无法借 `name` 进入 VALUATION。误伤只损失标签并记缺失，不阻断整份估值。
+_LABEL_FORBIDDEN_SUBSTRINGS = ("买", "卖", "份", "股", "手", "仓", "价", "元", "@")
+
+
+def _project_holding_leaf(value: object, *, label: str, kind: str) -> Any:
+    if kind == "label":
+        if (
+            not isinstance(value, str)
+            or not value
+            or any(character.isdigit() for character in value)
+            or any(token in value for token in _LABEL_FORBIDDEN_SUBSTRINGS)
+            or _text_has_state_order_semantics(value)
+        ):
+            raise LedgerRefusal(f"{label} 必须是估值标签字符串")
+        return value
+    return _project_typed_value(value, label=label, kind=kind)
 
 
 def _validate_holding(holding: object, *, index: int, missing: list[str]) -> Mapping[str, Any]:
@@ -1253,14 +1414,14 @@ def _validate_holding(holding: object, *, index: int, missing: list[str]) -> Map
     for field in HOLDING_REQUIRED_FIELDS:
         if source[field] is None:
             raise LedgerCorruption(f"valuation holdings[{index}].{field} 不得为 null")
-    _require_str(source["ts_code"], label=f"holdings[{index}].ts_code")
-    _require_int(source["quantity"], label=f"holdings[{index}].quantity", minimum=0)
-    _require_number(source["weight"], label=f"holdings[{index}].weight")
-    _require_int(
-        source["market_value_cents"], label=f"holdings[{index}].market_value_cents", minimum=0
-    )
-    _require_int(source["price_milli"], label=f"holdings[{index}].price_milli", minimum=0)
-    _require_str(source["bar_quality"], label=f"holdings[{index}].bar_quality")
+    for field, kind in HOLDING_TYPES.items():
+        value = source[field]
+        if value is None:
+            continue
+        try:
+            _project_holding_leaf(value, label=f"holdings[{index}].{field}", kind=kind)
+        except LedgerRefusal as error:
+            raise LedgerCorruption(f"VALUATION {error}") from error
     for field in HOLDING_EXPECTED_FIELDS:
         if source[field] is None:
             missing.append(f"holdings[{index}].{field}")
@@ -1292,19 +1453,7 @@ def _validate_valuation_content(content: Mapping[str, Any], missing: tuple[str, 
         raise LedgerCorruption("DATA_INSUFFICIENT 不得产生 VALUATION")
     _require_aware_instant(content["generated_at"], label="VALUATION generated_at")
     principal = _require_mapping(content["principal"], label="VALUATION principal")
-    for field in PRINCIPAL_FIELDS:
-        if field not in principal:
-            raise LedgerCorruption(f"VALUATION principal.{field} 缺失")
-    _require_int(
-        principal["initial_principal_cents"], label="principal.initial_principal_cents", minimum=1
-    )
-    _require_int(principal["current_nav_cents"], label="principal.current_nav_cents", minimum=1)
-    _require_int(principal["to_principal_gap_cents"], label="principal.to_principal_gap_cents")
-    _require_number(
-        principal["to_principal_return_needed_pct"],
-        label="principal.to_principal_return_needed_pct",
-    )
-    _require_number(principal["loss_from_principal_pct"], label="principal.loss_from_principal_pct")
+    _validate_principal(principal)
     holdings = _require_sequence(content["holdings"], label="VALUATION holdings")
     derived_missing: list[str] = []
     for index, holding in enumerate(holdings):
@@ -1315,8 +1464,9 @@ def _validate_valuation_content(content: Mapping[str, Any], missing: tuple[str, 
     _validate_reconciliation(content["reconciliation_reminder"])
     if content["reconciliation_reminder"] is None:
         derived_missing.append("v3_cockpit.reconciliation_reminder")
-    _require_mapping(content["data_quality"], label="VALUATION data_quality")
-    _scan_nested_order_semantics(content, label="VALUATION")
+    _validate_data_quality(
+        _require_mapping(content["data_quality"], label="VALUATION data_quality")
+    )
     if not set(derived_missing).issubset(set(missing)):
         raise LedgerCorruption("VALUATION missing_fields 未显式覆盖全部缺失字段")
 
@@ -2027,18 +2177,20 @@ def _signal_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], list[
     router: Mapping[str, Any] | None = None
     deconcentration_state: Mapping[str, Any] | None = None
     if isinstance(cockpit, Mapping):
-        market_regime = _project_state_block(
+        market_regime = _project_typed_block(
             cockpit.get("market_regime"),
             label="v3_cockpit.market_regime",
-            allowed=SIGNAL_MARKET_REGIME_KEYS,
+            types=SIGNAL_MARKET_REGIME_TYPES,
         )
-        router = _project_state_block(
-            cockpit.get("router"), label="v3_cockpit.router", allowed=SIGNAL_ROUTER_KEYS
+        router = _project_typed_block(
+            cockpit.get("router"),
+            label="v3_cockpit.router",
+            types=SIGNAL_ROUTER_TYPES,
         )
-        deconcentration_state = _project_state_block(
+        deconcentration_state = _project_typed_block(
             cockpit.get("deconcentration"),
             label="v3_cockpit.deconcentration",
-            allowed=SIGNAL_DECONCENTRATION_KEYS,
+            types=SIGNAL_DECONCENTRATION_TYPES,
         )
     else:
         missing.extend(["v3_cockpit", "v3_cockpit.policy_release"])
@@ -2128,27 +2280,25 @@ def _recommendation_drafts(
 
 
 def _project_concentration(concentration: object) -> dict[str, Any] | None:
-    """concentration 只保留数值/权重/集中度事实；任何其它键（含 recommended_action）剔除。"""
+    """concentration：键白名单 + 显式数值类型；任何其它键（含 recommended_action）剔除。"""
     if concentration is None:
         return None
     payload = _require_mapping(concentration, label="brief.concentration")
     projected: dict[str, Any] = {}
     for key in sorted(payload):
-        if _is_order_semantic_key(str(key)):
-            continue
-        value = payload[key]
-        if key == "top_position" and isinstance(value, Mapping):
-            top: dict[str, Any] = {}
-            for item in sorted(value):
-                if _is_order_semantic_key(str(item)):
-                    continue
-                if isinstance(value[item], str) and _text_has_state_order_semantics(value[item]):
-                    continue
-                top[item] = copy.deepcopy(value[item])
-            projected[key] = top
-        elif key in VALUATION_CONCENTRATION_KEYS and not isinstance(value, (Mapping, list)):
-            _signal_scalar(value, label=f"concentration.{key}")
-            projected[key] = copy.deepcopy(value)
+        if key in CONCENTRATION_NUMBER_KEYS:
+            projected[key] = _project_typed_value(
+                payload[key], label=f"concentration.{key}", kind="number"
+            )
+        elif key == "top_position" and payload[key] is not None:
+            top = _require_mapping(payload[key], label="concentration.top_position")
+            projected[key] = {
+                name: _project_typed_value(
+                    top[name], label=f"concentration.top_position.{name}", kind=kind
+                )
+                for name, kind in sorted(CONCENTRATION_TOP_POSITION_TYPES.items())
+                if name in top
+            }
     return projected
 
 
@@ -2170,60 +2320,28 @@ def _validate_concentration(concentration: object) -> None:
                 raise LedgerCorruption(
                     f"VALUATION concentration.top_position 含未批准字段: {sorted(unknown_top)}"
                 )
-            _signal_scalar(value, label="concentration.top_position")
-        elif isinstance(value, (Mapping, list)):
-            raise LedgerCorruption(f"VALUATION concentration.{key} 必须是数值")
+            _validate_concentration_top(value)
+        elif key in CONCENTRATION_NUMBER_KEYS:
+            _project_typed_value(value, label=f"concentration.{key}", kind="number")
         else:
-            _signal_scalar(value, label=f"concentration.{key}")
+            raise LedgerCorruption(f"VALUATION concentration.{key} 必须是数值")
+
+
+def _validate_concentration_top(top: Mapping[str, Any]) -> None:
+    for name, kind in CONCENTRATION_TOP_POSITION_TYPES.items():
+        if name in top:
+            _project_typed_value(
+                top[name], label=f"concentration.top_position.{name}", kind=kind
+            )
 
 
 def _project_valuation_data_quality(data_quality: Mapping[str, Any]) -> dict[str, Any]:
-    """VALUATION 的 data_quality：显式投影质量事实，剔除自由文本 detail/notes。
+    """VALUATION 的 data_quality 同样只允许 status/summary_status/missing_fields。
 
-    与 SIGNAL 的 data_quality 不同，估值侧需要完整质量维度（quotes/tiers 等），
-    但任何自由文本一律不落盘；结构按类型递归投影，字符串命中订单语义即剔除。
+    补遗 2 §2 与 team-lead 终判：`quotes`/`tiers`/`screening`/`notes` 等深层结构
+    一律不落盘；深层 `tiers.trade_plan_executability` 之类不再有进入 VALUATION 的通道。
     """
-    return _project_quality_block(
-        data_quality,
-        label="data_quality",
-        allowed=SIGNAL_DATA_QUALITY_KEYS | {"quotes", "market_report", "screening", "tiers"},
-    )
-
-
-def _project_quality_block(
-    block: object, *, label: str, allowed: frozenset[str] | set[str] | None
-) -> Any:
-    """递归质量块投影：顶层只保留允许键；更深层拒绝订单语义键与自由文本。
-
-    深层结构（`tiers.<tier>.<dimension>` 等）维度名由上游决定，不可能全部枚举；
-    因此顶层之外只做"拒绝订单语义键 / 丢弃自由文本 / 拒绝夹带字符串"的类型化清洗。
-    """
-    if isinstance(block, Mapping):
-        projected: dict[str, Any] = {}
-        for key in sorted(block):
-            name = str(key)
-            if allowed is not None and name not in allowed:
-                continue
-            if _is_order_semantic_key(name):
-                continue
-            if name in {"notes", "detail", "reasons", "messages"}:
-                continue
-            projected[name] = _project_quality_block(
-                block[key], label=f"{label}.{name}", allowed=None
-            )
-        return projected
-    if isinstance(block, (list, tuple)):
-        return [
-            _project_quality_block(item, label=f"{label}[{index}]", allowed=None)
-            for index, item in enumerate(block)
-        ]
-    if isinstance(block, str):
-        if _text_has_state_order_semantics(block):
-            raise LedgerRefusal(f"{label} 含买卖/份额/价格语义，不得进入估值记录")
-        return block
-    if isinstance(block, float) and not math.isfinite(block):
-        raise LedgerRefusal(f"{label} 不得是非有限数值")
-    return block
+    return _project_data_quality(data_quality)
 
 
 def _project_reconciliation(reminder: object) -> dict[str, Any] | None:
@@ -2231,50 +2349,72 @@ def _project_reconciliation(reminder: object) -> dict[str, Any] | None:
         return None
     payload = _require_mapping(reminder, label="v3_cockpit.reconciliation_reminder")
     projected: dict[str, Any] = {}
-    for key in sorted(payload):
-        if key not in VALUATION_RECONCILIATION_KEYS or _is_order_semantic_key(str(key)):
+    for key in sorted(RECONCILIATION_TYPES):
+        if key not in payload:
             continue
-        value = payload[key]
-        if isinstance(value, str) and _text_has_state_order_semantics(value):
-            continue
-        projected[key] = copy.deepcopy(value)
+        kind, enum = RECONCILIATION_TYPES[key]
+        projected[key] = _project_typed_value(
+            payload[key], label=f"reconciliation_reminder.{key}", kind=kind, enum=enum
+        )
     return projected
 
 
 def _validate_reconciliation(reminder: object) -> None:
     if reminder is None:
         return
-    _reject_nested_order_semantics(reminder, label="VALUATION reconciliation_reminder")
+    payload = _require_mapping(reminder, label="VALUATION reconciliation_reminder")
+    unknown = set(payload).difference(RECONCILIATION_TYPES)
+    if unknown:
+        raise LedgerCorruption(
+            f"VALUATION reconciliation_reminder 含未批准字段: {sorted(unknown)}"
+        )
+    for key, value in payload.items():
+        kind, enum = RECONCILIATION_TYPES[str(key)]
+        _project_typed_value(value, label=f"reconciliation_reminder.{key}", kind=kind, enum=enum)
 
 
-def _reject_nested_order_semantics(value: object, *, label: str) -> None:
-    """递归检查：键名为订单语义，或字符串含动作/份额/价格语义 → 拒绝。"""
-    if isinstance(value, Mapping):
-        for key, item in value.items():
-            if _is_order_semantic_key(str(key)):
-                raise LedgerRefusal(f"{label}.{key} 是订单/价格语义键，不得进入估值记录")
-            _reject_nested_order_semantics(item, label=f"{label}.{key}")
-    elif isinstance(value, (list, tuple)):
-        for index, item in enumerate(value):
-            _reject_nested_order_semantics(item, label=f"{label}[{index}]")
-    elif isinstance(value, str):
-        # 只对动作/单位+数字、@价格这类强模式拒绝；普通中文标签不误伤。
-        if _text_has_state_order_semantics(value):
-            raise LedgerRefusal(f"{label} 含买卖/份额/价格语义，不得进入估值记录")
+def _project_principal(principal: Mapping[str, Any]) -> dict[str, Any]:
+    """principal 只允许协议列出的五个数值字段；未知键（如 proposed_exit）拒绝。"""
+    unknown = set(principal).difference(PRINCIPAL_FIELDS)
+    if unknown:
+        raise LedgerRefusal(f"v3_cockpit.principal 含未批准字段: {sorted(unknown)}")
+    projected: dict[str, Any] = {}
+    for field, (kind, minimum) in PRINCIPAL_TYPES.items():
+        if field not in principal:
+            raise LedgerRefusal(f"v3_cockpit.principal.{field} 缺失")
+        value = principal[field]
+        if kind == "int":
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise LedgerRefusal(f"v3_cockpit.principal.{field} 必须是整数")
+            if minimum is not None and value < minimum:
+                raise LedgerRefusal(f"v3_cockpit.principal.{field} 必须 >= {minimum}")
+            projected[field] = value
+        else:
+            projected[field] = _project_typed_value(
+                value, label=f"v3_cockpit.principal.{field}", kind="number"
+            )
+    return projected
 
 
-def _scan_nested_order_semantics(value: object, *, label: str) -> None:
-    """兼容旧名：深层扫描订单语义（现在复用 `_reject_nested_order_semantics`）。"""
-    _reject_nested_order_semantics(value, label=label)
+def _validate_principal(principal: Mapping[str, Any]) -> None:
+    unknown = set(principal).difference(PRINCIPAL_FIELDS)
+    if unknown:
+        raise LedgerCorruption(f"VALUATION principal 含未批准字段: {sorted(unknown)}")
+    for field, (kind, minimum) in PRINCIPAL_TYPES.items():
+        if field not in principal:
+            raise LedgerCorruption(f"VALUATION principal.{field} 缺失")
+        value = principal[field]
+        if kind == "int":
+            _require_int(value, label=f"principal.{field}", minimum=minimum)
+        else:
+            _project_typed_value(value, label=f"principal.{field}", kind="number")
 
 
 def _valuation_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], list[str]]:
     missing: list[str] = []
     cockpit = _require_mapping(validated["cockpit"], label="brief.v3_cockpit")
     principal = _require_mapping(cockpit.get("principal"), label="v3_cockpit.principal")
-    for field in PRINCIPAL_FIELDS:
-        if field not in principal:
-            raise LedgerRefusal(f"v3_cockpit.principal.{field} 缺失")
+    projected_principal = _project_principal(principal)
     holdings: list[dict[str, Any]] = []
     for index, holding in enumerate(validated["holdings"]):
         holdings.append(_project_holding(holding, index=index, missing=missing))
@@ -2291,7 +2431,7 @@ def _valuation_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], li
         "report_id": validated["report_id"],
         "status": validated["status"],
         "generated_at": validated["generated_at"].isoformat(),
-        "principal": copy.deepcopy(dict(principal)),
+        "principal": projected_principal,
         "holdings": copy.deepcopy(holdings),
         "concentration": (
             copy.deepcopy(projected_concentration)

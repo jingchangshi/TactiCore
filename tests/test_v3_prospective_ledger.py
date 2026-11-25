@@ -727,10 +727,10 @@ def test_signal_rejects_leg_quantity_price_and_fill_fields(tmp_path: Path) -> No
 
 def test_signal_only_projects_whitelisted_deconcentration_keys() -> None:
     cockpit = _cockpit()
-    projected = ledger._project_state_block(
+    projected = ledger._project_typed_block(
         cockpit["deconcentration"],
         label="v3_cockpit.deconcentration",
-        allowed=ledger.SIGNAL_DECONCENTRATION_KEYS,
+        types=ledger.SIGNAL_DECONCENTRATION_TYPES,
     )
     assert projected is not None
     assert "recommended_sell_shares" not in projected
@@ -923,7 +923,7 @@ def test_valid_financemcp_upstream_fields_are_projected_not_rejected(tmp_path: P
 
 
 def test_real_upstream_data_quality_shape_is_accepted_but_trimmed(tmp_path: Path) -> None:
-    """真实 brief 的 data_quality（quotes/tiers/screening）是可接受输入，但不进 SIGNAL 深层。"""
+    """真实 brief 的 data_quality（quotes/tiers/screening）是可接受输入，但深层一律不落盘。"""
     root = init(tmp_path)
     brief = make_brief()
     brief["data_quality"] = {
@@ -950,9 +950,13 @@ def test_real_upstream_data_quality_shape_is_accepted_but_trimmed(tmp_path: Path
         "summary_status": "OK",
         "missing_fields": [],
     }
-    # VALUATION 保留完整质量事实（估值侧需要），且不含推荐/成交语义。
+    # team-lead 终判：VALUATION 的 data_quality 同样只允许三个状态键，深层结构不落盘。
     valuation_quality = ledger.read_events(root, "VALUATION")[0]["content"]["data_quality"]
-    assert valuation_quality["tiers"]["etf_price"]["ready"] == ["511010.SH"]
+    assert valuation_quality == {
+        "status": "OK",
+        "summary_status": "OK",
+        "missing_fields": [],
+    }
 
 
 def test_unknown_persisted_signal_state_key_is_refused(tmp_path: Path) -> None:
@@ -2261,11 +2265,11 @@ def test_valuation_data_quality_nested_legs_is_dropped(tmp_path: Path) -> None:
 
 
 def test_router_sub_strategies_nested_price_key_never_reaches_signal(tmp_path: Path) -> None:
-    """B 终判 #1：`router.sub_strategies.*.reference_price` 不得进入 SIGNAL。"""
+    """B 终判 #1：`router.sub_strategies.*` 未知键/价格键不得进入 SIGNAL（键白名单优先）。"""
     root = init(tmp_path)
     brief = make_brief()
     brief["v3_cockpit"]["router"]["sub_strategies"]["unexpected"] = {"reference_price": 1.234}
-    with pytest.raises(ledger.LedgerRefusal, match="订单/价格语义"):
+    with pytest.raises(ledger.LedgerRefusal, match="未批准子策略键"):
         ingest(tmp_path, brief)
     assert ledger.read_events(root, "SIGNAL") == []
 
@@ -2277,7 +2281,7 @@ def test_english_order_text_in_state_block_never_reaches_signal(tmp_path: Path) 
     brief["v3_cockpit"]["router"]["sub_strategies"]["s_stock_swing"] = (
         "SELL 777 shares @ 1.234"
     )
-    with pytest.raises(ledger.LedgerRefusal, match="买卖"):
+    with pytest.raises(ledger.LedgerRefusal, match="封闭枚举"):
         ingest(tmp_path, brief)
     assert ledger.read_events(root, "SIGNAL") == []
     serialized = json.dumps(ledger.read_events(root, "SIGNAL"), ensure_ascii=False)
@@ -2359,3 +2363,215 @@ def test_non_finite_json_literals_are_rejected(tmp_path: Path, literal: str) -> 
     with pytest.raises(ledger.LedgerRefusal):
         ledger.ingest_brief(path, root=root, calendar_db=calendar(tmp_path))
     assert ledger.read_events(root, "SIGNAL") == []
+
+
+# --------------------------------------------------------------------------------------
+# Team-lead final: whitelist-first projection over every nested layer
+# --------------------------------------------------------------------------------------
+
+
+def test_chinese_free_text_in_router_sub_strategies_is_refused(tmp_path: Path) -> None:
+    """终判 #4-a：`router.sub_strategies={'foo': '减仓三百股，限价一元二角'}` 必须拒绝。
+
+    正则无法识别中文自由文本；这里靠键白名单 + 封闭枚举，而不是坏词匹配。
+    """
+    root = init(tmp_path)
+    brief = make_brief()
+    brief["v3_cockpit"]["router"]["sub_strategies"] = {
+        "foo": "减仓三百股，限价一元二角"
+    }
+    with pytest.raises(ledger.LedgerRefusal):
+        ingest(tmp_path, brief)
+    assert ledger.read_events(root, "SIGNAL") == []
+    assert counts(root) == {record_type: 0 for record_type in ledger.RECORD_FILES}
+
+
+def test_chinese_free_text_as_known_sub_strategy_status_is_refused(tmp_path: Path) -> None:
+    """终判 #4-a：即便键名合法（s_stock_swing），中文自由文本也不是枚举值。"""
+    root = init(tmp_path)
+    brief = make_brief()
+    brief["v3_cockpit"]["router"]["sub_strategies"]["s_stock_swing"] = (
+        "减仓三百股，限价一元二角"
+    )
+    with pytest.raises(ledger.LedgerRefusal, match="封闭枚举"):
+        ingest(tmp_path, brief)
+    assert ledger.read_events(root, "SIGNAL") == []
+
+
+def test_valuation_data_quality_trade_plan_executability_never_reaches_valuation(
+    tmp_path: Path,
+) -> None:
+    """终判 #4-b：`data_quality.tiers.trade_plan_executability` 原样落盘 → 必须不落盘。"""
+    root = init(tmp_path)
+    brief = make_brief()
+    brief["data_quality"] = {
+        "status": "OK",
+        "summary_status": "OK",
+        "missing_fields": [],
+        "tiers": {
+            "trade_plan_executability": {
+                "status": "READY",
+                "detail": "按计划可执行",
+                "side": "SELL",
+                "quantity": 300,
+                "price_milli": 1234,
+                "trade_plan": {"legs": [{"side": "SELL", "quantity": 300}]},
+            }
+        },
+    }
+    result = ingest(tmp_path, brief)
+    assert result["status"] == "INGESTED"
+    valuation = ledger.read_events(root, "VALUATION")[0]
+    assert valuation["content"]["data_quality"] == {
+        "status": "OK",
+        "summary_status": "OK",
+        "missing_fields": [],
+    }
+    serialized = json.dumps(valuation["content"]["data_quality"], ensure_ascii=False)
+    for leaked in ("trade_plan_executability", "quantity", "price_milli", "legs", "SELL"):
+        assert leaked not in serialized
+    assert ledger.verify_ledger(root)["status"] == "OK"
+
+
+def test_principal_proposed_exit_never_reaches_valuation(tmp_path: Path) -> None:
+    """终判 #4-c：`principal.proposed_exit` 不得落盘（principal 只允许协议数值列）。"""
+    root = init(tmp_path)
+    brief = make_brief()
+    brief["v3_cockpit"]["principal"]["proposed_exit"] = {
+        "side": "SELL",
+        "quantity": 300,
+        "price_milli": 1234,
+    }
+    with pytest.raises(ledger.LedgerRefusal, match="未批准字段"):
+        ingest(tmp_path, brief)
+    assert counts(root) == {record_type: 0 for record_type in ledger.RECORD_FILES}
+
+
+def test_persisted_principal_with_unknown_key_is_corrupt() -> None:
+    """已落盘 principal 出现 proposed_exit 等未知键 → verify 必须判 CORRUPT。"""
+    content = {
+        "brief_schema": ledger.BRIEF_SCHEMA,
+        "report_id": "a" * 64,
+        "status": "NO_ACTION",
+        "generated_at": "2026-11-26T20:00:00+08:00",
+        "principal": {
+            "initial_principal_cents": 10_000_000,
+            "current_nav_cents": 6_800_000,
+            "to_principal_gap_cents": 3_200_000,
+            "to_principal_return_needed_pct": 47.06,
+            "loss_from_principal_pct": 32.0,
+            "proposed_exit": {"quantity": 300},
+        },
+        "holdings": [],
+        "concentration": None,
+        "reconciliation_reminder": None,
+        "data_quality": {"status": "OK", "summary_status": "OK", "missing_fields": []},
+    }
+    with pytest.raises(ledger.LedgerCorruption, match="未批准字段"):
+        ledger._validate_valuation_content(
+            content,
+            tuple(
+                sorted(
+                    {
+                        "concentration",
+                        "v3_cockpit.reconciliation_reminder",
+                        "holdings[0].name",
+                    }
+                )
+            ),
+        )
+
+
+def test_unknown_state_block_key_is_dropped_not_persisted(tmp_path: Path) -> None:
+    """状态块未知键（例如 `status_summary_zh`）剔除；持久化后再出现未知键 → CORRUPT。"""
+    root = init(tmp_path)
+    brief = make_brief()
+    brief["v3_cockpit"]["market_regime"]["free_text_zh"] = "减仓三百股"
+    brief["v3_cockpit"]["router"]["free_text_zh"] = "限价一元二角"
+    result = ingest(tmp_path, brief)
+    assert result["status"] == "INGESTED"
+    signal = ledger.read_events(root, "SIGNAL")[0]
+    serialized = json.dumps(signal["content"], ensure_ascii=False)
+    assert "减仓三百股" not in serialized
+    assert "限价一元二角" not in serialized
+    forged = copy.deepcopy(signal["content"])
+    forged["router"]["free_text_zh"] = "限价一元二角"
+    with pytest.raises(ledger.LedgerCorruption, match="未批准字段"):
+        ledger._validate_signal_content(forged, tuple(signal["missing_fields"]))
+
+
+def test_principal_cannot_borrow_holding_column_names(tmp_path: Path) -> None:
+    """holdings 白名单只对 holdings[] 生效：`quantity`/`price_milli` 在 principal 里不豁免。"""
+    root = init(tmp_path)
+    brief = make_brief()
+    brief["v3_cockpit"]["principal"]["quantity"] = 300
+    with pytest.raises(ledger.LedgerRefusal, match="未批准字段"):
+        ingest(tmp_path, brief)
+    assert counts(root) == {record_type: 0 for record_type in ledger.RECORD_FILES}
+
+
+def test_holding_label_with_order_text_is_nulled_not_persisted(tmp_path: Path) -> None:
+    """holdings[] 的 `name` 是唯一允许的展示标签；夹带动作/份数即置空并记缺失。"""
+    root = init(tmp_path)
+    brief = make_brief()
+    brief["holdings"] = [_holding(name="减仓三百股，限价一元二角")]
+    result = ingest(tmp_path, brief)
+    assert result["status"] == "INGESTED"
+    valuation = ledger.read_events(root, "VALUATION")[0]
+    assert valuation["content"]["holdings"][0]["name"] is None
+    assert "holdings[0].name" in valuation["missing_fields"]
+    serialized = json.dumps(valuation["content"], ensure_ascii=False)
+    assert "减仓三百股" not in serialized
+    assert ledger.verify_ledger(root)["status"] == "OK"
+
+
+def test_holding_wrongly_typed_optional_field_is_nulled(tmp_path: Path) -> None:
+    """holdings[] 可选字段类型不符（如 name 是对象）→ 置空并记缺失，不原样落盘。"""
+    root = init(tmp_path)
+    brief = make_brief()
+    brief["holdings"] = [_holding(name={"nested": "SELL 777 shares @ 1.234"})]
+    result = ingest(tmp_path, brief)
+    assert result["status"] == "INGESTED"
+    valuation = ledger.read_events(root, "VALUATION")[0]
+    assert valuation["content"]["holdings"][0]["name"] is None
+    assert ledger.verify_ledger(root)["status"] == "OK"
+
+
+def test_persisted_holding_with_nested_label_is_corrupt() -> None:
+    """已落盘 holding 的 label 字段不是字符串 → verify 判 CORRUPT。"""
+    holding = {
+        "ts_code": "a" * 32,
+        "name": {"nested": "SELL"},
+        "quantity": 1000,
+        "weight": 0.15,
+        "market_value_cents": 100_000,
+        "price_milli": 100_000,
+        "price_source": "server_cache_close",
+        "latest_bar_date": AS_OF,
+        "bar_quality": "READY",
+        "diluted_cost_per_share": 1.0,
+        "diluted_total_cost_cents": 100_000,
+        "cost_basis": "broker_diluted",
+    }
+    content = {
+        "brief_schema": ledger.BRIEF_SCHEMA,
+        "report_id": "a" * 64,
+        "status": "NO_ACTION",
+        "generated_at": "2026-11-26T20:00:00+08:00",
+        "principal": {
+            "initial_principal_cents": 10_000_000,
+            "current_nav_cents": 6_800_000,
+            "to_principal_gap_cents": 3_200_000,
+            "to_principal_return_needed_pct": 47.06,
+            "loss_from_principal_pct": 32.0,
+        },
+        "holdings": [holding],
+        "concentration": None,
+        "reconciliation_reminder": None,
+        "data_quality": {"status": "OK", "summary_status": "OK", "missing_fields": []},
+    }
+    with pytest.raises(ledger.LedgerCorruption):
+        ledger._validate_valuation_content(
+            content,
+            tuple(sorted({"concentration", "v3_cockpit.reconciliation_reminder"})),
+        )

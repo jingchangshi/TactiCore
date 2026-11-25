@@ -1,7 +1,7 @@
 name: CI
 
 # 极薄的 credential-free CI：只跑 deterministic 测试、静态检查与只读 candidate 校验。
-# 它**不**调用 Tushare、不需要 TUSHARE_TOKEN、不下载真实市场数据、不运行真实 RQAlpha
+# 它不需要任何数据源凭据、不下载真实市场数据、不运行真实 RQAlpha
 # research experiment、不创建 vintage、不产生任何 observation。
 
 on:
@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev --extra research
       # 只读跨环境数值可移植性诊断：比较 committed 冻结目标与重推导日程，并把环境指纹与
-      # 逐值差异写入 job log。credential-free：不调用 Tushare、不下载数据、不写 repository evidence。
+      # 逐值差异写入 job log。credential-free：不下载数据、不写 repository evidence。
       - name: S4C numerical portability diagnostic
         run: >-
           uv run python research/experiments/s4c_numerical_portability_diagnostic.py

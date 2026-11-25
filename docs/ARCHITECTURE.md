@@ -51,9 +51,9 @@ TactiCore 不拥有通用组合会计、撮合引擎、订单生命周期框架�
 
 ### 3.1 数据
 
-既有研究以 Tushare Pro 为 canonical 数据源；RQAlpha 官方 bundle 提供对应中国市场执行验证语义。`config/universe.csv` 显式保存既有 Tushare、策略和 RQAlpha 代码映射，`data/canonical/` 保存冻结价格、交易日历和来源清单。既有历史基线、候选身份和候选专属前瞻 vintage 保持各自协议及来源，不因生产数据职责变化而覆盖或静默迁移。
+Tushare Pro 已于 2026-11-25 按所有者指令退役：仓库不再包含其下载器、客户端或依赖。`data/canonical/` 中的冻结价格、交易日历和来源清单是历史快照，其 Tushare 出处只是历史事实，不是运行时依赖；`config/universe.csv` 中的 `tushare_symbol` 列保留为冻结身份字段（交易所后缀代码映射）。RQAlpha 官方 bundle 提供对应中国市场执行验证语义。既有历史基线、候选身份和候选专属前瞻 vintage 保持各自协议及来源，不因生产数据职责变化而覆盖或静默迁移。
 
-FinanceMCP 是生产数据事实源，未来新研究可按具体问题逐步消费其版本化、不可变快照；每次接入须冻结来源、数据版本与 hash、字段及复权/证券映射、覆盖范围、缺失和修订语义，并核验与研究协议的适配。若改变既有候选的数据契约，须按原协议建立新版本，不能改写原候选或其证据。既有 Tushare downloader 和候选路径继续服务原协议，直到有明确的独立变更及验证。
+FinanceMCP 是生产与研究数据的唯一事实源（免费源，含通达信），研究按具体问题消费其 research-export 版本化、不可变快照；每次接入须冻结来源、数据版本与 hash、字段及复权/证券映射、覆盖范围、缺失和修订语义，并核验与研究协议的适配。若改变既有候选的数据契约，须按原协议建立新版本，不能改写原候选或其证据。S2_R1 / S4C_R1 的前瞻 vintage 路径随 Tushare 退役而无法再产生新 vintage，按“数据源退役”处理；数据契约后继版本见 `research/batches/free_data_contract_v1/`。
 
 研究输入须区分事件日、公告/发布时间、供应商更新时间、实际可得时间和交易日；只能使用决策时已可获得的对应 vintage，不能把事后修订当作当时已知。未知值保持缺失，不前向填充、不置零、不猜测。数据能力由具体策略阻塞项驱动，不预建提供方抽象、缓存服务或历史主数据库。
 
@@ -108,7 +108,7 @@ ARCHITECTURE
 不可回填、可机器验证的 prospective evidence。
 
 ```text
-Tushare        拥有外部市场数据
+FinanceMCP     拥有外部市场数据（research-export 内容寻址快照）
 TactiCore      拥有候选级 as-of 冻结、provenance 验证、薄证据编排、append-only 记录
 strategy runner 拥有候选级信号语义
 RQAlpha        拥有执行语义
@@ -116,7 +116,7 @@ Git            拥有版本化证据历史
 ```
 
 该职责在本仓库内不拥有 scheduler、database、workflow engine、通用 event store、broker、
-execution simulator 或研究治理平台。现有候选复用 Tushare downloader 与 RQAlpha 原生执行，
+execution simulator 或研究治理平台。候选复用 FinanceMCP 快照与 RQAlpha 原生执行，
 只做候选级、极薄的编排与验证；[RL-052](RESEARCH_LEDGER.md#rl-052-所有者授权仓库外月度编排器与有界迁移研究-goal) 已授权仓库外编排器调用冻结 CLI，其运行事实以当前状态和实际记录为准。
 
 ### 3.6 策略交付与生产准入

@@ -16,6 +16,7 @@ from typing import Any
 
 import pandas as pd
 
+from research.experiments.prospective_evidence import RETIRED_DATA_SOURCE_PACKAGES
 from tacticore.data.prices import load_price_csv
 from tacticore.data.tradability import load_tradability_inputs, validate_execution_targets
 from tacticore.strategies.multi_asset_trend import load_trend_config
@@ -131,6 +132,8 @@ def observation_row_count(path: Path = OBSERVATIONS_PATH) -> int:
 
 def verify_framework_versions(manifest: dict[str, Any]) -> None:
     for package, expected_version in manifest["framework_versions"].items():
+        if package in RETIRED_DATA_SOURCE_PACKAGES:
+            continue  # 已退役数据源：manifest 保留历史版本，运行环境不再安装。
         if version(package) != expected_version:
             raise ValueError(f"candidate manifest 与当前框架版本不一致: {package}")
 

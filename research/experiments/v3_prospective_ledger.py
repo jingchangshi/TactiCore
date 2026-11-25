@@ -241,6 +241,21 @@ SUB_STRATEGY_KEYS = frozenset({"s_deconcentrate", "s_base_super_etf", "s_stock_s
 DECONCENTRATION_PLAN_STATUSES = frozenset({"ACTIVE", "COMPLETED", "CANCELLED", "UNINITIALIZED"})
 DECONCENTRATION_PLAN_MODES = frozenset({"STANDARD", "BOTTOM_GRIND_25"})
 DOWNSIDE_PROTECT_MODES = frozenset({"MA60", "SUPPORT_FLOOR"})
+# FinanceMCP/src/portfolio/deconcentrationPlan.ts:7-14（TrancheTriggerReason，7 值）；
+# :122 声明 active_trigger_reason: TrancheTriggerReason | null。
+TRANCHE_TRIGGER_REASONS = frozenset(
+    {
+        "MONTHLY_SCHEDULE",
+        "REBOUND_8PCT",
+        "BREAKDOWN_MA60",
+        "BREAKDOWN_SUPPORT_FLOOR",
+        "GRIND_OVERSOLD_RELOAD",
+        "GRIND_TACTICAL_TAKE_PROFIT",
+        "GRIND_OVERWEIGHT_DRIFT_HARVEST",
+    }
+)
+# FinanceMCP/src/portfolio/dailyReport.ts:182 cost_basis: 'broker_diluted' | 'ledger_average' | null
+COST_BASIS_VALUES = frozenset({"broker_diluted", "ledger_average"})
 SIGNAL_MARKET_REGIME_KEYS = frozenset(
     {
         "regime",
@@ -335,11 +350,13 @@ SIGNAL_DECONCENTRATION_KEYS = frozenset(
         "downside_protect_mode",
         "breakdown_ma60_2d",
         "next_monthly_trigger_date",
+        "active_trigger_reason",
     }
 )
 SIGNAL_DECONCENTRATION_TYPES: dict[str, tuple[str, frozenset[str] | None]] = {
     "plan_present": ("bool", None),
     "breakdown_ma60_2d": ("bool", None),
+    "active_trigger_reason": ("enum?", TRANCHE_TRIGGER_REASONS),
     "plan_status": ("enum", DECONCENTRATION_PLAN_STATUSES),
     "plan_mode": ("enum", DECONCENTRATION_PLAN_MODES),
     "downside_protect_mode": ("enum?", DOWNSIDE_PROTECT_MODES),
@@ -378,23 +395,31 @@ VALUATION_HOLDING_KEYS = frozenset(
         "cost_basis",
     }
 )
-# 补遗 2 §2：concentration 只允许数值/权重（及包含权重的最小 top_position 结构）。
+# 补遗 2 §2：concentration 只允许数值/权重（及包含权重的 top_position 结构）。
+# FinanceMCP/src/portfolio/dailyReport.ts:629-636：五个数值字段与 top_position 均可为 null；
+# top_position = {ts_code: string; name: string; weight: number} | null。
 VALUATION_CONCENTRATION_KEYS = frozenset(
     {"hhi", "effective_positions", "equity_weight", "cash_ratio", "top_position"}
 )
-VALUATION_TOP_POSITION_KEYS = frozenset({"ts_code", "weight"})
+VALUATION_TOP_POSITION_KEYS = frozenset({"ts_code", "name", "weight"})
 CONCENTRATION_NUMBER_KEYS = VALUATION_CONCENTRATION_KEYS.difference({"top_position"})
+# `name` 是发行人名称（真实值如「半导体设备ETF 易方达」），只要求字符串，不做码形/语义过滤。
 CONCENTRATION_TOP_POSITION_TYPES: dict[str, str] = {
     "ts_code": "code",
+    "name": "text",
     "weight": "number",
 }
-VALUATION_RECONCILIATION_KEYS = frozenset(
-    {"lag_trade_days", "needs_reminder", "last_reconciled_on"}
+# FinanceMCP/src/portfolio/actionEngine.ts:119-123：
+# reconciliation_reminder = {lag_trade_days: number|null, needs_reminder: boolean,
+# message_zh: string|null}；账本只落 lag_trade_days/needs_reminder，
+# message_zh 识别但丢弃并披露。
+VALUATION_RECONCILIATION_KEYS = frozenset({"lag_trade_days", "needs_reminder"})
+RECONCILIATION_UPSTREAM_KEYS = frozenset(
+    {"lag_trade_days", "needs_reminder", "message_zh"}
 )
 RECONCILIATION_TYPES: dict[str, tuple[str, frozenset[str] | None]] = {
-    "lag_trade_days": ("number?", None),
+    "lag_trade_days": ("int?", None),
     "needs_reminder": ("bool", None),
-    "last_reconciled_on": ("date?", None),
 }
 PRINCIPAL_FIELDS = (
     "initial_principal_cents",
@@ -427,21 +452,24 @@ HOLDING_EXPECTED_FIELDS = (
     "cost_basis",
 )
 # holdings[] 的逐字段叶类型：白名单只对 holdings[] 生效，不豁免任何其它路径。
-# `label` 只用于展示名称；其余字符串必须是机器码/日期。
+# 上游（FinanceMCP/src/portfolio/dailyReport.ts:159-186）：
+# `name` 是发行人名称中文标签（真实值「航空航天ETF 天弘」），只要求 str|None；
+# 数值字段必须 int / int|float；其余字符串必须是机器码/日期；可选字段允许 null。
 HOLDING_TYPES: dict[str, str] = {
     "ts_code": "code",
-    "name": "label",
+    "name": "text",
     "quantity": "int",
     "weight": "number",
     "market_value_cents": "int",
     "price_milli": "int",
     "bar_quality": "code",
     "price_source": "code",
-    "latest_bar_date": "date",
-    "diluted_cost_per_share": "number",
-    "diluted_total_cost_cents": "int",
-    "cost_basis": "code",
+    "latest_bar_date": "date?",
+    "diluted_cost_per_share": "number?",
+    "diluted_total_cost_cents": "int?",
+    "cost_basis": "enum?",
 }
+HOLDING_ENUMS: dict[str, frozenset[str]] = {"cost_basis": COST_BASIS_VALUES}
 ACCOUNT_EVENT_COLUMNS = (
     "event_id",
     "account_id",
@@ -938,6 +966,11 @@ def _project_typed_value(
         if not isinstance(value, str) or enum is None or value not in enum:
             raise LedgerRefusal(f"{label} 不在封闭枚举内: {value!r}")
         return value
+    if base == "text":
+        # 发行人名称等中文标签：只要求字符串，不做 ASCII 码形或语义过滤。
+        if not isinstance(value, str):
+            raise LedgerRefusal(f"{label} 必须是字符串")
+        return value
     if base == "code":
         return _require_safe_code(value, label=label)
     if base == "date":
@@ -961,15 +994,25 @@ def _project_typed_block(
     *,
     label: str,
     types: Mapping[str, tuple[str, frozenset[str] | None]],
+    missing: list[str] | None = None,
+    missing_prefix: str | None = None,
 ) -> dict[str, Any] | None:
-    """状态块：键白名单 + 每键显式类型。未知键直接剔除（不落盘），不接受任意字符串。"""
+    """开类型状态块：键白名单 + 每键显式类型。
+
+    未知顶层键**丢弃并逐个披露**（`<prefix>.<key>_unprojected`）——上游键多于补遗
+    允许集是正常的，静默丢弃会让账本无法解释缺失事实。已知键的类型不符属于污染，
+    直接拒绝整份输入（不得混同于披露）。
+    """
     if block is None:
         return None
     payload = _require_mapping(block, label=label)
     projected: dict[str, Any] = {}
+    prefix = missing_prefix or label
     for key in sorted(payload):
         spec = types.get(str(key))
         if spec is None:
+            if missing is not None:
+                missing.append(f"{prefix}.{key}_unprojected")
             continue
         kind, enum = spec
         projected[str(key)] = _project_typed_value(
@@ -996,24 +1039,6 @@ def _validate_typed_block(
     return payload
 
 
-_STATE_ORDER_TEXT_PATTERNS = (
-    # 数字 + 中文单位（份/股/手）
-    r"\d+\s*(?:份|股|手)",
-    # `@ 价格`
-    r"@\s*\d+(?:\.\d+)?",
-    # 买/卖 后 24 字内出现数字（如「卖出 777 份」「买入100」）
-    r"[买卖][^。；;\n]{0,24}\d+(?:\.\d+)?",
-    # 英文 BUY/SELL ... 数字 / shares
-    r"(?i)\b(?:buy|sell)\b[^.;\n]{0,40}\d",
-    r"(?i)\b\d+\s*shares?\b",
-    r"(?i)\bshares?\s*@",
-    r"目标价",
-)
-def _text_has_state_order_semantics(text: str) -> bool:
-    """持仓名称等少数自由文本字段的次级防线（主防线是键白名单）。"""
-    return any(re.search(pattern, text) for pattern in _STATE_ORDER_TEXT_PATTERNS)
-
-
 DQ_STATUSES = frozenset({"OK", "DEGRADED", "INSUFFICIENT"})
 # summary_status 上游是 ResearchSummaryStatus 字符串；台账只要求它是机器码（无自由文本）。
 DATA_QUALITY_TYPES: dict[str, tuple[str, frozenset[str] | None]] = {
@@ -1021,6 +1046,50 @@ DATA_QUALITY_TYPES: dict[str, tuple[str, frozenset[str] | None]] = {
     "summary_status": ("code", None),
     "missing_fields": ("codes", None),
 }
+# FinanceMCP/src/portfolio/dailyReport.ts:595-608：tiers 的 7 个固定档。
+VALUATION_TIER_NAMES = frozenset(
+    {
+        "market_data",
+        "etf_price",
+        "etf_share_adjustment",
+        "account_identity",
+        "account_trade_completeness",
+        "research_evidence",
+        "trade_plan_executability",
+    }
+)
+VALUATION_DQ_TOP_KEYS = frozenset(
+    {
+        "status",
+        "summary_status",
+        "missing_fields",
+        "quotes",
+        "market_report",
+        "screening",
+        "tiers",
+    }
+)
+# 上游存在、但按补遗 2 §2 不得落盘的自由文本键：识别并披露，不拒绝。
+VALUATION_DQ_DROPPED_KEYS = frozenset({"notes"})
+VALUATION_QUOTES_KEYS = frozenset({"ready", "stale", "not_ready", "missing"})
+VALUATION_MARKET_REPORT_TYPES: dict[str, tuple[str, frozenset[str] | None]] = {
+    "available": ("bool", None),
+    "report_id": ("code?", None),
+    "as_of_trade_date": ("date?", None),
+    "freshness": ("code", None),
+}
+VALUATION_SCREENING_TYPES: dict[str, tuple[str, frozenset[str] | None]] = {
+    "status": ("code", None),
+    "missing_tables": ("codes", None),
+}
+VALUATION_TIER_TYPES: dict[str, tuple[str, frozenset[str] | None]] = {
+    "status": ("code", None),
+    "as_of": ("date?", None),
+    "verified": ("bool", None),
+    "ready": ("codes", None),
+    "not_ready": ("codes", None),
+}
+VALUATION_TIER_DROPPED_KEYS = frozenset({"detail"})
 
 
 def _project_missing_field_codes(value: object, *, label: str) -> list[str]:
@@ -1031,11 +1100,13 @@ def _project_missing_field_codes(value: object, *, label: str) -> list[str]:
     ]
 
 
-def _project_data_quality(data_quality: Mapping[str, Any]) -> dict[str, Any]:
-    """SIGNAL/VALUATION 的 data_quality 只保留状态/摘要/缺失字段（键白名单优先）。
+def _project_data_quality(
+    data_quality: Mapping[str, Any], *, missing: list[str] | None = None
+) -> dict[str, Any]:
+    """SIGNAL 的 data_quality 只落状态/摘要/缺失字段（补遗 2 §2）。
 
-    `quotes`/`market_report`/`screening`/`tiers`/`notes` 等深层结构一律不落盘，
-    从根上消除「深层自由文本夹带份数/价格」的通道；完整质量事实保留在 brief 原文。
+    其余上游键（`quotes`/`market_report`/`screening`/`tiers`/`notes`）在 SIGNAL 一律
+    不落盘，但逐个披露为 `data_quality.<key>_unprojected`；完整质量事实进入 VALUATION。
     """
     payload: dict[str, Any] = {}
     for key in ("status", "summary_status", "missing_fields"):
@@ -1050,6 +1121,10 @@ def _project_data_quality(data_quality: Mapping[str, Any]) -> dict[str, Any]:
             payload[key] = _project_typed_value(
                 data_quality[key], label=f"data_quality.{key}", kind=kind, enum=enum
             )
+    if missing is not None:
+        for key in sorted(data_quality):
+            if key not in SIGNAL_DATA_QUALITY_KEYS:
+                missing.append(f"data_quality.{key}_unprojected")
     return payload
 
 
@@ -1068,6 +1143,190 @@ def _validate_data_quality(data_quality: Mapping[str, Any]) -> None:
                 kind=kind,
                 enum=enum,
             )
+
+
+def _project_valuation_data_quality(
+    data_quality: Mapping[str, Any], *, missing: list[str]
+) -> dict[str, Any]:
+    """VALUATION 的 data_quality：闭类型键集合 + 显式叶类型。
+
+    - 顶层只允许 `status/summary_status/missing_fields/quotes/market_report/screening/tiers`；
+      `notes` 识别后丢弃并披露；其它未知键 = 篡改，拒绝。
+    - `quotes`/`market_report`/`screening`/`tiers` 的子键是封闭的，未知子键拒绝。
+    - `tiers` 只允许 7 个固定档；每档 `detail` 丢弃并披露，未知键拒绝。
+    """
+    projected: dict[str, Any] = {}
+    for key in sorted(data_quality):
+        value = data_quality[key]
+        if key in VALUATION_DQ_DROPPED_KEYS:
+            missing.append(f"data_quality.{key}_unprojected")
+            continue
+        if key not in VALUATION_DQ_TOP_KEYS:
+            raise LedgerRefusal(f"data_quality 含未批准字段: {key!r}")
+        if key == "missing_fields":
+            projected[key] = _project_missing_field_codes(
+                value, label="data_quality.missing_fields"
+            )
+        elif key in DATA_QUALITY_TYPES:
+            kind, enum = DATA_QUALITY_TYPES[key]
+            projected[key] = _project_typed_value(
+                value, label=f"data_quality.{key}", kind=kind, enum=enum
+            )
+        elif key == "quotes":
+            quotes = _require_mapping(value, label="data_quality.quotes")
+            unknown = set(quotes).difference(VALUATION_QUOTES_KEYS)
+            if unknown:
+                raise LedgerRefusal(f"data_quality.quotes 含未批准字段: {sorted(unknown)}")
+            projected[key] = {
+                name: _project_missing_field_codes(
+                    quotes[name], label=f"data_quality.quotes.{name}"
+                )
+                for name in sorted(quotes)
+            }
+        elif key == "market_report":
+            projected[key] = _project_closed_block(
+                value,
+                label="data_quality.market_report",
+                types=VALUATION_MARKET_REPORT_TYPES,
+            )
+        elif key == "screening":
+            projected[key] = _project_closed_block(
+                value,
+                label="data_quality.screening",
+                types=VALUATION_SCREENING_TYPES,
+            )
+        else:  # tiers
+            tiers = _require_mapping(value, label="data_quality.tiers")
+            unknown = set(tiers).difference(VALUATION_TIER_NAMES)
+            if unknown:
+                raise LedgerRefusal(f"data_quality.tiers 含未批准档位: {sorted(unknown)}")
+            projected_tiers: dict[str, Any] = {}
+            for name in sorted(tiers):
+                tier = _require_mapping(tiers[name], label=f"data_quality.tiers.{name}")
+                unknown_tier = set(tier).difference(VALUATION_TIER_TYPES).difference(
+                    VALUATION_TIER_DROPPED_KEYS
+                )
+                if unknown_tier:
+                    raise LedgerRefusal(
+                        f"data_quality.tiers.{name} 含未批准字段: {sorted(unknown_tier)}"
+                    )
+                projected_tiers[name] = {}
+                for dropped in sorted(VALUATION_TIER_DROPPED_KEYS.intersection(tier)):
+                    missing.append(f"data_quality.tiers.{name}.{dropped}_unprojected")
+                for field in sorted(set(tier).intersection(VALUATION_TIER_TYPES)):
+                    kind, enum = VALUATION_TIER_TYPES[field]
+                    if kind == "codes":
+                        projected_tiers[name][field] = _project_missing_field_codes(
+                            tier[field], label=f"data_quality.tiers.{name}.{field}"
+                        )
+                    else:
+                        projected_tiers[name][field] = _project_typed_value(
+                            tier[field],
+                            label=f"data_quality.tiers.{name}.{field}",
+                            kind=kind,
+                            enum=enum,
+                        )
+            projected[key] = projected_tiers
+    return projected
+
+
+def _project_closed_block(
+    block: object, *, label: str, types: Mapping[str, tuple[str, frozenset[str] | None]]
+) -> dict[str, Any]:
+    payload = _require_mapping(block, label=label)
+    unknown = set(payload).difference(types)
+    if unknown:
+        raise LedgerRefusal(f"{label} 含未批准字段: {sorted(unknown)}")
+    projected: dict[str, Any] = {}
+    for key in sorted(payload):
+        kind, enum = types[str(key)]
+        if kind == "codes":
+            projected[str(key)] = _project_missing_field_codes(
+                payload[key], label=f"{label}.{key}"
+            )
+        else:
+            projected[str(key)] = _project_typed_value(
+                payload[key], label=f"{label}.{key}", kind=kind, enum=enum
+            )
+    return projected
+
+
+def _validate_valuation_data_quality(data_quality: Mapping[str, Any]) -> None:
+    unknown = set(data_quality).difference(VALUATION_DQ_TOP_KEYS)
+    if unknown:
+        raise LedgerCorruption(f"VALUATION data_quality 含未批准字段: {sorted(unknown)}")
+    for key, value in data_quality.items():
+        if key == "missing_fields":
+            _project_missing_field_codes(value, label=f"VALUATION.data_quality.{key}")
+        elif key in DATA_QUALITY_TYPES:
+            kind, enum = DATA_QUALITY_TYPES[key]
+            _project_typed_value(
+                value, label=f"VALUATION.data_quality.{key}", kind=kind, enum=enum
+            )
+        elif key == "quotes":
+            quotes = _require_mapping(value, label="VALUATION data_quality.quotes")
+            unknown_quotes = set(quotes).difference(VALUATION_QUOTES_KEYS)
+            if unknown_quotes:
+                raise LedgerCorruption(
+                    f"VALUATION data_quality.quotes 含未批准字段: {sorted(unknown_quotes)}"
+                )
+            for name, codes in quotes.items():
+                _project_missing_field_codes(
+                    codes, label=f"VALUATION.data_quality.quotes.{name}"
+                )
+        elif key == "market_report":
+            _validate_closed_block(
+                value, label="VALUATION data_quality.market_report",
+                types=VALUATION_MARKET_REPORT_TYPES,
+            )
+        elif key == "screening":
+            _validate_closed_block(
+                value, label="VALUATION data_quality.screening",
+                types=VALUATION_SCREENING_TYPES,
+            )
+        else:  # tiers
+            tiers = _require_mapping(value, label="VALUATION data_quality.tiers")
+            unknown_tiers = set(tiers).difference(VALUATION_TIER_NAMES)
+            if unknown_tiers:
+                raise LedgerCorruption(
+                    f"VALUATION data_quality.tiers 含未批准档位: {sorted(unknown_tiers)}"
+                )
+            for name, tier in tiers.items():
+                payload = _require_mapping(tier, label=f"VALUATION data_quality.tiers.{name}")
+                unknown_tier = set(payload).difference(VALUATION_TIER_TYPES)
+                if unknown_tier:
+                    raise LedgerCorruption(
+                        f"VALUATION data_quality.tiers.{name} 含未批准字段: "
+                        f"{sorted(unknown_tier)}"
+                    )
+                for field, item in payload.items():
+                    kind, enum = VALUATION_TIER_TYPES[field]
+                    if kind == "codes":
+                        _project_missing_field_codes(
+                            item, label=f"VALUATION.data_quality.tiers.{name}.{field}"
+                        )
+                    else:
+                        _project_typed_value(
+                            item,
+                            label=f"VALUATION.data_quality.tiers.{name}.{field}",
+                            kind=kind,
+                            enum=enum,
+                        )
+
+
+def _validate_closed_block(
+    block: object, *, label: str, types: Mapping[str, tuple[str, frozenset[str] | None]]
+) -> None:
+    payload = _require_mapping(block, label=label)
+    unknown = set(payload).difference(types)
+    if unknown:
+        raise LedgerCorruption(f"{label} 含未批准字段: {sorted(unknown)}")
+    for key, value in payload.items():
+        kind, enum = types[str(key)]
+        if kind == "codes":
+            _project_missing_field_codes(value, label=f"{label}.{key}")
+        else:
+            _project_typed_value(value, label=f"{label}.{key}", kind=kind, enum=enum)
 
 
 def _validate_state_block(
@@ -1368,40 +1627,25 @@ def _project_holding(holding: object, *, index: int, missing: list[str]) -> dict
         kind = HOLDING_TYPES[field]
         if field in HOLDING_REQUIRED_FIELDS:
             payload[field] = _project_holding_leaf(
-                value, label=f"holdings[{index}].{field}", kind=kind
+                value, label=f"holdings[{index}].{field}", kind=kind, field=field
             )
             continue
         try:
             payload[field] = _project_holding_leaf(
-                value, label=f"holdings[{index}].{field}", kind=kind
+                value, label=f"holdings[{index}].{field}", kind=kind, field=field
             )
         except LedgerRefusal:
             payload[field] = None
-            missing.append(f"holdings[{index}].{field}")
+            missing.append(f"holdings[{index}].{field}_type_invalid")
     for field in HOLDING_EXPECTED_FIELDS:
         if payload.get(field) is None:
             missing.append(f"holdings[{index}].{field}")
     return payload
 
 
-# `name` 是 holdings[] 里唯一允许的展示标签。除主防线（键白名单）外，标签本身
-# 不得含数字或买卖/份数/仓位/价格字样——中文自由文本（「减仓三百股，限价一元二角」）
-# 因而无法借 `name` 进入 VALUATION。误伤只损失标签并记缺失，不阻断整份估值。
-_LABEL_FORBIDDEN_SUBSTRINGS = ("买", "卖", "份", "股", "手", "仓", "价", "元", "@")
-
-
-def _project_holding_leaf(value: object, *, label: str, kind: str) -> Any:
-    if kind == "label":
-        if (
-            not isinstance(value, str)
-            or not value
-            or any(character.isdigit() for character in value)
-            or any(token in value for token in _LABEL_FORBIDDEN_SUBSTRINGS)
-            or _text_has_state_order_semantics(value)
-        ):
-            raise LedgerRefusal(f"{label} 必须是估值标签字符串")
-        return value
-    return _project_typed_value(value, label=label, kind=kind)
+def _project_holding_leaf(value: object, *, label: str, kind: str, field: str) -> Any:
+    enum = HOLDING_ENUMS.get(field)
+    return _project_typed_value(value, label=label, kind=kind, enum=enum)
 
 
 def _validate_holding(holding: object, *, index: int, missing: list[str]) -> Mapping[str, Any]:
@@ -1419,7 +1663,9 @@ def _validate_holding(holding: object, *, index: int, missing: list[str]) -> Map
         if value is None:
             continue
         try:
-            _project_holding_leaf(value, label=f"holdings[{index}].{field}", kind=kind)
+            _project_holding_leaf(
+                value, label=f"holdings[{index}].{field}", kind=kind, field=field
+            )
         except LedgerRefusal as error:
             raise LedgerCorruption(f"VALUATION {error}") from error
     for field in HOLDING_EXPECTED_FIELDS:
@@ -1464,7 +1710,7 @@ def _validate_valuation_content(content: Mapping[str, Any], missing: tuple[str, 
     _validate_reconciliation(content["reconciliation_reminder"])
     if content["reconciliation_reminder"] is None:
         derived_missing.append("v3_cockpit.reconciliation_reminder")
-    _validate_data_quality(
+    _validate_valuation_data_quality(
         _require_mapping(content["data_quality"], label="VALUATION data_quality")
     )
     if not set(derived_missing).issubset(set(missing)):
@@ -2181,16 +2427,22 @@ def _signal_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], list[
             cockpit.get("market_regime"),
             label="v3_cockpit.market_regime",
             types=SIGNAL_MARKET_REGIME_TYPES,
+            missing=missing,
+            missing_prefix="market_regime",
         )
         router = _project_typed_block(
             cockpit.get("router"),
             label="v3_cockpit.router",
             types=SIGNAL_ROUTER_TYPES,
+            missing=missing,
+            missing_prefix="router",
         )
         deconcentration_state = _project_typed_block(
             cockpit.get("deconcentration"),
             label="v3_cockpit.deconcentration",
             types=SIGNAL_DECONCENTRATION_TYPES,
+            missing=missing,
+            missing_prefix="deconcentration",
         )
     else:
         missing.extend(["v3_cockpit", "v3_cockpit.policy_release"])
@@ -2201,7 +2453,7 @@ def _signal_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], list[
     ):
         if value is None:
             missing.append(name)
-    data_quality = _project_data_quality(validated["data_quality"])
+    data_quality = _project_data_quality(validated["data_quality"], missing=missing)
     for key in ("status", "summary_status", "missing_fields"):
         if key not in data_quality:
             missing.append(f"data_quality.{key}")
@@ -2279,19 +2531,40 @@ def _recommendation_drafts(
     return drafts
 
 
-def _project_concentration(concentration: object) -> dict[str, Any] | None:
-    """concentration：键白名单 + 显式数值类型；任何其它键（含 recommended_action）剔除。"""
+def _project_concentration(
+    concentration: object, *, missing: list[str]
+) -> dict[str, Any] | None:
+    """concentration：键白名单 + 显式叶类型，未知键丢弃并逐个披露。
+
+    上游类型（dailyReport.ts:629-636）五个数值字段与 top_position 均可为 null；
+    top_position 只允许 `ts_code/name/weight` 三个标量键，出现其它键即拒绝
+    （防止 `{"legs":[...]}` 被吞成空对象）。`disclosure` 等未知键 → `_unprojected`。
+    """
     if concentration is None:
         return None
     payload = _require_mapping(concentration, label="brief.concentration")
     projected: dict[str, Any] = {}
     for key in sorted(payload):
+        value = payload[key]
         if key in CONCENTRATION_NUMBER_KEYS:
-            projected[key] = _project_typed_value(
-                payload[key], label=f"concentration.{key}", kind="number"
-            )
-        elif key == "top_position" and payload[key] is not None:
-            top = _require_mapping(payload[key], label="concentration.top_position")
+            if value is None:
+                projected[key] = None
+                missing.append(f"concentration.{key}")
+            else:
+                projected[key] = _project_typed_value(
+                    value, label=f"concentration.{key}", kind="number"
+                )
+        elif key == "top_position":
+            if value is None:
+                projected[key] = None
+                missing.append("concentration.top_position")
+                continue
+            top = _require_mapping(value, label="concentration.top_position")
+            unknown_top = set(top).difference(CONCENTRATION_TOP_POSITION_TYPES)
+            if unknown_top:
+                raise LedgerRefusal(
+                    f"concentration.top_position 含未批准字段: {sorted(unknown_top)}"
+                )
             projected[key] = {
                 name: _project_typed_value(
                     top[name], label=f"concentration.top_position.{name}", kind=kind
@@ -2299,6 +2572,8 @@ def _project_concentration(concentration: object) -> dict[str, Any] | None:
                 for name, kind in sorted(CONCENTRATION_TOP_POSITION_TYPES.items())
                 if name in top
             }
+        else:
+            missing.append(f"concentration.{key}_unprojected")
     return projected
 
 
@@ -2313,8 +2588,13 @@ def _validate_concentration(concentration: object) -> None:
         )
     for key, value in payload.items():
         if key == "top_position":
+            if value is None:
+                # 上游允许 null（无持仓/空账户），合法。
+                continue
             if not isinstance(value, Mapping):
-                raise LedgerCorruption("VALUATION concentration.top_position 必须是 JSON object")
+                raise LedgerCorruption(
+                    "VALUATION concentration.top_position 必须是 JSON object 或 null"
+                )
             unknown_top = set(value).difference(VALUATION_TOP_POSITION_KEYS)
             if unknown_top:
                 raise LedgerCorruption(
@@ -2322,7 +2602,7 @@ def _validate_concentration(concentration: object) -> None:
                 )
             _validate_concentration_top(value)
         elif key in CONCENTRATION_NUMBER_KEYS:
-            _project_typed_value(value, label=f"concentration.{key}", kind="number")
+            _project_typed_value(value, label=f"concentration.{key}", kind="number?")
         else:
             raise LedgerCorruption(f"VALUATION concentration.{key} 必须是数值")
 
@@ -2335,26 +2615,27 @@ def _validate_concentration_top(top: Mapping[str, Any]) -> None:
             )
 
 
-def _project_valuation_data_quality(data_quality: Mapping[str, Any]) -> dict[str, Any]:
-    """VALUATION 的 data_quality 同样只允许 status/summary_status/missing_fields。
-
-    补遗 2 §2 与 team-lead 终判：`quotes`/`tiers`/`screening`/`notes` 等深层结构
-    一律不落盘；深层 `tiers.trade_plan_executability` 之类不再有进入 VALUATION 的通道。
-    """
-    return _project_data_quality(data_quality)
-
-
-def _project_reconciliation(reminder: object) -> dict[str, Any] | None:
+def _project_reconciliation(
+    reminder: object, *, missing: list[str]
+) -> dict[str, Any] | None:
+    """reconciliation：只落 lag_trade_days/needs_reminder；message_zh 识别但披露不落盘。"""
     if reminder is None:
         return None
     payload = _require_mapping(reminder, label="v3_cockpit.reconciliation_reminder")
     projected: dict[str, Any] = {}
-    for key in sorted(RECONCILIATION_TYPES):
-        if key not in payload:
+    for key in sorted(payload):
+        value = payload[key]
+        if key == "message_zh":
+            # 上游 string|null；可能含「需核对 5 个交易日内 3 笔成交」叙述 → 不落盘，披露。
+            missing.append("reconciliation_reminder.message_zh_unprojected")
             continue
-        kind, enum = RECONCILIATION_TYPES[key]
-        projected[key] = _project_typed_value(
-            payload[key], label=f"reconciliation_reminder.{key}", kind=kind, enum=enum
+        spec = RECONCILIATION_TYPES.get(str(key))
+        if spec is None:
+            missing.append(f"reconciliation_reminder.{key}_unprojected")
+            continue
+        kind, enum = spec
+        projected[str(key)] = _project_typed_value(
+            value, label=f"reconciliation_reminder.{key}", kind=kind, enum=enum
         )
     return projected
 
@@ -2424,8 +2705,8 @@ def _valuation_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], li
     reconciliation = cockpit.get("reconciliation_reminder")
     if reconciliation is None:
         missing.append("v3_cockpit.reconciliation_reminder")
-    projected_concentration = _project_concentration(concentration)
-    projected_reconciliation = _project_reconciliation(reconciliation)
+    projected_concentration = _project_concentration(concentration, missing=missing)
+    projected_reconciliation = _project_reconciliation(reconciliation, missing=missing)
     content = {
         "brief_schema": BRIEF_SCHEMA,
         "report_id": validated["report_id"],
@@ -2444,7 +2725,8 @@ def _valuation_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], li
             else None
         ),
         "data_quality": _project_valuation_data_quality(
-            _require_mapping(validated["data_quality"], label="brief.data_quality")
+            _require_mapping(validated["data_quality"], label="brief.data_quality"),
+            missing=missing,
         ),
     }
     return content, sorted(set(missing))

@@ -533,6 +533,31 @@ def test_verify_detects_a_tampered_policy_baseline(tmp_path: Path) -> None:
         ledger.verify_ledger(root)
 
 
+def test_verify_cross_checks_baseline_against_signal_policy(tmp_path: Path) -> None:
+    root = init(tmp_path)
+    ingest(tmp_path, make_brief())
+    baseline = json.loads((root / ledger.POLICY_BASELINE_FILENAME).read_text(encoding="utf-8"))
+    baseline["content_hash"] = "d" * 64
+    write_json(root / ledger.POLICY_BASELINE_FILENAME, baseline)
+    with pytest.raises(ledger.LedgerCorruption, match="policy_baseline"):
+        ledger.verify_ledger(root)
+
+
+def test_missing_baseline_with_existing_signals_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = init(tmp_path)
+    ingest(tmp_path, make_brief())
+    (root / ledger.POLICY_BASELINE_FILENAME).unlink()
+    monkeypatch.setattr(
+        ledger, "utc_now", lambda: datetime(2026, 11, 27, 13, 0, tzinfo=timezone.utc)
+    )
+    second = make_brief(as_of=NEXT_DAY, generated_at="2026-11-27T12:00:00Z")
+    second["report_id"] = "e" * 64
+    with pytest.raises(ledger.LedgerRefusal, match="POLICY_BASELINE_MISSING_WITH_EVIDENCE"):
+        ingest(tmp_path, second, name="second.json")
+
+
 # --------------------------------------------------------------------------------------
 # Anti-backfill and temporal rules
 # --------------------------------------------------------------------------------------

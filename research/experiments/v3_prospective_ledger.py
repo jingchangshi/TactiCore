@@ -1476,6 +1476,13 @@ def ingest_brief(
             )
         )
     if policy is not None:
+        if load_policy_baseline(resolved_root) is None and read_events(
+            resolved_root, "SIGNAL", manifest=manifest
+        ):
+            raise LedgerRefusal(
+                "POLICY_BASELINE_MISSING_WITH_EVIDENCE: 已有 SIGNAL 但 policy_baseline 缺失；"
+                "不得静默重建，须所有者人工复核"
+            )
         _check_policy_baseline(resolved_root, policy)
     result = _append_drafts(
         resolved_root, drafts, batch_kind="daily_brief", batch_source_sha=raw_sha
@@ -1790,6 +1797,18 @@ def verify_ledger(root: Path | str | None = None) -> dict[str, Any]:
     manifest = load_manifest(resolved)
     events_by_type = _read_all_events(resolved, manifest)
     batches = _verify_batches(events_by_type)
+    baseline = load_policy_baseline(resolved)
+    if baseline is not None:
+        for signal in events_by_type["SIGNAL"]:
+            policy = signal["policy"]
+            if policy is None:
+                continue
+            for key in ("strategy_id", "version", "content_hash"):
+                if str(policy.get(key)) != baseline[key]:
+                    raise LedgerCorruption(
+                        f"SIGNAL {signal['as_of_trade_date']} policy.{key} 与 "
+                        "policy_baseline 不一致"
+                    )
     counts = {record_type: len(events) for record_type, events in events_by_type.items()}
     last_hashes: dict[str, str] = {}
     for record_type, events in events_by_type.items():
@@ -1804,7 +1823,7 @@ def verify_ledger(root: Path | str | None = None) -> dict[str, Any]:
         "total_events": sum(counts.values()),
         "batches": batches,
         "last_event_hash": last_hashes,
-        "policy_baseline": load_policy_baseline(resolved),
+        "policy_baseline": baseline,
     }
 
 
@@ -1903,10 +1922,12 @@ def status_report(
         if content["scope"] == "FULL":
             full_reason_ids.add(reference)
     now_ymd = _now_shanghai().strftime("%Y%m%d")
-    baseline = load_policy_baseline(resolved)
     review: list[dict[str, Any]] = []
     unresolved: list[str] = []
     warnings: list[str] = []
+    baseline = load_policy_baseline(resolved)
+    if baseline is None and signals:
+        warnings.append("POLICY_BASELINE_MISSING_WITH_SIGNALS")
     matches_by_recommendation: dict[str, list[str]] = {}
     for recommendation in recommendations:
         matched_by_leg, matched = _fill_matches_by_leg(recommendation, fills)

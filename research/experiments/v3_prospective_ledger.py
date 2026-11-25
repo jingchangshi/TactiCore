@@ -272,27 +272,9 @@ SIGNAL_DECONCENTRATION_KEYS = frozenset(
         "next_monthly_trigger_date",
     }
 )
-# 补遗 2 §2：SIGNAL 的 data_quality 只投影质量事实，丢弃自由文本 detail/notes，
-# 避免其成为份数/价格文本或深层成交语义进入 SIGNAL 的后门。
-SIGNAL_DATA_QUALITY_KEYS = frozenset(
-    {
-        "status",
-        "summary_status",
-        "missing_fields",
-        "quotes",
-        "market_report",
-        "screening",
-        "tiers",
-    }
-)
-SIGNAL_DATA_QUALITY_QUOTES_KEYS = frozenset({"ready", "stale", "not_ready", "missing"})
-SIGNAL_DATA_QUALITY_MARKET_REPORT_KEYS = frozenset(
-    {"available", "report_id", "as_of_trade_date", "freshness"}
-)
-SIGNAL_DATA_QUALITY_SCREENING_KEYS = frozenset({"status", "missing_tables"})
-SIGNAL_DATA_QUALITY_TIER_KEYS = frozenset(
-    {"status", "as_of", "verified", "ready", "not_ready"}
-)
+# 补遗 2 §2 + B 复验：SIGNAL 的 data_quality 只允许状态/摘要/缺失字段。
+# 任何 quality detail/notes/readiness 列表都不落盘，避免深层自由文本成为份数/价格后门。
+SIGNAL_DATA_QUALITY_KEYS = frozenset({"status", "summary_status", "missing_fields"})
 # 补遗 2 §2：VALUATION holdings 只保留估值事实。
 VALUATION_HOLDING_KEYS = frozenset(
     {
@@ -308,6 +290,37 @@ VALUATION_HOLDING_KEYS = frozenset(
         "diluted_cost_per_share",
         "diluted_total_cost_cents",
         "cost_basis",
+    }
+)
+# 补遗 2 §2：concentration 只允许数值/权重（及包含权重的最小 top_position 结构）。
+VALUATION_CONCENTRATION_KEYS = frozenset(
+    {"hhi", "effective_positions", "equity_weight", "cash_ratio", "top_position"}
+)
+VALUATION_TOP_POSITION_KEYS = frozenset({"ts_code", "weight"})
+VALUATION_RECONCILIATION_KEYS = frozenset(
+    {"lag_trade_days", "needs_reminder", "last_reconciled_on"}
+)
+NESTED_ORDER_SEMANTIC_KEYS = frozenset(
+    {
+        "legs",
+        "lot_size",
+        "lots",
+        "recommended_sell_shares",
+        "recommended_buy_shares",
+        "tactical_shares",
+        "sell_shares",
+        "buy_shares",
+        "fees_cents",
+        "executable",
+        "action",
+        "actions",
+        "recommendation",
+        "recommendations",
+        "stance",
+        "suggested_action",
+        "advice",
+        "sell_note",
+        "buy_note",
     }
 )
 PRINCIPAL_FIELDS = (
@@ -423,8 +436,17 @@ def _verify_hex64(value: object, *, label: str) -> str:
     return value
 
 
-def content_hash(record_type: str, content: Mapping[str, Any]) -> str:
-    return sha256_text(f"{record_type}\n{canonical_json(content)}")
+def content_hash(
+    record_type: str, content: Mapping[str, Any], source_sha256: str
+) -> str:
+    """语义内容哈希：payload **加**源字节 SHA，绑定幂等性（补遗 2 §3 / B D1）。
+
+    同一自然键下源字节任何变化（包括仅多一个换行）都会改变 content_hash，
+    从而被判为冲突而不是静默 no-op。
+    """
+    _verify_hex64(source_sha256, label="content.source_sha256")
+    material = {"content": content, "source_sha256": source_sha256}
+    return sha256_text(f"{record_type}\n{canonical_json(material)}")
 
 
 def event_id_for(content_hash_value: str) -> str:
@@ -660,7 +682,7 @@ class Draft:
 
     @property
     def content_hash(self) -> str:
-        return content_hash(self.record_type, self.content)
+        return content_hash(self.record_type, self.content, str(self.source["sha256"]))
 
 
 def _require_mapping(value: object, *, label: str) -> Mapping[str, Any]:
@@ -834,43 +856,16 @@ def _text_has_order_semantics(text: str) -> bool:
 
 
 def _project_data_quality(data_quality: Mapping[str, Any]) -> dict[str, Any]:
-    """SIGNAL 的 data_quality 只保留质量事实，丢弃自由文本 `detail` / `notes`。"""
+    """SIGNAL 的 data_quality 只保留状态/摘要/缺失字段三个标量（B 反例 3）。
+
+    `quotes`/`market_report`/`screening`/`tiers`/`notes`/`detail` 等深层结构一律不投影，
+    避免其中夹带份数、价格或卖出提示进入 SIGNAL。其余质量事实保留在 brief 原文与
+    VALUATION 的 `data_quality` 中。
+    """
     payload: dict[str, Any] = {}
     for key in ("status", "summary_status", "missing_fields"):
         if key in data_quality:
             payload[key] = _signal_scalar(data_quality[key], label=f"data_quality.{key}")
-    quotes = data_quality.get("quotes")
-    if isinstance(quotes, Mapping):
-        payload["quotes"] = {
-            key: _signal_scalar(quotes[key], label=f"data_quality.quotes.{key}")
-            for key in sorted(quotes)
-            if key in SIGNAL_DATA_QUALITY_QUOTES_KEYS
-        }
-    market_report = data_quality.get("market_report")
-    if isinstance(market_report, Mapping):
-        payload["market_report"] = {
-            key: _signal_scalar(market_report[key], label=f"data_quality.market_report.{key}")
-            for key in sorted(market_report)
-            if key in SIGNAL_DATA_QUALITY_MARKET_REPORT_KEYS
-        }
-    screening = data_quality.get("screening")
-    if isinstance(screening, Mapping):
-        payload["screening"] = {
-            key: _signal_scalar(screening[key], label=f"data_quality.screening.{key}")
-            for key in sorted(screening)
-            if key in SIGNAL_DATA_QUALITY_SCREENING_KEYS
-        }
-    tiers = data_quality.get("tiers")
-    if isinstance(tiers, Mapping):
-        payload["tiers"] = {
-            tier: {
-                key: _signal_scalar(value[key], label=f"data_quality.tiers.{tier}.{key}")
-                for key in sorted(value)
-                if key in SIGNAL_DATA_QUALITY_TIER_KEYS
-            }
-            for tier, value in sorted(tiers.items())
-            if isinstance(value, Mapping)
-        }
     return payload
 
 
@@ -879,35 +874,6 @@ def _validate_data_quality(data_quality: Mapping[str, Any]) -> None:
     if unknown:
         raise LedgerCorruption(f"SIGNAL data_quality 含未批准字段: {sorted(unknown)}")
     for key, value in data_quality.items():
-        if key == "quotes" and isinstance(value, Mapping):
-            unknown_quotes = set(value).difference(SIGNAL_DATA_QUALITY_QUOTES_KEYS)
-            if unknown_quotes:
-                raise LedgerCorruption(
-                    f"SIGNAL data_quality.quotes 含未批准字段: {sorted(unknown_quotes)}"
-                )
-        elif key == "market_report" and isinstance(value, Mapping):
-            unknown_report = set(value).difference(SIGNAL_DATA_QUALITY_MARKET_REPORT_KEYS)
-            if unknown_report:
-                raise LedgerCorruption(
-                    "SIGNAL data_quality.market_report 含未批准字段: "
-                    f"{sorted(unknown_report)}"
-                )
-        elif key == "screening" and isinstance(value, Mapping):
-            unknown_screening = set(value).difference(SIGNAL_DATA_QUALITY_SCREENING_KEYS)
-            if unknown_screening:
-                raise LedgerCorruption(
-                    f"SIGNAL data_quality.screening 含未批准字段: {sorted(unknown_screening)}"
-                )
-        elif key == "tiers" and isinstance(value, Mapping):
-            for tier_name, tier in value.items():
-                if not isinstance(tier, Mapping):
-                    raise LedgerCorruption("SIGNAL data_quality.tiers 每项必须是 JSON object")
-                unknown_tier = set(tier).difference(SIGNAL_DATA_QUALITY_TIER_KEYS)
-                if unknown_tier:
-                    raise LedgerCorruption(
-                        f"SIGNAL data_quality.tiers.{tier_name} 含未批准字段: "
-                        f"{sorted(unknown_tier)}"
-                    )
         _signal_scalar(value, label=f"SIGNAL.data_quality.{key}")
 
 
@@ -1261,15 +1227,14 @@ def _validate_valuation_content(content: Mapping[str, Any], missing: tuple[str, 
     derived_missing: list[str] = []
     for index, holding in enumerate(holdings):
         _validate_holding(holding, index=index, missing=derived_missing)
-    if content["concentration"] is not None:
-        _require_mapping(content["concentration"], label="VALUATION concentration")
-    else:
+    _validate_concentration(content["concentration"])
+    if content["concentration"] is None:
         derived_missing.append("concentration")
-    if content["reconciliation_reminder"] is not None:
-        _require_mapping(content["reconciliation_reminder"], label="VALUATION reconciliation")
-    else:
+    _validate_reconciliation(content["reconciliation_reminder"])
+    if content["reconciliation_reminder"] is None:
         derived_missing.append("v3_cockpit.reconciliation_reminder")
     _require_mapping(content["data_quality"], label="VALUATION data_quality")
+    _scan_nested_order_semantics(content, label="VALUATION")
     if not set(derived_missing).issubset(set(missing)):
         raise LedgerCorruption("VALUATION missing_fields 未显式覆盖全部缺失字段")
 
@@ -1317,7 +1282,7 @@ def _validate_fill_content(content: Mapping[str, Any]) -> None:
     _require_int(content["cash_delta_cents"], label="fill.cash_delta_cents")
     if content["source"] not in CONFIRMED_FILL_SOURCES:
         raise LedgerCorruption("CONFIRMED_FILL source 必须是券商对账单")
-    if content["reversed_by"] is not None:
+    if content["reversed_by"] not in (None, ""):
         raise LedgerCorruption("CONFIRMED_FILL 不得是已撤销成交")
     _require_aware_instant(content["recorded_at"], label="fill.recorded_at")
 
@@ -1406,8 +1371,11 @@ def _validate_event(event: object, *, record_type: str, manifest: Manifest) -> M
     if _ymd_of(recorded_at) < as_of:
         raise LedgerCorruption("事件 recorded_at 早于 as_of_trade_date")
     declared_hash = _verify_hex64(payload["content_hash"], label="event.content_hash")
+    source_sha = _verify_hex64(source["sha256"], label="event.source.sha256")
     actual_hash = content_hash(
-        record_type, _require_mapping(payload["content"], label="event.content")
+        record_type,
+        _require_mapping(payload["content"], label="event.content"),
+        source_sha,
     )
     if declared_hash != actual_hash:
         raise LedgerCorruption("事件 content_hash 与其 content 不一致")
@@ -1606,6 +1574,9 @@ def _append_drafts(
         manifest = load_manifest(resolved)
         events_by_type = _read_all_events(resolved, manifest)
         _verify_batches(events_by_type)
+        # 任何 append 前的**完整**全账 verify：含 policy_baseline 与 SIGNAL 一致性。
+        # 只有 _verify_batches 不够：坏 baseline 之后仍可追加（B 反例 8）。
+        _verify_policy_baseline_consistency(resolved, events_by_type)
         if precheck is not None:
             precheck(events_by_type)
         _apply_policy_gate(
@@ -2054,6 +2025,84 @@ def _recommendation_drafts(
     return drafts
 
 
+def _project_concentration(concentration: object) -> dict[str, Any] | None:
+    """concentration 只保留数值/权重；嵌套腿/份数/价/卖出提示一律剔除。"""
+    if concentration is None:
+        return None
+    payload = _require_mapping(concentration, label="brief.concentration")
+    projected: dict[str, Any] = {}
+    for key in sorted(payload):
+        value = payload[key]
+        if key in VALUATION_CONCENTRATION_KEYS:
+            if key == "top_position" and isinstance(value, Mapping):
+                projected[key] = {
+                    item: copy.deepcopy(value[item])
+                    for item in sorted(value)
+                    if item in VALUATION_TOP_POSITION_KEYS
+                }
+                _signal_scalar(projected[key], label="concentration.top_position")
+            elif isinstance(value, Mapping):
+                # 未批准的嵌套对象整体剔除，不落盘。
+                continue
+            else:
+                _signal_scalar(value, label=f"concentration.{key}")
+                projected[key] = copy.deepcopy(value)
+    return projected
+
+
+def _validate_concentration(concentration: object) -> None:
+    if concentration is None:
+        return
+    payload = _require_mapping(concentration, label="VALUATION concentration")
+    unknown = set(payload).difference(VALUATION_CONCENTRATION_KEYS)
+    if unknown:
+        raise LedgerCorruption(
+            f"VALUATION concentration 含未批准字段: {sorted(unknown)}"
+        )
+    for key, value in payload.items():
+        if key == "top_position":
+            if not isinstance(value, Mapping):
+                raise LedgerCorruption("VALUATION concentration.top_position 必须是 JSON object")
+            unknown_top = set(value).difference(VALUATION_TOP_POSITION_KEYS)
+            if unknown_top:
+                raise LedgerCorruption(
+                    f"VALUATION concentration.top_position 含未批准字段: {sorted(unknown_top)}"
+                )
+            _signal_scalar(value, label="concentration.top_position")
+        elif isinstance(value, (Mapping, list)):
+            raise LedgerCorruption(f"VALUATION concentration.{key} 必须是数值")
+        else:
+            _signal_scalar(value, label=f"concentration.{key}")
+
+
+def _project_reconciliation(reminder: object) -> dict[str, Any] | None:
+    if reminder is None:
+        return None
+    payload = _require_mapping(reminder, label="v3_cockpit.reconciliation_reminder")
+    return {
+        key: copy.deepcopy(payload[key])
+        for key in sorted(payload)
+        if key in VALUATION_RECONCILIATION_KEYS
+    }
+
+
+def _validate_reconciliation(reminder: object) -> None:
+    if reminder is None:
+        return
+    payload = _require_mapping(reminder, label="VALUATION reconciliation_reminder")
+    unknown = set(payload).difference(VALUATION_RECONCILIATION_KEYS)
+    if unknown:
+        raise LedgerCorruption(
+            f"VALUATION reconciliation_reminder 含未批准字段: {sorted(unknown)}"
+        )
+    _signal_scalar(payload, label="reconciliation_reminder")
+
+
+def _scan_nested_order_semantics(value: object, *, label: str) -> None:
+    """VALUATION 深层扫描：任何嵌套层出现腿/份数/成交/建议语义一律拒绝。"""
+    _scan_forbidden_keys(value, label=label, forbidden=NESTED_ORDER_SEMANTIC_KEYS)
+
+
 def _valuation_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], list[str]]:
     missing: list[str] = []
     cockpit = _require_mapping(validated["cockpit"], label="brief.v3_cockpit")
@@ -2070,6 +2119,8 @@ def _valuation_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], li
     reconciliation = cockpit.get("reconciliation_reminder")
     if reconciliation is None:
         missing.append("v3_cockpit.reconciliation_reminder")
+    projected_concentration = _project_concentration(concentration)
+    projected_reconciliation = _project_reconciliation(reconciliation)
     content = {
         "brief_schema": BRIEF_SCHEMA,
         "report_id": validated["report_id"],
@@ -2077,9 +2128,15 @@ def _valuation_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], li
         "generated_at": validated["generated_at"].isoformat(),
         "principal": copy.deepcopy(dict(principal)),
         "holdings": copy.deepcopy(holdings),
-        "concentration": copy.deepcopy(concentration) if concentration is not None else None,
+        "concentration": (
+            copy.deepcopy(projected_concentration)
+            if projected_concentration is not None
+            else None
+        ),
         "reconciliation_reminder": (
-            copy.deepcopy(reconciliation) if reconciliation is not None else None
+            copy.deepcopy(projected_reconciliation)
+            if projected_reconciliation is not None
+            else None
         ),
         "data_quality": copy.deepcopy(dict(validated["data_quality"])),
     }
@@ -2220,12 +2277,13 @@ def _account_event_schema_fingerprint(connection: sqlite3.Connection) -> str:
 def _reversed_imported_fill_ids(
     connection: sqlite3.Connection, imported: Iterable[str]
 ) -> list[str]:
-    """严格 `reversed_by IS NULL`：SQL NULL 之外（含空串）一律视为已撤销。"""
+    """撤销复核只针对**已导入** fill；空串按“未撤销”处理，不阻断整批。"""
     imported_set = set(imported)
     if not imported_set:
         return []
     rows = connection.execute(
-        "SELECT event_id FROM account_event WHERE reversed_by IS NOT NULL"
+        "SELECT event_id FROM account_event "
+        "WHERE reversed_by IS NOT NULL AND reversed_by != ''"
     ).fetchall()
     return sorted(str(row["event_id"]) for row in rows if str(row["event_id"]) in imported_set)
 
@@ -2268,8 +2326,8 @@ def _fill_drafts(
         if event_source not in CONFIRMED_FILL_SOURCES:
             skipped["not_broker_statement"] += 1
             continue
-        if record.get("reversed_by") is not None:
-            # 严格 reversed_by IS NULL：空串也是非 NULL，视为已撤销，不导入。
+        if record.get("reversed_by") not in (None, ""):
+            # 空串与 NULL 一样按“未撤销”处理（B 第 5 条反例）；只有非空撤销标记才跳过。
             skipped["reversed"] += 1
             continue
         if record.get("account_id") != account_id:
@@ -2470,24 +2528,33 @@ def ingest_unexecuted_reason(
 # --------------------------------------------------------------------------------------
 
 
+def _verify_policy_baseline_consistency(
+    root: Path, events_by_type: Mapping[str, Sequence[Mapping[str, Any]]]
+) -> Mapping[str, str] | None:
+    """全账 verify 的一部分：baseline 与每条携带 policy 的 SIGNAL 必须一致。"""
+    baseline = load_policy_baseline(root)
+    if baseline is None:
+        return None
+    for signal in events_by_type["SIGNAL"]:
+        policy = signal["policy"]
+        if policy is None:
+            continue
+        for key in ("strategy_id", "version", "content_hash"):
+            if str(policy.get(key)) != baseline[key]:
+                raise LedgerCorruption(
+                    f"SIGNAL {signal['as_of_trade_date']} policy.{key} 与 "
+                    "policy_baseline 不一致"
+                )
+    return baseline
+
+
 def verify_ledger(root: Path | str | None = None) -> dict[str, Any]:
     resolved = ledger_root(root)
     manifest = load_manifest(resolved)
     with _writer_lock(resolved, create=False):
         events_by_type = _read_all_events(resolved, manifest)
         batches = _verify_batches(events_by_type)
-        baseline = load_policy_baseline(resolved)
-    if baseline is not None:
-        for signal in events_by_type["SIGNAL"]:
-            policy = signal["policy"]
-            if policy is None:
-                continue
-            for key in ("strategy_id", "version", "content_hash"):
-                if str(policy.get(key)) != baseline[key]:
-                    raise LedgerCorruption(
-                        f"SIGNAL {signal['as_of_trade_date']} policy.{key} 与 "
-                        "policy_baseline 不一致"
-                    )
+        baseline = _verify_policy_baseline_consistency(resolved, events_by_type)
     counts = {record_type: len(events) for record_type, events in events_by_type.items()}
     last_hashes: dict[str, str] = {}
     for record_type, events in events_by_type.items():
@@ -2623,6 +2690,7 @@ def status_report(
     with _writer_lock(resolved, create=False):
         events_by_type = _read_all_events(resolved, manifest)
         _verify_batches(events_by_type)
+        baseline = _verify_policy_baseline_consistency(resolved, events_by_type)
     counts = {record_type: len(events) for record_type, events in events_by_type.items()}
     signals = events_by_type["SIGNAL"]
     recommendations = _recommendations(events_by_type["RECOMMENDATION"])
@@ -2640,7 +2708,6 @@ def status_report(
     review: list[dict[str, Any]] = []
     unresolved: list[str] = []
     warnings: list[str] = []
-    baseline = load_policy_baseline(resolved)
     if baseline is None and signals:
         warnings.append("POLICY_BASELINE_MISSING_WITH_SIGNALS")
     matches_by_recommendation: dict[str, list[str]] = {}

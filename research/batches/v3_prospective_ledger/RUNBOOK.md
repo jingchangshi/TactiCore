@@ -80,9 +80,10 @@ $PY -m research.experiments.v3_prospective_ledger ingest-brief --brief "$BRIEF" 
 $PY -m research.experiments.v3_prospective_ledger ingest-fills
 ```
 
-- 只导入 `account_event` 中 `source='broker_statement'`、严格 `reversed_by IS NULL`
-  （空串也算非 NULL，视为已撤销）的 `TRADE_BUY/TRADE_SELL`；只读该表，不读 `account_meta`。
-  `synthetic` 成交永不导入；`recommendation` 永不变成成交。
+- 只导入 `account_event` 中 `source='broker_statement'`、非空撤销标记以外（`reversed_by`
+  为 NULL 或空串都按未撤销）的 `TRADE_BUY/TRADE_SELL`；只读该表，不读 `account_meta`。
+  `synthetic` 成交永不导入；`recommendation` 永不变成成交。撤销复核只针对**已导入** fill。
+- 源行 SHA 只覆盖 `account_event` 原生 19 列；不掺入任何合成 schema 键。
 - 若返回 `SOURCE_REVERSED_AFTER_IMPORT` 或 `SOURCE_FILL_MISSING_AFTER_IMPORT`：**暂停**，
   人工核对券商流水；不得改写或删除既有台账行。
 - 可在成交发生后任意一天运行；`occurred_on` 必须不早于最早合格日。
@@ -159,7 +160,7 @@ $PY -m research.experiments.v3_prospective_ledger status \
 ```text
 <ledger_root>/
   manifest.json                 不可变：协议版本、commit、最早合格日、账户
-  policy_baseline.json          首次合格 brief 钉住的规则包身份（补遗 1）
+  policy_baseline.json          首个非 DATA_INSUFFICIENT 合格 brief 钉住的规则包身份（补遗 1）
   .writer.lock                  单写者 flock；init 创建，不是证据事件
   signals.jsonl                 SIGNAL
   recommendations.jsonl         RECOMMENDATION

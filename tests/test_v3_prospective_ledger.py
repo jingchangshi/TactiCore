@@ -492,31 +492,124 @@ def test_brief_generated_1459_imported_1501_is_rejected(
     assert snapshot_bytes(root) == before
 
 
-def test_locked_clock_crossing_midnight_while_waiting_for_lock_is_rejected(
+def test_locked_clock_recheck_uses_the_clock_after_acquiring_the_flock(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """等锁跨午夜：初读时窗口合法，实际追加时钟已越界 → 整批拒绝、字节不变。"""
+    """B 反例 1/7：真实 flock 竞争下，拿到锁后必须以新时钟重校窗口。
+
+    预检时钟 23:59:59 合法；持锁线程在锁内把时钟推到次日 00:00 后释放 →
+    等待线程拿到锁再校验即拒绝，零写入。
+    """
+    import threading
+    import time as time_module
+
     root = init(tmp_path)
-    before = snapshot_bytes(root)
-    brief = make_brief(generated_at="2026-11-26T20:00:00+08:00")
-    clock = {"now": NOW}
+    calendar_db = calendar(tmp_path)
+    brief_path = write_json(tmp_path / "brief.json", make_brief())
+    clock = {"now": datetime(2026, 11, 26, 15, 59, 59, tzinfo=timezone.utc)}  # 上海 23:59:59
     monkeypatch.setattr(ledger, "utc_now", lambda: clock["now"])
-    real_lock = ledger._writer_lock
+    order: list[str] = []
+    errors: list[BaseException] = []
+    results: list[dict] = []
 
-    from contextlib import contextmanager
+    def holder() -> None:
+        with ledger._writer_lock(root):
+            order.append("holder-in")
+            clock["now"] = datetime(2026, 11, 26, 16, 0, 0, tzinfo=timezone.utc)  # 次日 00:00
+            time_module.sleep(0.2)
+            order.append("holder-out")
 
-    @contextmanager
-    def slow_lock(path, *, create=True):
-        # 模拟等待其他写者：拿到锁时已是 D+1 00:00:30（上海）。
-        clock["now"] = datetime(2026, 11, 26, 16, 0, 30, tzinfo=timezone.utc)
-        with real_lock(path, create=create):
-            yield
+    def waiter() -> None:
+        try:
+            result = ledger.ingest_brief(
+                brief_path, root=root, calendar_db=calendar_db
+            )
+            results.append(result)
+        except BaseException as error:  # noqa: BLE001 - 线程异常留作断言
+            errors.append(error)
 
-    monkeypatch.setattr(ledger, "_writer_lock", slow_lock)
-    with pytest.raises(ledger.LedgerRefusal, match="跨午夜"):
-        ingest(tmp_path, brief)
-    assert snapshot_bytes(root) == before
+    holder_thread = threading.Thread(target=holder)
+    holder_thread.start()
+    time_module.sleep(0.05)
+    waiter_thread = threading.Thread(target=waiter)
+    waiter_thread.start()
+    holder_thread.join(timeout=10)
+    waiter_thread.join(timeout=10)
+    assert order == ["holder-in", "holder-out"]
+    assert results == []
+    assert len(errors) == 1
+    assert isinstance(errors[0], ledger.LedgerRefusal)
+    assert "跨午夜" in str(errors[0])
     assert ledger.read_events(root, "SIGNAL") == []
+    assert ledger.verify_ledger(root)["total_events"] == 0
+
+
+def test_source_byte_change_is_a_conflict_not_idempotent_noop(tmp_path: Path) -> None:
+    """B 反例 2：同一 brief 仅多一个换行 → 源 SHA 变 → 冲突，不得 NOOP。"""
+    root = init(tmp_path)
+    ingest(tmp_path, make_brief())
+    before = snapshot_bytes(root)
+    path = tmp_path / "brief.json"
+    path.write_bytes(path.read_bytes() + b"\n")
+    with pytest.raises(ledger.LedgerConflict, match="append-only"):
+        ledger.ingest_brief(path, root=root, calendar_db=calendar(tmp_path, [AS_OF, NEXT_DAY]))
+    assert snapshot_bytes(root) == before
+
+
+def test_reformat_identical_semantics_with_new_bytes_is_a_conflict(tmp_path: Path) -> None:
+    """B 反例 2：语义相同但重新序列化（缩进不同）也会改源 SHA → 冲突。"""
+    root = init(tmp_path)
+    ingest(tmp_path, make_brief())
+    before = snapshot_bytes(root)
+    path = tmp_path / "brief.json"
+    path.write_text(
+        json.dumps(json.loads(path.read_text(encoding="utf-8")), indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    with pytest.raises(ledger.LedgerConflict, match="append-only"):
+        ledger.ingest_brief(path, root=root, calendar_db=calendar(tmp_path, [AS_OF, NEXT_DAY]))
+    assert snapshot_bytes(root) == before
+
+
+def test_broken_policy_baseline_blocks_every_later_append(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B 反例 8：baseline 与 SIGNAL 不一致时，任何 append 前必须先做完整 verify。"""
+    root = init(tmp_path)
+    ingest(tmp_path, make_brief())
+    baseline = json.loads((root / ledger.POLICY_BASELINE_FILENAME).read_text(encoding="utf-8"))
+    baseline["content_hash"] = "d" * 64  # 合法格式，但与 SIGNAL 不一致
+    write_json(root / ledger.POLICY_BASELINE_FILENAME, baseline)
+    with pytest.raises(ledger.LedgerCorruption, match="policy_baseline"):
+        ledger.verify_ledger(root)
+    before = snapshot_bytes(root)
+    monkeypatch.setattr(
+        ledger, "utc_now", lambda: datetime(2026, 11, 27, 2, 0, tzinfo=timezone.utc)
+    )
+    db = make_account_db(tmp_path)
+    with pytest.raises(ledger.LedgerCorruption, match="policy_baseline"):
+        ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
+    assert snapshot_bytes(root) == before
+
+
+def test_unexecuted_reason_cannot_be_derived_from_matching_fills(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B 反例 4：未执行原因只能由人类显式输入；同日同码同向成交不产生也不清空。"""
+    root = init(tmp_path)
+    ingest(tmp_path, make_brief())
+    db = make_account_db(tmp_path)
+    monkeypatch.setattr(
+        ledger, "utc_now", lambda: datetime(2026, 11, 27, 2, 0, tzinfo=timezone.utc)
+    )
+    ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
+    assert ledger.read_events(root, "UNEXECUTED_REASON") == []
+    report = ledger.status_report(root)
+    recommendation_id = report["recommendation_review"][0]["recommendation_event_id"]
+    assert recommendation_id in report["unresolved_recommendation_event_ids"]
+    assert (
+        report["recommendation_review"][0]["unexecuted_reason_event_id"] is None
+    )
 
 
 def test_brief_imported_after_midnight_is_rejected(
@@ -720,16 +813,76 @@ def test_data_quality_free_text_is_not_projected_into_signal(tmp_path: Path) -> 
     serialized = json.dumps(signal["content"], ensure_ascii=False)
     for leaked in ("300 份", "目标价", "1.234", "参考价", "9.99"):
         assert leaked not in serialized
-    data_quality = signal["content"]["data_quality"]
-    assert data_quality["quotes"] == {
-        "ready": ["511010.SH"],
-        "stale": [],
-        "not_ready": [],
-        "missing": [],
+    # B 反例 3：SIGNAL 的 data_quality 只允许状态/摘要/缺失字段三个标量。
+    assert set(signal["content"]["data_quality"]) == {
+        "status",
+        "summary_status",
+        "missing_fields",
     }
-    assert "detail" not in data_quality["market_report"]
-    assert "detail" not in data_quality["tiers"]["market_data"]
-    assert "notes" not in data_quality
+    for dropped in ("quotes", "market_report", "screening", "tiers", "notes", "detail"):
+        assert dropped not in signal["content"]["data_quality"]
+    assert "511010.SH" not in serialized
+
+
+def test_nested_order_semantics_never_reach_signal(tmp_path: Path) -> None:
+    """B 反例 3：嵌套 recommended_sell_shares / notes 等不得进入 SIGNAL。"""
+    root = init(tmp_path)
+    brief = make_brief()
+    brief["v3_cockpit"]["deconcentration"]["recommended_sell_shares"] = 1000
+    brief["v3_cockpit"]["deconcentration"]["notes"] = "卖出 1000 份 目标价 1.234 元"
+    brief["data_quality"]["notes"] = ["卖出 500 份"]
+    brief["data_quality"]["quotes"] = {"ready": ["511010.SH"], "detail": "目标价 9.99"}
+    ingest(tmp_path, brief)
+    signal = ledger.read_events(root, "SIGNAL")[0]
+    serialized = json.dumps(signal["content"], ensure_ascii=False)
+    for leaked in (
+        "recommended_sell_shares",
+        "notes",
+        "500 份",
+        "1000 份",
+        "目标价",
+        "1.234",
+        "9.99",
+        "quotes",
+    ):
+        assert leaked not in serialized
+    deconcentration = signal["content"]["deconcentration_state"]
+    assert "recommended_sell_shares" not in deconcentration
+
+
+def test_concentration_rejects_nested_sell_hints_and_legs(tmp_path: Path) -> None:
+    """B 反例 3：concentration 只允许数值/权重；卖出提示/腿不得进入 VALUATION。"""
+    root = init(tmp_path)
+    concentration = {
+        "hhi": 0.2,
+        "effective_positions": 4.0,
+        "top_position": {
+            "ts_code": "159558.SZ",
+            "weight": 0.4,
+            "suggested_action": "SELL 500 份",
+            "legs": [{"side": "SELL", "quantity": 500}],
+        },
+        "sell_note": "建议卖出超额 1000 份",
+        "recommended_sell_shares": 1000,
+    }
+    ingest(tmp_path, make_brief(concentration=concentration))
+    valuation = ledger.read_events(root, "VALUATION")[0]
+    stored = valuation["content"]["concentration"]
+    assert stored == {
+        "hhi": 0.2,
+        "effective_positions": 4.0,
+        "top_position": {"ts_code": "159558.SZ", "weight": 0.4},
+    }
+    serialized = json.dumps(valuation["content"], ensure_ascii=False)
+    for leaked in ("suggested_action", "sell_note", "recommended_sell_shares", "500 份", "legs"):
+        assert leaked not in serialized
+    # 已落盘内容若被篡改为带卖出提示，verify 必须拒绝。
+    forged = copy.deepcopy(valuation["content"])
+    forged["concentration"]["sell_note"] = "卖出 500 份"
+    with pytest.raises(ledger.LedgerCorruption):
+        ledger._validate_valuation_content(
+            forged, tuple(valuation["missing_fields"])
+        )
 
 
 def test_no_action_reason_with_order_semantics_is_not_projected(tmp_path: Path) -> None:
@@ -766,6 +919,39 @@ def test_valid_financemcp_upstream_fields_are_projected_not_rejected(tmp_path: P
     assert "name" not in leg and "lot_size" not in leg and "fees_cents" not in leg
     valuation = ledger.read_events(root, "VALUATION")[0]
     assert "stance" not in valuation["content"]["holdings"][0]
+
+
+def test_real_upstream_data_quality_shape_is_accepted_but_trimmed(tmp_path: Path) -> None:
+    """真实 brief 的 data_quality（quotes/tiers/screening）是可接受输入，但不进 SIGNAL 深层。"""
+    root = init(tmp_path)
+    brief = make_brief()
+    brief["data_quality"] = {
+        "status": "OK",
+        "summary_status": "OK",
+        "missing_fields": [],
+        "quotes": {"ready": ["511010.SH"], "stale": [], "not_ready": [], "missing": []},
+        "market_report": {
+            "available": True,
+            "report_id": "f" * 64,
+            "as_of_trade_date": AS_OF,
+            "freshness": "same_day",
+        },
+        "screening": {"status": "READY", "missing_tables": []},
+        "tiers": {
+            "etf_price": {"status": "READY", "ready": ["511010.SH"], "not_ready": []}
+        },
+        "notes": ["合成质量说明"],
+    }
+    result = ingest(tmp_path, brief)
+    assert result["status"] == "INGESTED"
+    assert ledger.read_events(root, "SIGNAL")[0]["content"]["data_quality"] == {
+        "status": "OK",
+        "summary_status": "OK",
+        "missing_fields": [],
+    }
+    # VALUATION 保留完整质量事实（估值侧需要），且不含推荐/成交语义。
+    valuation_quality = ledger.read_events(root, "VALUATION")[0]["content"]["data_quality"]
+    assert valuation_quality["tiers"]["etf_price"]["ready"] == ["511010.SH"]
 
 
 def test_unknown_persisted_signal_state_key_is_refused(tmp_path: Path) -> None:
@@ -1199,11 +1385,11 @@ def test_fill_import_reads_only_account_event_table(tmp_path: Path) -> None:
     assert all("account_meta" not in statement for statement in statements)
 
 
-@pytest.mark.parametrize("reversed_value", ["rev-9", ""])
+@pytest.mark.parametrize("reversed_value", ["rev-9"])
 def test_fill_reversed_after_import_blocks_further_ingest(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reversed_value: str
 ) -> None:
-    """严格 `reversed_by IS NULL`：空串也是非 NULL，同样视为已撤销。"""
+    """撤销复核只针对已导入 fill；非空撤销标记触发 SOURCE_REVERSED_AFTER_IMPORT。"""
     monkeypatch.setattr(
         ledger, "utc_now", lambda: datetime(2026, 11, 27, 2, 0, tzinfo=timezone.utc)
     )
@@ -1223,7 +1409,36 @@ def test_fill_reversed_after_import_blocks_further_ingest(
         ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
 
 
-def test_empty_string_reversed_by_row_is_not_imported(tmp_path: Path) -> None:
+def test_only_imported_fills_are_reverse_checked(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """从未导入的已撤销行不触发报警，也不阻断整批。"""
+    monkeypatch.setattr(
+        ledger, "utc_now", lambda: datetime(2026, 11, 27, 2, 0, tzinfo=timezone.utc)
+    )
+    root = init(tmp_path)
+    db = make_account_db(tmp_path)
+    ledger.ingest_confirmed_fills(portfolio_db=db, root=root)  # 仅导入 fill-1
+    connection = sqlite3.connect(db)
+    try:
+        # 未导入的 fill-old 被撤销：不属于已导入集合，不应报警。
+        connection.execute(
+            "UPDATE account_event SET reversed_by = 'rev-2' WHERE event_id = 'fill-old'"
+        )
+        connection.commit()
+    finally:
+        connection.close()
+    result = ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
+    assert result["status"] == "IDEMPOTENT_NOOP"
+
+
+def test_empty_string_reversed_by_row_is_imported_as_not_reversed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B 第 5 条：空串按“未撤销”处理（只跳过非空撤销标记），不阻断整批。"""
+    monkeypatch.setattr(
+        ledger, "utc_now", lambda: datetime(2026, 11, 27, 2, 0, tzinfo=timezone.utc)
+    )
     root = init(tmp_path)
     db = make_account_db(tmp_path)
     connection = sqlite3.connect(db)
@@ -1233,8 +1448,12 @@ def test_empty_string_reversed_by_row_is_not_imported(tmp_path: Path) -> None:
     finally:
         connection.close()
     result = ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
-    assert result["skipped_rows"]["reversed"] == 2  # fill-reversed + 空串的 fill-1
-    assert ledger.read_events(root, "CONFIRMED_FILL") == []
+    assert result["status"] == "INGESTED"
+    assert result["skipped_rows"]["reversed"] == 1  # 只有 fill-reversed
+    imported = [
+        event["content"]["event_id"] for event in ledger.read_events(root, "CONFIRMED_FILL")
+    ]
+    assert imported == ["fill-1"]
 
 
 def test_fill_source_sha_covers_only_the_native_sql_columns(
@@ -1689,9 +1908,9 @@ def test_golden_hash_vector_for_a_signal_content() -> None:
         "deconcentration_state": {"plan_present": False},
         "data_quality": {"status": "OK", "summary_status": "OK", "missing_fields": []},
     }
-    digest = ledger.content_hash("SIGNAL", content)
-    assert digest == "b4818b3cb0cf7ce5778f55ff0dd58de7c4c685f95dcdf169f8461f1f359820b7"
-    assert ledger.event_id_for(digest) == "V3L-b4818b3cb0cf7ce5778f55ff"
+    digest = ledger.content_hash("SIGNAL", content, "c" * 64)
+    assert digest == "fec60ddb7c2aeccf021a444de765e8c0dc917168732da01ab82a5d05b7741ecf"
+    assert ledger.event_id_for(digest) == "V3L-fec60ddb7c2aeccf021a444d"
 
 
 # --------------------------------------------------------------------------------------
@@ -1986,3 +2205,19 @@ def test_cli_refusal_returns_json_and_exit_code_two(tmp_path: Path, capsys) -> N
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "REFUSED"
     assert "最早合格日" in payload["error"]
+
+
+def test_valuation_data_quality_nested_legs_is_refused(tmp_path: Path) -> None:
+    """B 反例 3：VALUATION 深层 data_quality 出现 legs 等动作语义 → CORRUPT。"""
+    root = init(tmp_path)
+    brief = make_brief()
+    brief["data_quality"] = {
+        "status": "OK",
+        "summary_status": "OK",
+        "missing_fields": [],
+        "notes": [{"legs": [{"side": "SELL", "quantity": 100}]}],
+    }
+    with pytest.raises(ledger.LedgerCorruption, match="legs"):
+        ingest(tmp_path, brief)
+    assert ledger.read_events(root, "SIGNAL") == []
+    assert ledger.read_events(root, "VALUATION") == []

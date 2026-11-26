@@ -29,7 +29,7 @@ uv run python research/experiments/run_s2_parameter_plateau.py
 uv run python research/experiments/run_s2_rqalpha_validation.py --partial-fill-on-insufficient-cash --output-prefix s2_rqalpha_upstream_native
 ```
 
-RQAlpha 官方 bundle 保存在仓库外的主目录下。重建 Tushare 数据需要通过环境变量提供 `TUSHARE_TOKEN`，具体契约见 [canonical 数据说明](data/canonical/README.md)。
+RQAlpha 官方 bundle 保存在仓库外的主目录下。Tushare 数据源已于 2026-11-25 按所有者指令退役，仓库不再包含其下载器、依赖或凭据需求；`data/canonical/` 是只读的历史冻结快照（见 [canonical 数据说明](data/canonical/README.md)）。新研究数据来自 FinanceMCP research-export 内容寻址快照（免费源，含通达信），契约见 `research/ashare/data/contract.py`。
 
 ### 原生 Windows 与 WSL 边界
 
@@ -43,7 +43,6 @@ RQAlpha 官方 bundle 保存在仓库外的主目录下。重建 Tushare 数据�
 | --- | --- | --- |
 | RQAlpha bundle | `%USERPROFILE%\.rqalpha\bundle`（本机为 `C:\Users\<用户>\.rqalpha\bundle`） | `<WSL 家目录>/.rqalpha/bundle` |
 | 开发解释器 | 仓库 `.python-version`（Python 3.11） | 需在该 Linux 环境内自行创建并重新验证 |
-| `TUSHARE_TOKEN` | 必须在执行数据命令的那个环境中设置 | 必须在执行数据命令的那个环境中设置 |
 
 在一个环境中安装的 bundle 不是另一个环境的 bundle，两者不共享。
 

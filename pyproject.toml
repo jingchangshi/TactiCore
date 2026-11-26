@@ -14,7 +14,6 @@ dependencies = [
   "plotly>=5,<7",
   "rqalpha>=6.3,<6.4",
   "tomli>=2,<3",
-  "tushare>=1.4,<2",
   "vectorbt>=0.28,<0.29",
 ]
 
@@ -42,6 +41,11 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.isort]
+# 显式声明：tacticore.data.tushare 删除后，冻结的 transfer_v1 脚本仍引用该模块，
+# 不得因模块缺失而被 isort 误判为第三方包、从而要求改写冻结文件。
+known-first-party = ["tacticore", "research"]
+
 [tool.mypy]
 python_version = "3.10"
 packages = ["tacticore"]
@@ -51,7 +55,7 @@ no_implicit_optional = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = ["rqalpha", "rqalpha.*", "tushare", "tushare.*", "vectorbt", "vectorbt.*"]
+module = ["rqalpha", "rqalpha.*", "vectorbt", "vectorbt.*"]
 ignore_missing_imports = true
 
 [tool.uv.extra-build-dependencies]

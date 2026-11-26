@@ -1,0 +1,472 @@
+{
+  "attempt_sha256": "a45a9ad8a78db1755264cc822fc697351a1a7c1c8d81fe976625ea2290066557",
+  "comparisons": {
+    "S2_R1": {
+      "checks": {
+        "column_order": true,
+        "date_order": true,
+        "inception": true,
+        "row_count": true,
+        "unique_axes": true,
+        "weights": true
+      },
+      "expected_columns": [
+        "510300.SS",
+        "510500.SS",
+        "513500.SS",
+        "513100.SS",
+        "159920.SZ",
+        "513520.SS",
+        "513030.SS",
+        "518880.SS",
+        "159980.SZ",
+        "511010.SS"
+      ],
+      "extra_dates": [],
+      "first_difference": null,
+      "largest_common_weight_difference": {
+        "abs_delta": 4.444444423601368e-09,
+        "asset": "511010.SS",
+        "date": "2021-08-02"
+      },
+      "missing_dates": [],
+      "observed_columns": [
+        "510300.SS",
+        "510500.SS",
+        "513500.SS",
+        "513100.SS",
+        "159920.SZ",
+        "513520.SS",
+        "513030.SS",
+        "518880.SS",
+        "159980.SZ",
+        "511010.SS"
+      ],
+      "passed": true,
+      "rows": 103
+    },
+    "S4C_R1": {
+      "checks": {
+        "column_order": true,
+        "date_order": true,
+        "inception": true,
+        "last_date": true,
+        "max_asset": true,
+        "positive_support": true,
+        "row_count": true,
+        "row_sum": true,
+        "unique_axes": true,
+        "weights": false
+      },
+      "expected_columns": [
+        "510300.SS",
+        "510500.SS",
+        "513500.SS",
+        "513100.SS",
+        "159920.SZ",
+        "513520.SS",
+        "513030.SS",
+        "518880.SS",
+        "159980.SZ",
+        "511010.SS",
+        "511260.SS",
+        "511880.SS"
+      ],
+      "extra_dates": [],
+      "first_difference": {
+        "asset": "518880.SS",
+        "date": "2020-03-02",
+        "reason": "weight"
+      },
+      "largest_common_weight_difference": {
+        "abs_delta": 0.0011550967312334848,
+        "asset": "513500.SS",
+        "date": "2022-06-01"
+      },
+      "missing_dates": [],
+      "observed_columns": [
+        "510300.SS",
+        "510500.SS",
+        "513500.SS",
+        "513100.SS",
+        "159920.SZ",
+        "513520.SS",
+        "513030.SS",
+        "518880.SS",
+        "159980.SZ",
+        "511010.SS",
+        "511260.SS",
+        "511880.SS"
+      ],
+      "passed": false,
+      "rows": 161
+    }
+  },
+  "contract": "FREE_DATA_CONTRACT_V2",
+  "controls": {
+    "S2_R1": {
+      "checks": {
+        "column_order": true,
+        "date_order": true,
+        "inception": true,
+        "row_count": true,
+        "unique_axes": true,
+        "weights": true
+      },
+      "expected_columns": [
+        "510300.SS",
+        "510500.SS",
+        "513500.SS",
+        "513100.SS",
+        "159920.SZ",
+        "513520.SS",
+        "513030.SS",
+        "518880.SS",
+        "159980.SZ",
+        "511010.SS"
+      ],
+      "extra_dates": [],
+      "first_difference": null,
+      "largest_common_weight_difference": {
+        "abs_delta": 4.444444423601368e-09,
+        "asset": "511010.SS",
+        "date": "2021-08-02"
+      },
+      "missing_dates": [],
+      "observed_columns": [
+        "510300.SS",
+        "510500.SS",
+        "513500.SS",
+        "513100.SS",
+        "159920.SZ",
+        "513520.SS",
+        "513030.SS",
+        "518880.SS",
+        "159980.SZ",
+        "511010.SS"
+      ],
+      "passed": true,
+      "rows": 103
+    },
+    "S4C_R1": {
+      "checks": {
+        "column_order": true,
+        "date_order": true,
+        "inception": true,
+        "last_date": true,
+        "max_asset": true,
+        "positive_support": true,
+        "row_count": true,
+        "row_sum": true,
+        "unique_axes": true,
+        "weights": true
+      },
+      "expected_columns": [
+        "510300.SS",
+        "510500.SS",
+        "513500.SS",
+        "513100.SS",
+        "159920.SZ",
+        "513520.SS",
+        "513030.SS",
+        "518880.SS",
+        "159980.SZ",
+        "511010.SS",
+        "511260.SS",
+        "511880.SS"
+      ],
+      "extra_dates": [],
+      "first_difference": null,
+      "largest_common_weight_difference": {
+        "abs_delta": 4.11370098599706e-05,
+        "asset": "518880.SS",
+        "date": "2023-11-01"
+      },
+      "missing_dates": [],
+      "observed_columns": [
+        "510300.SS",
+        "510500.SS",
+        "513500.SS",
+        "513100.SS",
+        "159920.SZ",
+        "513520.SS",
+        "513030.SS",
+        "518880.SS",
+        "159980.SZ",
+        "511010.SS",
+        "511260.SS",
+        "511880.SS"
+      ],
+      "passed": true,
+      "rows": 161
+    }
+  },
+  "coverage": [
+    {
+      "applied_events": 14,
+      "first": "2012-05-28",
+      "last": "2026-08-31",
+      "list_date": "2012-05-28",
+      "raw_first": "2012-05-28",
+      "raw_last": "2026-11-25",
+      "raw_rows": 3523,
+      "rows": 3467,
+      "symbol": "510300.SS"
+    },
+    {
+      "applied_events": 6,
+      "first": "2013-03-15",
+      "last": "2026-08-31",
+      "list_date": "2013-03-15",
+      "raw_first": "2013-03-15",
+      "raw_last": "2026-11-25",
+      "raw_rows": 3327,
+      "rows": 3270,
+      "symbol": "510500.SS"
+    },
+    {
+      "applied_events": 1,
+      "first": "2014-01-15",
+      "last": "2026-08-31",
+      "list_date": "2014-01-15",
+      "raw_first": "2014-01-15",
+      "raw_last": "2026-11-25",
+      "raw_rows": 3126,
+      "rows": 3069,
+      "symbol": "513500.SS"
+    },
+    {
+      "applied_events": 1,
+      "first": "2013-05-15",
+      "last": "2026-08-31",
+      "list_date": "2013-05-15",
+      "raw_first": "2013-05-15",
+      "raw_last": "2026-11-25",
+      "raw_rows": 3290,
+      "rows": 3233,
+      "symbol": "513100.SS"
+    },
+    {
+      "applied_events": 1,
+      "first": "2012-10-22",
+      "last": "2026-08-31",
+      "list_date": "2012-10-22",
+      "raw_first": "2012-10-22",
+      "raw_last": "2026-11-25",
+      "raw_rows": 3424,
+      "rows": 3368,
+      "symbol": "159920.SZ"
+    },
+    {
+      "applied_events": 0,
+      "first": "2019-06-25",
+      "last": "2026-08-31",
+      "list_date": "2019-06-25",
+      "raw_first": "2019-06-25",
+      "raw_last": "2026-11-25",
+      "raw_rows": 1801,
+      "rows": 1745,
+      "symbol": "513520.SS"
+    },
+    {
+      "applied_events": 0,
+      "first": "2014-09-05",
+      "last": "2026-08-31",
+      "list_date": "2014-09-05",
+      "raw_first": "2014-09-05",
+      "raw_last": "2026-11-25",
+      "raw_rows": 2968,
+      "rows": 2911,
+      "symbol": "513030.SS"
+    },
+    {
+      "applied_events": 0,
+      "first": "2013-07-29",
+      "last": "2026-08-31",
+      "list_date": "2013-07-29",
+      "raw_first": "2013-07-29",
+      "raw_last": "2026-11-25",
+      "raw_rows": 3240,
+      "rows": 3184,
+      "symbol": "518880.SS"
+    },
+    {
+      "applied_events": 0,
+      "first": "2019-12-24",
+      "last": "2026-08-31",
+      "list_date": "2019-12-24",
+      "raw_first": "2019-12-24",
+      "raw_last": "2026-11-25",
+      "raw_rows": 1677,
+      "rows": 1621,
+      "symbol": "159980.SZ"
+    },
+    {
+      "applied_events": 6,
+      "first": "2013-03-25",
+      "last": "2026-08-31",
+      "list_date": "2013-03-25",
+      "raw_first": "2013-03-25",
+      "raw_last": "2026-11-25",
+      "raw_rows": 3322,
+      "rows": 3266,
+      "symbol": "511010.SS"
+    },
+    {
+      "applied_events": 4,
+      "first": "2017-08-24",
+      "last": "2026-08-31",
+      "list_date": "2017-08-24",
+      "raw_first": "2017-08-24",
+      "raw_last": "2026-11-25",
+      "raw_rows": 2245,
+      "rows": 2188,
+      "symbol": "511260.SS"
+    },
+    {
+      "applied_events": 13,
+      "first": "2013-04-18",
+      "last": "2026-08-31",
+      "list_date": "2013-04-18",
+      "raw_first": "2013-04-18",
+      "raw_last": "2026-11-25",
+      "raw_rows": 3306,
+      "rows": 3250,
+      "symbol": "511880.SS"
+    }
+  ],
+  "ended_utc": "2026-11-25T09:58:08.272606+00:00",
+  "environment": {
+    "packages": {
+      "clarabel": "0.11.1",
+      "cvxpy-base": "1.7.5",
+      "numpy": "1.26.4",
+      "pandas": "2.3.3",
+      "scipy": "1.17.1",
+      "skfolio": "1.0.6"
+    },
+    "platform": "Linux-6.8.0-1049-oracle-aarch64-with-glibc2.35",
+    "python": "3.11.15 (main, May 10 2026, 19:28:24) [Clang 22.1.3 ]"
+  },
+  "input_commit": "6bc99b8d7c2f6ffee3e5110815878f5c8de696c6",
+  "inputs": {
+    "config/strategy.toml": "9935dbdb54f3ea369574f2edfcdba2103c97d539697ff119c7ac9d084931c2ce",
+    "config/universe.csv": "190aacbca6feadd2ba825b1f284c06f48f30bdc3b5a4618f405711e5aadb8829",
+    "data/canonical/etf_adjusted_close.csv": "0ab40b9cf12cb900fa1c3ff53afc35f9963e44e10f67157a007f3fd7e15d8e93",
+    "research/results/s2_v2_frozen_targets.csv": "9cc5a8e70751f274cb7c4f900784400bd8de684450833ba6d4034fd75ca70b61",
+    "research/results/s4c_pit_corrected_frozen_targets_v1.csv": "f7bf398d7f8a016933cbe287bfa1cac98b3cccf175d40ef99092b95db1227e47"
+  },
+  "log_sha256": "d719b9a6cf68e3b54290c57a9539de21932d2cfdebdf83507746e22f3485f642",
+  "price_diagnostics": {
+    "159920.SZ": {
+      "canonical_factor_events": "UNKNOWN: frozen input is adjusted closes only",
+      "canonical_only_valid": 0,
+      "common_adjacent_returns": 3367,
+      "free_only_valid": 0,
+      "max_abs_return_delta": 0.000672043732307448,
+      "mean_abs_return_delta": 4.110875464010427e-07
+    },
+    "159980.SZ": {
+      "canonical_factor_events": "UNKNOWN: frozen input is adjusted closes only",
+      "canonical_only_valid": 0,
+      "common_adjacent_returns": 1620,
+      "free_only_valid": 0,
+      "max_abs_return_delta": 0.0010471204188482464,
+      "mean_abs_return_delta": 1.2880084185042089e-06
+    },
+    "510300.SS": {
+      "canonical_factor_events": "UNKNOWN: frozen input is adjusted closes only",
+      "canonical_only_valid": 0,
+      "common_adjacent_returns": 3466,
+      "free_only_valid": 0,
+      "max_abs_return_delta": 8.130328622546479e-05,
+      "mean_abs_return_delta": 1.2707216120688747e-07
+    },
+    "510500.SS": {
+      "canonical_factor_events": "UNKNOWN: frozen input is adjusted closes only",
+      "canonical_only_valid": 0,
+      "common_adjacent_returns": 3268,
+      "free_only_valid": 0,
+      "max_abs_return_delta": 0.00015075819682475178,
+      "mean_abs_return_delta": 1.483292670524224e-07
+    },
+    "511010.SS": {
+      "canonical_factor_events": "UNKNOWN: frozen input is adjusted closes only",
+      "canonical_only_valid": 0,
+      "common_adjacent_returns": 3265,
+      "free_only_valid": 0,
+      "max_abs_return_delta": 8.556015903504743e-05,
+      "mean_abs_return_delta": 5.703129357244418e-08
+    },
+    "511260.SS": {
+      "canonical_factor_events": "UNKNOWN: frozen input is adjusted closes only",
+      "canonical_only_valid": 0,
+      "common_adjacent_returns": 2186,
+      "free_only_valid": 0,
+      "max_abs_return_delta": 3.621689548094498e-05,
+      "mean_abs_return_delta": 4.787207090940662e-08
+    },
+    "511880.SS": {
+      "canonical_factor_events": "UNKNOWN: frozen input is adjusted closes only",
+      "canonical_only_valid": 0,
+      "common_adjacent_returns": 3249,
+      "free_only_valid": 0,
+      "max_abs_return_delta": 5.2406865869825126e-05,
+      "mean_abs_return_delta": 1.097951905614868e-07
+    },
+    "513030.SS": {
+      "canonical_factor_events": "UNKNOWN: frozen input is adjusted closes only",
+      "canonical_only_valid": 0,
+      "common_adjacent_returns": 2909,
+      "free_only_valid": 0,
+      "max_abs_return_delta": 0.003289427348529772,
+      "mean_abs_return_delta": 2.2587849870624875e-06
+    },
+    "513100.SS": {
+      "canonical_factor_events": "UNKNOWN: frozen input is adjusted closes only",
+      "canonical_only_valid": 0,
+      "common_adjacent_returns": 3231,
+      "free_only_valid": 0,
+      "max_abs_return_delta": 0.007592315567306107,
+      "mean_abs_return_delta": 4.668903645167494e-06
+    },
+    "513500.SS": {
+      "canonical_factor_events": "UNKNOWN: frozen input is adjusted closes only",
+      "canonical_only_valid": 0,
+      "common_adjacent_returns": 3067,
+      "free_only_valid": 0,
+      "max_abs_return_delta": 0.002259775753828519,
+      "mean_abs_return_delta": 1.4692290302135198e-06
+    },
+    "513520.SS": {
+      "canonical_factor_events": "UNKNOWN: frozen input is adjusted closes only",
+      "canonical_only_valid": 0,
+      "common_adjacent_returns": 1744,
+      "free_only_valid": 0,
+      "max_abs_return_delta": 0.0,
+      "mean_abs_return_delta": 0.0
+    },
+    "518880.SS": {
+      "canonical_factor_events": "UNKNOWN: frozen input is adjusted closes only",
+      "canonical_only_valid": 0,
+      "common_adjacent_returns": 3183,
+      "free_only_valid": 0,
+      "max_abs_return_delta": 0.0,
+      "mean_abs_return_delta": 0.0
+    }
+  },
+  "private_file_hashes_sha256": "4c7b98f102c0dc3d3ba42787655da1c984922742d421a7fce434a8679b1699e1",
+  "private_root": "/home/jcshi/workspace/free-v2-private",
+  "protocol_commit": "d3258a2398e23389b01d08107385dc7608a0bb97",
+  "protocol_sha256": "c74833f4194521c22920cceeb828dcda48ff089f7b9bbdd4b499f782aab62591",
+  "returncode": 0,
+  "runner_commit": "920c886bea7c63e4379e6616d1bfec9555fa5443",
+  "selected_host": "180.153.18.170",
+  "snapshot_sha256": "91539661cc308a7c411e0ffcf35d4993cb0e6efb963e387d4d0cae75d6e9f2cd",
+  "stage": "COMPARED",
+  "started_utc": "2026-11-25T09:57:37.436699+00:00",
+  "verdicts": {
+    "S2_R1": "EQUIVALENT",
+    "S4C_R1": "NOT_EQUIVALENT"
+  }
+}

@@ -24,14 +24,6 @@
 
 接口定义参考 Tushare 官方文档：[ETF 日线行情](https://tushare.pro/document/2?doc_id=127)、[基金复权因子](https://tushare.pro/document/2?doc_id=199)、[交易日历](https://tushare.pro/document/2?doc_id=26)和[基金列表](https://tushare.pro/document/1?doc_id=19)。API 返回并不自动等同于经济口径正确，因此来源清单仍保留全部假设和检查结果。
 
-## 重建命令
+## 重建状态（数据源已退役）
 
-在环境变量 `TUSHARE_TOKEN` 已设置时运行：
-
-```bash
-uv run python research/experiments/download_tushare_data.py \
-  --start-date 20120101 \
-  --end-date 20260831
-```
-
-相同 API 响应会按固定列顺序、日期排序、八位小数和 LF 换行生成相同价格及日历文件；`download_timestamp` 会如实记录每次下载时间。token 不会写入任何产物。
+Tushare 数据源已于 2026-11-25 按所有者指令退役，原下载脚本 `research/experiments/download_tushare_data.py` 已删除，本目录不可再重建或扩展。本目录文件按 `provenance.json` 中的 SHA-256 保持字节不变，只作为既有候选的历史冻结证据。新研究数据来自 FinanceMCP research-export 内容寻址快照（契约见 `research/ashare/data/contract.py`）。

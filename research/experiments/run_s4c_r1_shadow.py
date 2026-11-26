@@ -19,6 +19,12 @@ from typing import Any
 import pandas as pd
 
 from research.experiments.prospective_evidence import (
+    LEGACY_R1_ADJUSTMENT_TYPE as ADJUSTMENT_TYPE,
+)
+from research.experiments.prospective_evidence import (
+    LEGACY_R1_DATA_SOURCE as SOURCE,
+)
+from research.experiments.prospective_evidence import (
     REQUIRED_VINTAGE_FILES,
     SHANGHAI_TIMEZONE,
     ProspectiveVintage,
@@ -67,7 +73,6 @@ from research.experiments.verify_s4c_r1_candidate import (
 from tacticore.data.execution_guards import load_tradability_inputs_with_delisting
 from tacticore.data.prices import load_price_csv
 from tacticore.data.tradability import validate_execution_targets
-from tacticore.data.tushare import ADJUSTMENT_TYPE, SOURCE
 
 SHADOW_DIR = ROOT / "research/shadow/s4c_r1"
 MANIFEST_PATH = SHADOW_DIR / "candidate_manifest.json"

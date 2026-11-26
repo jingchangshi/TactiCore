@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import shutil
 from collections.abc import Iterator, Mapping
@@ -20,9 +21,14 @@ import pandas as pd
 import pytest
 
 from research.experiments import prospective_evidence as pe
+from research.experiments.prospective_evidence import (
+    LEGACY_R1_ADJUSTMENT_TYPE as ADJUSTMENT_TYPE,
+)
+from research.experiments.prospective_evidence import (
+    LEGACY_R1_DATA_SOURCE as SOURCE,
+)
 from research.experiments.prospective_evidence import FrozenUniverse, load_frozen_universe
 from tacticore.data.prices import load_price_csv
-from tacticore.data.tushare import ADJUSTMENT_TYPE, SOURCE, TushareDataset, write_tushare_dataset
 from tacticore.strategies.global_dual_momentum import GlobalDualMomentumConfig
 
 CANONICAL_ROOT = Path(__file__).resolve().parents[1]
@@ -191,10 +197,31 @@ def write_prospective_vintage(
     if provenance_overrides:
         provenance.update(provenance_overrides)
     destination.mkdir(parents=True, exist_ok=True)
-    write_tushare_dataset(
-        TushareDataset(prices=prices, calendar=calendar, provenance=provenance), destination
-    )
+    _write_vintage_files(prices, calendar, provenance, destination)
     return destination
+
+
+def _write_vintage_files(
+    prices: pd.DataFrame,
+    calendar: pd.DataFrame,
+    provenance: dict[str, Any],
+    destination: Path,
+) -> None:
+    """按 R1 vintage 文件契约（稳定排序、八位小数、LF）写出 fixture 文件与 SHA-256。"""
+    prices_path = destination / "etf_adjusted_close.csv"
+    calendar_path = destination / "trading_calendar.csv"
+    prices.to_csv(
+        prices_path, date_format="%Y-%m-%d", float_format="%.8f", na_rep="", lineterminator="\n"
+    )
+    calendar.to_csv(calendar_path, date_format="%Y-%m-%d", lineterminator="\n")
+    payload = dict(provenance)
+    payload["files"] = {
+        path.name: {"sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "rows": len(frame)}
+        for path, frame in ((prices_path, prices), (calendar_path, calendar))
+    }
+    (destination / "provenance.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
 
 
 def write_observations_header(path: Path, fields: tuple[str, ...]) -> Path:
@@ -398,119 +425,6 @@ def write_raw_execution_artifact(
         expected_framework_version=framework_version,
     )
     return relative_path
-
-
-class MockTushareApi:
-    """由冻结 canonical 数据驱动的假 Tushare API：不联网、不需要凭证。
-
-    它模仿 `trade_cal` / `fund_basic` / `fund_daily` / `fund_adj` 的真实分页行为，使
-    `download_tushare_dataset` 能完整跑通：canonical 区间逐值复现冻结数据，cutoff 之后
-    用 synthetic 交易日与价格扩展，因此 historical overlap 校验仍然成立。
-    """
-
-    def __init__(self, root: Path = CANONICAL_ROOT, *, as_of: str = DEFAULT_AS_OF) -> None:
-        self.root = root
-        self.as_of = pd.Timestamp(as_of)
-        self.universe = pd.read_csv(root / "config/universe.csv", parse_dates=["start_date"])
-        self.calendar = canonical_calendar(root)
-        self.prices = canonical_prices(root)
-        extension_index = pd.bdate_range(
-            self.calendar.index.max() + pd.Timedelta(days=1), self.as_of
-        )
-        self.extension = pd.DataFrame(
-            {
-                symbol: [
-                    float(self.prices[symbol].dropna().iloc[-1]) * (1.0 + 0.0005 * (step + 1))
-                    for step in range(len(extension_index))
-                ]
-                for symbol in self.prices.columns
-            },
-            index=extension_index,
-        )
-        self.full_prices = pd.concat([self.prices, self.extension])
-        calendar_extension = pd.date_range(
-            self.calendar.index.max() + pd.Timedelta(days=1), self.as_of, freq="D"
-        )
-        open_extension = pd.DataFrame(
-            {
-                "sse_open": (calendar_extension.dayofweek < 5).astype(int),
-                "szse_open": (calendar_extension.dayofweek < 5).astype(int),
-            },
-            index=calendar_extension,
-        )
-        self.full_calendar = pd.concat([self.calendar.astype(int), open_extension])
-
-    def _dates(self, start_date: str, end_date: str) -> pd.DatetimeIndex:
-        start = pd.Timestamp(start_date)
-        end = pd.Timestamp(end_date)
-        return self.full_calendar.index[
-            (self.full_calendar.index >= start) & (self.full_calendar.index <= end)
-        ]
-
-    def trade_cal(self, **kwargs: Any) -> pd.DataFrame:
-        column = "sse_open" if kwargs["exchange"] == "SSE" else "szse_open"
-        dates = self._dates(kwargs["start_date"], kwargs["end_date"])
-        positions = self.full_calendar.index.get_indexer(dates)
-        previous = [self.full_calendar.index[max(position - 1, 0)] for position in positions]
-        return pd.DataFrame(
-            {
-                "exchange": [kwargs["exchange"]] * len(dates),
-                "cal_date": [date.strftime("%Y%m%d") for date in dates],
-                "is_open": [int(self.full_calendar.at[date, column]) for date in dates],
-                "pretrade_date": [date.strftime("%Y%m%d") for date in previous],
-            }
-        )
-
-    def fund_basic(self, **kwargs: Any) -> pd.DataFrame:
-        del kwargs
-        return pd.DataFrame(
-            {
-                "ts_code": list(self.universe["tushare_symbol"]),
-                "name": list(self.universe["name"]),
-                "management": ["fixture"] * len(self.universe),
-                "fund_type": ["ETF"] * len(self.universe),
-                "list_date": [
-                    pd.Timestamp(value).strftime("%Y%m%d") for value in self.universe["start_date"]
-                ],
-                "delist_date": [None] * len(self.universe),
-            }
-        )
-
-    def _page(
-        self, frame: pd.DataFrame, kwargs: dict[str, Any], columns: list[str]
-    ) -> pd.DataFrame:
-        offset = int(kwargs["offset"])
-        limit = int(kwargs["limit"])
-        page = frame.iloc[offset : offset + limit]
-        return page.reset_index(drop=True)[columns]
-
-    def fund_daily(self, **kwargs: Any) -> pd.DataFrame:
-        ts_code = str(kwargs["ts_code"])
-        symbol = self.universe.loc[self.universe["tushare_symbol"].eq(ts_code), "symbol"].iloc[0]
-        dates = self._dates(kwargs["start_date"], kwargs["end_date"])
-        observed = self.full_prices[symbol].reindex(dates).dropna()
-        frame = pd.DataFrame(
-            {
-                "ts_code": [ts_code] * len(observed),
-                "trade_date": [date.strftime("%Y%m%d") for date in observed.index],
-                "close": observed.to_numpy(dtype=float),
-            }
-        )
-        return self._page(frame, kwargs, ["ts_code", "trade_date", "close"])
-
-    def fund_adj(self, **kwargs: Any) -> pd.DataFrame:
-        ts_code = str(kwargs["ts_code"])
-        symbol = self.universe.loc[self.universe["tushare_symbol"].eq(ts_code), "symbol"].iloc[0]
-        dates = self._dates(kwargs["start_date"], kwargs["end_date"])
-        observed = self.full_prices[symbol].reindex(dates).dropna()
-        frame = pd.DataFrame(
-            {
-                "ts_code": [ts_code] * len(observed),
-                "trade_date": [date.strftime("%Y%m%d") for date in observed.index],
-                "adj_factor": [1.0] * len(observed),
-            }
-        )
-        return self._page(frame, kwargs, ["ts_code", "trade_date", "adj_factor"])
 
 
 def build_candidate_repo(root: Path, candidate_id: str) -> Path:

@@ -29,6 +29,12 @@ from tacticore.data.prices import load_price_csv
 from tacticore.data.universe import load_universe
 
 SHANGHAI_TIMEZONE = "Asia/Shanghai"
+# R1 候选 vintage 的历史数据契约字面值（只用于校验既有冻结 provenance，不是运行时依赖）。
+# 该下载器已随 2026-11-25 所有者指令退役；R1 不再能产生新 vintage，按"数据源退役"处理。
+LEGACY_R1_DATA_SOURCE = "Tushare Pro"
+LEGACY_R1_ADJUSTMENT_TYPE = "后复权（原始收盘价 × fund_adj 复权因子，将因子变化视为分红再投资）"
+#: 已退役数据源客户端包：候选 manifest 中记录其历史版本，但运行环境不再安装。
+RETIRED_DATA_SOURCE_PACKAGES = frozenset({"tushare"})
 SIGNAL_CLOSE_HOUR = 15
 PRICE_VINTAGE_FILE = "etf_adjusted_close.csv"
 CALENDAR_VINTAGE_FILE = "trading_calendar.csv"

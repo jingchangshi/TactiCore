@@ -20,7 +20,14 @@ from typing import Any
 import pandas as pd
 
 from research.experiments.prospective_evidence import (
+    LEGACY_R1_ADJUSTMENT_TYPE as ADJUSTMENT_TYPE,
+)
+from research.experiments.prospective_evidence import (
+    LEGACY_R1_DATA_SOURCE as SOURCE,
+)
+from research.experiments.prospective_evidence import (
     REQUIRED_VINTAGE_FILES,
+    RETIRED_DATA_SOURCE_PACKAGES,
     SHANGHAI_TIMEZONE,
     ProspectiveVintage,
     append_event_row,
@@ -47,7 +54,6 @@ from research.experiments.prospective_evidence import (
 )
 from research.experiments.prospective_evidence import sha256_file as sha256_file
 from tacticore.data.prices import load_price_csv
-from tacticore.data.tushare import ADJUSTMENT_TYPE, SOURCE
 from tacticore.strategies.multi_asset_trend import (
     MultiAssetTrendConfig,
     build_month_end_targets,
@@ -134,6 +140,8 @@ def canonical_observations_path(root: Path = ROOT) -> Path:
 
 def verify_framework_versions(manifest: dict[str, Any]) -> None:
     for package, expected_version in manifest["framework_versions"].items():
+        if package in RETIRED_DATA_SOURCE_PACKAGES:
+            continue  # 已退役数据源：manifest 保留历史版本，运行环境不再安装。
         if version(package) != expected_version:
             raise ValueError(f"candidate manifest 与当前框架版本不一致: {package}")
 

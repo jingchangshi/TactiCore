@@ -787,3 +787,80 @@
   - **OOS 重仓 70% LOCK（69K / 100K）**：期末 `¥71,005.23 / ¥103,044.29`，最大回撤 **`15.808%` / `15.743%`**，穿 `-15%` 红线 **`49` / `45` 日**，各触发（含再锁）`5` 次 / 锁定 `80` 个收盘日；同路径先于 **2024-09-24** 开盘清仓 159558（`51,200 / 74,200` 份），于 **2025-04-07** 持有其他资产时首次穿线；同路径 `NEVER_L2` 期末高 `¥59,558.21 / ¥85,895.13`（不可外推“应当关锁”）；
   - **IS 与 OOS 核心 25%**：两模式均未触发锁，锁定代价**不可识别**（非“零代价”）。
 - 证据：`G_REPLAY.md`（`160657231f16bd914c2f3b622d9cdf29c6075b406b7cf8a96c25df4b5e913489`）、`B_G_REVIEW.md`（`dce72b4dd03897cdb60f1157a61b59548ffc626733f4a2c28f916e52b04ffd16`）。
+
+## RL-064 V3 同窗口复杂度门槛 V2（`V3_COMPLEXITY_HURDLE_V2`）
+
+- 研究域：`research/batches/v3_complexity_hurdle_v2/`（`PROTOCOL_V2.md`、`native.py`、`run.py`）；数据契约：`v3_snapshot_20261126` + `v3_aux_20261126` + `bundle_202611_root/bundle`（截至 `2026-10-30`，VBT 延展至 `2026-11-26`）。不改动已冻结 `V3_COMPLEXITY_HURDLE_V1` 与 `v3.2.1` release。
+- 状态：CLOSED（§8 经济裁决 **`V3_REGIME_IS_RISK_OVERLAY_NOT_RETURN_SOURCE`**，6/6 完整性门槛 `PASS`，`illegal_non_lot_fills = 0`）。日期：2026-11-26。
+- 实证与裁决：
+  - 修复 V1 对 `510500.XSHG` 公司行动余股全清（`target == 0` 整手 veto）的口径混淆后，A/B/C 各仅 1 笔合法全清零股、`0` 笔非法零股、佣金/下单日/捕获全部 `PASS`。
+  - **RQAlpha 6.3.0 原生全窗（`2018-01-02..2026-10-30`，真实分层费率）**：`A_69000` CAGR `3.22%` / MaxDD `-15.74%` / Sharpe `0.339` / Calmar `0.205` / 佣金 `¥3129.68`（`4.54%`，IS `0.02%` / OOS `10.32%`）；`A_100000` CAGR `3.75%` / MaxDD `-13.63%` / Sharpe `0.388` / Calmar `0.275` / 佣金 `¥3527.51`（`3.53%`，IS `0.73%` / OOS `10.42%`）；同期 `B_100000`（S30 静态四袖子）`5.49%` / `-18.26%` / `0.558` / `0.300`，`C_100000`（S4C skfolio ERC）`4.41%` / `-3.36%` / `1.586` / `1.315`。
+  - **VectorBT `2026-07-01..2026-11-26` 深熊与黄金 `-38.9%` 冲击切片**：`A` 收益 **`-1.61%`（MaxDD `-3.48%`）**，显著优于 `B` `-17.42%`（MaxDD `-17.51%`）与 `D (60/40)` `-12.53%`，而 `C (ERC)` 仅 `-0.28%`（MaxDD `-0.69%`）。证实 V3 双锚状态机是有效的**尾部回撤护栏（Risk Overlay）**，但非独立长期收益源（受 `511010` 高佣金与横盘震荡换手侵蚀）。
+- 证据：`research/results/V3_COMPLEXITY_HURDLE_V2.md` / `.json`。
+
+## RL-065 `EXP-V3-05B`：解锁 PIT 流通市值个股先锋腿的完整 V3 单账户原生回放
+
+- 研究域：`research/batches/v3_account_replay_v2/`（`PROTOCOL_V2.md`、`stock_signals.py`、`policy.py`、`native.py`、`run.py`）。解锁 `daily_basic_pit.csv` 精确当日 PIT `circ_mv >= 500,000 万元`（`= 50 亿元`）与 `v3_snapshot_20261126` PIT `QualityCore`，遵循 `v3.2.1` 语义（无行业前 30% 硬门控、收盘 `< MA20` 次日开盘离场）。
+- 状态：CLOSED（裁决 **`FULL_V3_REPLAY_VERIFIED`**，12/12 格 `0` 违规；IS 因缺失 2017–2023 当次公告版 PIT 财务继续保持 `IS_STOCK_BLOCKED_DATA`）。日期：2026-11-26。
+- 实证与裁决：
+  - **信号漏斗（`2024-02-01..2026-10-30`）**：`bp1_tech_raw = 3,535` → ST 剔除 `20` → `QualityCore` 剔除 `2,145` → `circ_mv < 50 亿` 剔除 `104`（`circ_mv_missing = 0`）→ **`1,266`** 条严格因果合格 `BP1` 信号。
+  - **清白现金对照 `OOS_CASH_2024`（`2024-02-01..2026-10-30`，含双边万 5 股票滑点与印花税）**：`100000_LOCK` CAGR **`19.81%`**、MaxDD **`-14.93%`**、Sharpe **`1.292`**、`0` 次 L2 锁、`0` 穿线，股票腿独立贡献 **`+¥24,606`**；而 `69000_LOCK` 骤降至 CAGR **`10.73%`**、MaxDD `-14.90%`、Sharpe `0.818`、股票 PnL **`-¥862`**（资金规模与 `≥¥8,000`/5 元低消摩擦门槛效应显著）。
+  - **集中遗留场景（`2024-07-01..2026-10-30`）**：`CORE25_100000_ETF_ONLY_LOCK` 达 CAGR **`24.11%`**（MaxDD `-18.25%`，Sharpe `1.293`，1 次 L2）；叠加并发个股腿 `CORE25_100000_LOCK` 反降至 **`13.77%`**（`3` 次 L2、股票 `-¥6,260`），证明集中遗留仓磨底期与个股先锋存在显著资金/回撤锁抢占；`HEAVY70_69000_LOCK` 仅 `-6.51%` 且陷入 **`20` 次 L2 锁 / `274` 穿线日**循环。
+- 证据：`research/results/EXP_V3_05B_ACCOUNT_REPLAY_FULL.md` / `.json`。
+
+## RL-066 `EXP-V3-06`：防御蓄水池降摩擦与趋势过滤防御资产轮动
+
+- 研究域：`research/batches/exp_v3_06_defensive_rotation/`（`PROTOCOL_V1.md`、`run.py`）。正交于已拒 `RL-053` 与 `S8A`。
+- 状态：CLOSED（裁决 **`MARGINAL_OR_MIXED`**，3/3 RQAlpha 完整性门槛 `PASS`）。日期：2026-11-26。
+- 实证与裁决：
+  - 将 `DEFENSIVE` 蓄水池由 `511010.SH`（单手 `¥14,138.6`）切换为 `159649.SZ -> 511260.SH` 并放宽 `drift_band = 10%`（`D1_LOW_TICKET_RESERVE`），使 ¥69k 全窗 CAGR 从 `3.22%` 升至 **`3.97%`**（Sharpe `0.339 -> 0.401`，MaxDD `-15.74% -> -14.21%`），¥100k 从 `3.75%` 升至 **`4.14%`**（OOS `10.42% -> 11.05%`）。
+  - **反证结论**：对 `DEFENSIVE` 内红利+10% 黄金加 `MA40/60/90` 趋势过滤（`D2`）在 ¥69k/¥100k 上全面跑输不过滤的固定 10% 黄金对照 `D3_UNFILTERED_GOLD_CTRL`（`5.07%` / `-13.55%` / Sharpe `0.492` @ 69k；`4.91%` / `-14.21%` / `0.475` @ 100k）；`2026-07..11-26` VBT 切片 `D3` 亦仅 `-3.29%`（MaxDD `-3.51%`），而 `MA60` 过滤因高频震荡打脸反增佣金至 `¥4,230.24` 且回撤更大（`-4.02%`）。故否定对黄金/红利加中短均线择时开关。
+- 证据：`research/results/EXP_V3_06_DEFENSIVE_ROTATION.md` / `.json`。
+
+## RL-067 `EXP-V3-07`：红利低波常驻底盘与 V3 底盘内风险预算定权
+
+- 研究域：`research/batches/exp_v3_07_lowvol_risk_budget/`（`PROTOCOL_V1.md`、`run.py`）。正交于已拒 `S4A`，仅在 V3 `85/60/15` 权益额度内部检验 `LOW_VOL` 第三桶与逆波/`skfolio` ERC 定权。
+- 状态：CLOSED（裁决 **`NO_HURDLE_EDGE_OVER_BASELINE`**，3/3 完整性门槛 `PASS`）。日期：2026-11-26。
+- 实证与裁决：
+  - `R3_V3_SKFOLIO_ERC_W60_100000` 虽提升全窗 CAGR（`4.06% vs 3.87%`）与 Sharpe（`0.495 vs 0.399`），但全窗 MaxDD 为 `-14.22%`（略深于 `R0` `-13.77%`），OOS CAGR 降至 `8.82% vs 10.62%`，未过预注册“同时优于 `R0` 回撤与 Calmar”门槛；`R2` 逆波亦在 `-14.12%..-16.01%` 略逊 `R0`。
+  - **机制洞见**：静态三桶常驻纳入 30% 红利低波的 `R1_V3_WITH_LOWVOL_CORE` 在 ¥100k 将 CAGR 从 `3.87% -> 4.23%`、Sharpe `0.399 -> 0.485`、Calmar `0.281 -> 0.309`、MaxDD `-13.77% -> -13.70%`，且在 VBT `2026-07..11-26` 深熊录得正收益 **`+0.30%`**（`R0` 为 `-1.61%`），代价是桶间换手增加（`1,052` vs `902` 笔成交）。
+- 证据：`research/results/EXP_V3_07_LOWVOL_RISK_BUDGET.md` / `.json`。
+
+## RL-068 `EXP-V3-08`：8.1% 极端冰点后的非对称右侧复苏与仓位爬坡
+
+- 研究域：`research/batches/exp_v3_08_icepoint_recovery/`（`PROTOCOL_V1.md`、`run.py`；新增 `BREADTH_THRUST_RECOVERY` 注册表条目）。正交于已拒 `S3B`。
+- 状态：CLOSED（裁决 **`ASYMMETRIC_RECOVERY_NET_POSITIVE`**，3/3 完整性门槛 `PASS`）。日期：2026-11-26。
+- 实证与裁决：
+  - 在严守现行退场规则的前提下，**`M2_THRUST_ICE15_W40`**（近 10 日 `pct_above_ma60 < 15%` 且 `pct_above_ma20 < 15%` 冰点后，5 日内 `pct_above_ma20` 放量 `>=1.15x` 跃升至 `>=45%` 触发 `40%` `RECOVERY` 试探档）全期仅触发 **`7` 次、`0` 次假突破止损、`7` 次顺利升级**，在 `2026-09..11` 熊市高频死猫跳切片完全未误触发（仅 `-0.07%`），同时将 **¥69k** CAGR `3.22% -> 3.55%`、MaxDD `-15.74% -> -15.08%`、Calmar `0.205 -> 0.235`，**¥100k** CAGR `3.75% -> 3.93%`、MaxDD `-13.63% -> -13.05%`、Sharpe `0.388 -> 0.402`、Calmar `0.275 -> 0.301`。`M1_MA20` 触发 `16` 次含 `3` 次假突破，高原上稳健但显著弱于 `M2`。
+- 证据：`research/results/EXP_V3_08_ICEPOINT_RECOVERY.md` / `.json`。
+
+## RL-069 `EXP-V3-09`：回撤控制架构对比（V1 作废 → V2 实证裁决）
+
+- 研究域：`research/batches/exp_v3_09_drawdown_control/`（`PROTOCOL_V1.md` 被 `PROTOCOL_V2.md` 取代；V1 产物 `EXP_V3_09_DRAWDOWN_CONTROL.*` 因首日 `DEFENSIVE` 误清仓缺陷保留为作废记录；唯一有效实证为 **`EXP_V3_09_DRAWDOWN_CONTROL_V2.*`**）。
+- 状态：CLOSED（V2 裁决 **`REANCHOR_OR_CPPI_ELIMINATES_RELOCK_LOOP`**，V1 `SUPERSEDED`）。日期：2026-11-26。
+- 实证与裁决：
+  - **重仓集中账户（`2024-07-01..2026-10-30`）**：`C0_HARD_STEP_LOCK` 复现 `EXP-V3-05` 灾难——`HEAVY70` 69k/100k 各触发 `5` 次 L2（锁定 `80` 日、`56/54` 日穿 `-15%` 线，CAGR 跌至 `1.35%/0.76%`）；`C1` 解锁后重锚工作高水位+10日爬坡将锁定压降至 `1` 次/`16` 日（CAGR `2.25%/1.94%`），但解锁后真实 Peak MaxDD 扩至 `-17.33%/-17.78%`；**`C2_CPPI_F15_M5`** 实现 **`0` 次锁死、`0` 日穿 `-15%` 红线**，将全部 4 组集中场景真实 Peak MaxDD 严控在 **`-10.72% .. -11.29%`** 且 `HEAVY70` CAGR 跃升至 **`8.17%/8.19%`**（代价是 `CORE25` 正常反弹被压缩至 `11.03%/10.63%` vs `C0` `24.02%/24.07%`）；`C3_TWO_STAGE_GRADUAL` 将 `HEAVY70` CAGR 提至 `8.59%/9.18%`（仅 `1` 锁，MaxDD `-15.26%/-15.13%`）。
+  - **全窗 V3 底盘（`2018..2026-10-30`）**：`C3_TWO_STAGE_GRADUAL_100000` 获最高全期 Sharpe (`0.427 vs C0 0.388`) 与 Calmar (`0.280 vs 0.275`，CAGR `3.97%`)；`C2_CPPI_F15_M5` 则是唯一具备“集中/普通双向零穿 `-15%` 数学保障”的结构（全期 MaxDD `-10.19%/-10.67%` vs `C0 -15.74%/-13.63%`）。
+- 证据：`research/results/EXP_V3_09_DRAWDOWN_CONTROL_V2.md` / `.json`。
+
+## RL-070 `EXP-V3-10`：23 只超级行业 ETF 动量先导（10A）与短窗高股息低波 Pre-Study（10B）
+
+- 研究域：`research/batches/exp_v3_10_pioneer_alpha/`（`PROTOCOL_V1.md`、`run.py`）。严格区分 8.9 年 `10A` 与有界短窗 `10B` (`BOUNDED_SHORT_WINDOW_PRE_STUDY`)。
+- 状态：CLOSED（预注册裁决 **`SECTOR_PIONEER_NO_EDGE_10B_PRE_STUDY`**，10A 3/3 完整性门槛 `PASS`）。日期：2026-11-26。
+- 实证与裁决：
+  - **Line 10A（23 只超级行业 ETF + 10 只上市前 PIT 老牌代理，20% 机动先导槽，`Close > MA60`）**：单看纯 60 日动量 `10A_TOP1_RET60_MA60` Calmar (`0.301/0.279`) 略低于无先导纯底盘 `10A_CHASSIS_NO_PIONEER` (`0.334/0.358`)，触发预注册否定标签；但同表 **`10A_TOP1_BLEND_MA60`**（`0.5*ret20 + 0.5*ret60`）在 **¥69k / ¥100k 双档均同时超越无先导底盘**（69k CAGR `5.39% vs 3.04%`、OOS `13.33% vs 7.15%`、Calmar `0.368 vs 0.334`；100k CAGR **`5.64% vs 3.52%`**、OOS **`12.29% vs 8.24%`**、Sharpe `0.487 vs 0.484`、Calmar **`0.379 vs 0.358`**，VBT 全窗 CAGR `6.59%` / Calmar `0.435`），值得纳入未来多因子/组合级前导备选再检。
+  - **Line 10B（`BOUNDED_SHORT_WINDOW_PRE_STUDY`，`2024-02-01..2026-10-30`，`dv_ttm` 审计覆盖 `2024-01-02..2026-11-17`）**：高股息低波主板波段（`dv_ttm >= 3.5%` + `vol60 <= median` + `QualityCore`）回撤极浅（`-7.82%/-7.99%`）且胜率高（`33.3%/34.7%`），但在 5 元低消+印花税+5bp 滑点下 69k 净期望为负（`-0.024%`/笔，CAGR `1.39%`）、100k 仅 `+0.286%`/笔（CAGR `2.40%`），显著弱于同窗独立 `BP1_REF`（69k `+2.441%`/笔 CAGR `11.51%`，100k `+1.764%`/笔 CAGR `8.93%`），证实高股息低波在万 0.5 免五 ETF 桶实现远优于个股短波段。
+- 证据：`research/results/EXP_V3_10_PIONEER_ALPHA.md` / `.json`。
+
+## RL-071 `EXP-V3-11`：`v3.3.0` 五机制联合集成验证与胜率/盈亏比全口径审计
+
+- 研究域：`research/batches/exp_v3_11_v330_integration/`（`PROTOCOL_V1.md`、`analytics.py`、`run.py`）。联合集成 `M2` 冰点宽度推力 `RECOVERY`（40%）、底盘常驻 `30%` 免五红利低波核心、`159649.SZ -> 511260.SH` 低门槛蓄水池 + `10%` 漂移带、`20` 只超级行业 ETF `20/60` 混合动量 `20%` 先导、`BP1` 个股 `>= ¥100,000` 且非降浓期门控，对比 `TWO_STAGE_GRADUAL` vs `CPPI_F15_M5` vs `V3_2_1_BASELINE`。
+- 状态：CLOSED（裁决 **`V3_3_0_GRADUAL_APPROVED`**，正式签发 **`v3.3.0`** `e192ffc764f2bcf5ccd020e62254d1e1b518a6ab7a9074acd1d91c74a5462051`，4/4 完整性门槛 `PASS`，24 场原生 RQAlpha 回放 `0` 违规/`0` 拒单）。日期：2026-11-26。
+- 实证与胜率裁决：
+  - **全窗底盘 RQAlpha（`2018-01-02..2026-10-30`）**：`V3_3_0_GRADUAL` 将 **¥69k** CAGR 由 `2.15% -> 5.29%`（累计 `57.57%`、MaxDD `-12.30% vs -18.42%`、Sharpe `0.522 vs 0.256`、Sortino `0.741`、Calmar `0.430 vs 0.117`、月胜率 `54.7%` vs `48.1%`、FIFO `727` 笔胜率 `53.4%` / 盈亏比 `1.34` / 盈利因子 `1.20`），**¥100k** CAGR 由 `2.50% -> 5.48%`（累计 `60.18%`、MaxDD `-12.91% vs -14.72%`、Sharpe `0.520`、Sortino `0.738`、Calmar `0.425 vs 0.170`、月胜率 `52.8%`、年胜率 `66.7%`、FIFO `766` 笔胜率 `54.4%` / 盈亏比 `1.37` / 盈利因子 `1.21`）；VBT 全窗 `68.99%`（CAGR `6.07%`、MaxDD `-13.73%`、Calmar `0.442`，7 次 `M2` 复苏 `0` 假突破、`7` 次平滑升级）。
+  - **统一账户重演（含 `159558` `BOTTOM_GRIND_25` + PIT `BP1` 个股 + 万 5 滑点，`2024-02/07..2026-10-30`）**：在重点保护当前 `¥69k` 小账户端上，`OOS_CASH_69000` 胜率升至月 `63.6%`/年 `100%`/FIFO `59.0%`（MaxDD `-11.87%`、摩擦降 65% 至 `¥726.37`），`CORE25_69000` CAGR `15.16%`（`0` 锁、MaxDD `-13.55%`、FIFO 胜率 `61.3%` / 盈亏比 `2.00`），**`HEAVY70_69000`** CAGR 由 `8.54% -> 11.20%`（`0` 锁、`0` 穿线、MaxDD `-12.98%`、年胜率 `100%` vs `33.3%`、FIFO 胜率 `57.2%` / 盈亏比 `2.22`）；`HEAVY70_100000` 解锁后达 `18.37%`（1 锁 / 28 穿线日 / `-17.09%` 真实峰回撤，亦比肩 `C2_CPPI` `66` 穿线日）。按预注册选型规则正式选定 `TWO_STAGE_GRADUAL` (`C3`)。
+- 证据：`research/results/EXP_V3_11_V330_INTEGRATION.md` / `.json`、`AShareInvestor/docs/v3-offensive-system/POLICY_AMENDMENT_20261126_V330.md`（提交 `9c736c2f35a9be73971aacf81440343a491819ca`）、[v3_offensive_policy_release_v3.3.0.json](../research/ashare/releases/v3_offensive_policy_release_v3.3.0.json)。
+
+## 实盘运行补充记录（Stage 0 前瞻台账日度入库）
+
+- **2026-11-26（Stage 0 真实首日）**：已于 `~/.local/share/tacticore-v3-prospective-ledger` 初始化生产台账（经 `/tmp` 彩排 `PASS`），并按批 `BATCH-42ba86692d5298962d62abca` 写入 `20261126.json`（4 条事件：1 `SIGNAL`、2 `RECOMMENDATION`、1 `VALUATION`，基线 `v3.2.1` `9869bd0b0ef02336c09fbaab921f5545d069a60039957c6f58b3fa1736e7eb9a`），`verify` / `status` 返回 `rc=0`、`status=OK`、`pause.recommended=false`。后续若启用 `v3.3.0` 实盘日报，须新建独立台账根目录（例如 `~/.local/share/tacticore-v3-prospective-ledger-v330`），不混入并保持 `v3.2.1` 台账只读可核。

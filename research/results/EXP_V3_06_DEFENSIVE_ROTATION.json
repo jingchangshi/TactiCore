@@ -1,0 +1,704 @@
+{
+ "started": "2026-11-26T15:33:44.064323+00:00",
+ "runner_commit": "b3feb36b2010cc1af80411d55e39b131b7e00801",
+ "versions": {
+  "rqalpha": "6.3.0",
+  "vectorbt": "0.28.5"
+ },
+ "protocol_sha256": "e1a430c00f216018a8555a09e4a94df46df76eb492d734d9af4a0af9264f91ec",
+ "vbt": {
+  "D0_BASELINE_511010": {
+   "events": 199,
+   "full_2018_20261126": {
+    "total_return": 0.4814683801422852,
+    "cagr": 0.04516100594926953,
+    "max_drawdown": -0.14159075986887348,
+    "sharpe": 0.426842300979735,
+    "calmar": 0.318954471259939
+   },
+   "is_2018_2023": {
+    "total_return": 0.062190982586352694,
+    "cagr": 0.010127250841121871,
+    "max_drawdown": -0.14159075986887348,
+    "sharpe": 0.14765704064742174,
+    "calmar": 0.07152480042130341
+   },
+   "oos_2024_20261126": {
+    "total_return": 0.3947288241282416,
+    "cagr": 0.1211071493983431,
+    "max_drawdown": -0.12448527789052732,
+    "sharpe": 0.9132167492731318,
+    "calmar": 0.9728632288939826
+   },
+   "stress_202607_20261126": {
+    "total_return": -0.016115853629924737,
+    "cagr": -0.039303148427398904,
+    "max_drawdown": -0.03476704847628187,
+    "sharpe": -0.5228323369686169,
+    "calmar": -1.1304712407270225
+   }
+  },
+  "D1_LOW_TICKET_RESERVE": {
+   "events": 199,
+   "full_2018_20261126": {
+    "total_return": 0.47752810178711713,
+    "cagr": 0.04484822681307121,
+    "max_drawdown": -0.14609760028944763,
+    "sharpe": 0.4240278326418551,
+    "calmar": 0.3069744247969727
+   },
+   "is_2018_2023": {
+    "total_return": 0.07253078272313962,
+    "cagr": 0.011762835966040885,
+    "max_drawdown": -0.14223970766259164,
+    "sharpe": 0.16190574844590308,
+    "calmar": 0.08269727321110387
+   },
+   "oos_2024_20261126": {
+    "total_return": 0.37760903984097816,
+    "cagr": 0.11635958845629335,
+    "max_drawdown": -0.12549991494683976,
+    "sharpe": 0.8789535840508317,
+    "calmar": 0.9271686638638907
+   },
+   "stress_202607_20261126": {
+    "total_return": -0.0188952433689058,
+    "cagr": -0.0459868858568061,
+    "max_drawdown": -0.03506416121656253,
+    "sharpe": -0.6202921435269724,
+    "calmar": -1.3115067995718728
+   }
+  },
+  "D1B_MMF_IDLE_SWEEP_DIAG": {
+   "events": 199,
+   "full_2018_20261126": {
+    "total_return": 0.38262854345187525,
+    "cagr": 0.037082093179996,
+    "max_drawdown": -0.16298579151816794,
+    "sharpe": 0.3618509726030554,
+    "calmar": 0.22751733653950124
+   },
+   "is_2018_2023": {
+    "total_return": 0.019826349392519482,
+    "cagr": 0.0032841749450893687,
+    "max_drawdown": -0.15045721943285006,
+    "sharpe": 0.08804304377532754,
+    "calmar": 0.021827965168232523
+   },
+   "oos_2024_20261126": {
+    "total_return": 0.35574899028198903,
+    "cagr": 0.1102408479306014,
+    "max_drawdown": -0.12572055280052608,
+    "sharpe": 0.8371798559063083,
+    "calmar": 0.8768721221383311
+   },
+   "stress_202607_20261126": {
+    "total_return": -0.02078472231160311,
+    "cagr": -0.05051477103981605,
+    "max_drawdown": -0.0350048085015946,
+    "sharpe": -0.6859746083281167,
+    "calmar": -1.443080913798312
+   }
+  },
+  "D2_TREND_DEF_MA40": {
+   "events": 228,
+   "full_2018_20261126": {
+    "total_return": 0.48214524029332817,
+    "cagr": 0.045214660748830404,
+    "max_drawdown": -0.1469492084433769,
+    "sharpe": 0.4278160284958704,
+    "calmar": 0.3076890391434311
+   },
+   "is_2018_2023": {
+    "total_return": 0.07633379139109531,
+    "cagr": 0.012361106003785594,
+    "max_drawdown": -0.14619475247679292,
+    "sharpe": 0.16732704322665534,
+    "calmar": 0.08455232348881883
+   },
+   "oos_2024_20261126": {
+    "total_return": 0.37703122595244976,
+    "cagr": 0.11619867852367949,
+    "max_drawdown": -0.11576772062477647,
+    "sharpe": 0.8785634257616227,
+    "calmar": 1.0037226084834117
+   },
+   "stress_202607_20261126": {
+    "total_return": -0.03138147926332413,
+    "cagr": -0.07567150120531863,
+    "max_drawdown": -0.03846280213623543,
+    "sharpe": -1.0757094104680642,
+    "calmar": -1.9673943915289844
+   }
+  },
+  "D2_TREND_DEF_MA60": {
+   "events": 224,
+   "full_2018_20261126": {
+    "total_return": 0.4686550233891571,
+    "cagr": 0.04414116240699206,
+    "max_drawdown": -0.1609700890542115,
+    "sharpe": 0.4192161949202959,
+    "calmar": 0.2742196557531021
+   },
+   "is_2018_2023": {
+    "total_return": 0.062054816170863836,
+    "cagr": 0.01010562325186437,
+    "max_drawdown": -0.15894375030922403,
+    "sharpe": 0.14760654317465507,
+    "calmar": 0.0635798716980312
+   },
+   "oos_2024_20261126": {
+    "total_return": 0.38284295784680045,
+    "cagr": 0.1178151188052543,
+    "max_drawdown": -0.11576772062477636,
+    "sharpe": 0.8890501576550801,
+    "calmar": 1.0176853977035094
+   },
+   "stress_202607_20261126": {
+    "total_return": -0.035665397075419825,
+    "cagr": -0.08572766066978332,
+    "max_drawdown": -0.04020586693823658,
+    "sharpe": -1.2306198536374209,
+    "calmar": -2.1322176885646162
+   }
+  },
+  "D2_TREND_DEF_MA90": {
+   "events": 222,
+   "full_2018_20261126": {
+    "total_return": 0.47553347231151677,
+    "cagr": 0.04468961084773104,
+    "max_drawdown": -0.15392593622000972,
+    "sharpe": 0.42335622797103,
+    "calmar": 0.29033190861256286
+   },
+   "is_2018_2023": {
+    "total_return": 0.06878053760735559,
+    "cagr": 0.011171133442392955,
+    "max_drawdown": -0.14949412497987358,
+    "sharpe": 0.15687355596020755,
+    "calmar": 0.07472623719425046
+   },
+   "oos_2024_20261126": {
+    "total_return": 0.3805766669504911,
+    "cagr": 0.1171853176180242,
+    "max_drawdown": -0.11991881361416123,
+    "sharpe": 0.8848704941779737,
+    "calmar": 0.9772054449693602
+   },
+   "stress_202607_20261126": {
+    "total_return": -0.028756792386579022,
+    "cagr": -0.0694779059937648,
+    "max_drawdown": -0.03506416121656242,
+    "sharpe": -0.9809852818492959,
+    "calmar": -1.9814506773641911
+   }
+  },
+  "D2_TREND_DEF_MA60_511010": {
+   "events": 224,
+   "full_2018_20261126": {
+    "total_return": 0.4797150065333009,
+    "cagr": 0.045021914520049666,
+    "max_drawdown": -0.15799563093966573,
+    "sharpe": 0.426571597377935,
+    "calmar": 0.2849567057790498
+   },
+   "is_2018_2023": {
+    "total_return": 0.05598206838327213,
+    "cagr": 0.009138719603687173,
+    "max_drawdown": -0.15799563093966573,
+    "sharpe": 0.1391485646604838,
+    "calmar": 0.057841596943759815
+   },
+   "oos_2024_20261126": {
+    "total_return": 0.40126906586469935,
+    "cagr": 0.12291075234961957,
+    "max_drawdown": -0.11481405317018267,
+    "sharpe": 0.9253387806803836,
+    "calmar": 1.0705201058221994
+   },
+   "stress_202607_20261126": {
+    "total_return": -0.032623569267371755,
+    "cagr": -0.07859394585588386,
+    "max_drawdown": -0.03913205770285888,
+    "sharpe": -1.1190130315870772,
+    "calmar": -2.0084286508179714
+   }
+  },
+  "D3_UNFILTERED_GOLD_CTRL": {
+   "events": 199,
+   "full_2018_20261126": {
+    "total_return": 0.5660303121333925,
+    "cagr": 0.05170161665949258,
+    "max_drawdown": -0.14222145007322662,
+    "sharpe": 0.4769860338696518,
+    "calmar": 0.3635289657985668
+   },
+   "is_2018_2023": {
+    "total_return": 0.1150721134354129,
+    "cagr": 0.0183569874793581,
+    "max_drawdown": -0.13897108736518504,
+    "sharpe": 0.2188869613818678,
+    "calmar": 0.1320921338919946
+   },
+   "oos_2024_20261126": {
+    "total_return": 0.404420658775716,
+    "cagr": 0.12377789487570467,
+    "max_drawdown": -0.11664310948398104,
+    "sharpe": 0.9248332954196486,
+    "calmar": 1.061167654251394
+   },
+   "stress_202607_20261126": {
+    "total_return": -0.03292631305618565,
+    "cagr": -0.07930542070051294,
+    "max_drawdown": -0.03506416121656253,
+    "sharpe": -1.0821277028465577,
+    "calmar": -2.2617230228525496
+   }
+  }
+ },
+ "runs": {
+  "D0_BASELINE_511010_69000": {
+   "full": {
+    "total_return": 0.3228789246376811,
+    "cagr": 0.03221792836535475,
+    "max_drawdown": -0.15743244206459162,
+    "sharpe": 0.3387274606471491,
+    "calmar": 0.2046460560659812
+   },
+   "is": {
+    "total_return": 0.001162582608695617,
+    "cagr": 0.00019406851030545624,
+    "max_drawdown": -0.15471946239106726,
+    "sharpe": 0.05779860155336497,
+    "calmar": 0.0012543251334142485
+   },
+   "oos": {
+    "total_return": 0.32134275453113714,
+    "cagr": 0.10322721830340775,
+    "max_drawdown": -0.12703756379641518,
+    "sharpe": 0.8559505948220046,
+    "calmar": 0.8125724015680524
+   },
+   "trade_count": 842,
+   "reject_count": 0,
+   "commission_yuan": 3129.68,
+   "commission_to_initial": 0.045357716672768104,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "D1_LOW_TICKET_RESERVE_69000": {
+   "full": {
+    "total_return": 0.40956228260869576,
+    "cagr": 0.03966910354887787,
+    "max_drawdown": -0.1421407059136074,
+    "sharpe": 0.40104768498188675,
+    "calmar": 0.27908334416876057
+   },
+   "is": {
+    "total_return": 0.0721136463768115,
+    "cagr": 0.011697106698554283,
+    "max_drawdown": -0.1413406571183048,
+    "sharpe": 0.16469481100645864,
+    "calmar": 0.08275825892590541
+   },
+   "oos": {
+    "total_return": 0.31475080778263154,
+    "cagr": 0.10128366534431654,
+    "max_drawdown": -0.12153075442356365,
+    "sharpe": 0.8178333817240351,
+    "calmar": 0.8333994619281209
+   },
+   "trade_count": 802,
+   "reject_count": 0,
+   "commission_yuan": 2986.29,
+   "commission_to_initial": 0.04327959239656523,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "D1B_MMF_IDLE_SWEEP_DIAG_69000": {
+   "full": {
+    "total_return": 0.3317739913043478,
+    "cagr": 0.03300215090930636,
+    "max_drawdown": -0.15224117783533364,
+    "sharpe": 0.344219144121533,
+    "calmar": 0.2167754570645925
+   },
+   "is": {
+    "total_return": 0.028201866666666575,
+    "cagr": 0.004655594000416707,
+    "max_drawdown": -0.14577730046112503,
+    "sharpe": 0.09879985302652816,
+    "calmar": 0.03193634390052539
+   },
+   "oos": {
+    "total_return": 0.29524564628717664,
+    "cagr": 0.09549559763502424,
+    "max_drawdown": -0.1217046806891745,
+    "sharpe": 0.7746216277922917,
+    "calmar": 0.7846501637756523
+   },
+   "trade_count": 805,
+   "reject_count": 0,
+   "commission_yuan": 3000.19,
+   "commission_to_initial": 0.04348097336481157,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "D2_TREND_DEF_MA40_69000": {
+   "full": {
+    "total_return": 0.461835979710145,
+    "cagr": 0.043968319103776965,
+    "max_drawdown": -0.13716104483989577,
+    "sharpe": 0.4389283519884361,
+    "calmar": 0.32055981459677524
+   },
+   "is": {
+    "total_return": 0.10653396086956501,
+    "cagr": 0.01705054060773481,
+    "max_drawdown": -0.13716104483989577,
+    "sharpe": 0.21592697414229808,
+    "calmar": 0.12431037272745644
+   },
+   "oos": {
+    "total_return": 0.3210945451338585,
+    "cagr": 0.10315415074744827,
+    "max_drawdown": -0.11203698633187353,
+    "sharpe": 0.8260169841173588,
+    "calmar": 0.9207151506368377
+   },
+   "trade_count": 856,
+   "reject_count": 1,
+   "commission_yuan": 3479.36,
+   "commission_to_initial": 0.05042544456159423,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "D2_TREND_DEF_MA60_69000": {
+   "full": {
+    "total_return": 0.4293719565217391,
+    "cagr": 0.04131471603838044,
+    "max_drawdown": -0.1593136678629794,
+    "sharpe": 0.41717804433798644,
+    "calmar": 0.259329388322877
+   },
+   "is": {
+    "total_return": 0.08219098405797087,
+    "cagr": 0.01327909453890519,
+    "max_drawdown": -0.1593136678629794,
+    "sharpe": 0.1804266003300842,
+    "calmar": 0.08335188510207495
+   },
+   "oos": {
+    "total_return": 0.32081303353860724,
+    "cagr": 0.10307126897654761,
+    "max_drawdown": -0.11222880207519936,
+    "sharpe": 0.8290274105708042,
+    "calmar": 0.9184030041368908
+   },
+   "trade_count": 849,
+   "reject_count": 3,
+   "commission_yuan": 3397.39,
+   "commission_to_initial": 0.04923751088679714,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "D2_TREND_DEF_MA90_69000": {
+   "full": {
+    "total_return": 0.42182642173913054,
+    "cagr": 0.040690298229243416,
+    "max_drawdown": -0.14871684930848217,
+    "sharpe": 0.41156488838453764,
+    "calmar": 0.2736092004265089
+   },
+   "is": {
+    "total_return": 0.0861220739130435,
+    "cagr": 0.013892889735358516,
+    "max_drawdown": -0.14854785274564353,
+    "sharpe": 0.185969041004218,
+    "calmar": 0.09352467557472623
+   },
+   "oos": {
+    "total_return": 0.3090852822985384,
+    "cagr": 0.09960820843353169,
+    "max_drawdown": -0.11633043876588,
+    "sharpe": 0.8059381456603065,
+    "calmar": 0.8562523230398664
+   },
+   "trade_count": 872,
+   "reject_count": 2,
+   "commission_yuan": 3440.11,
+   "commission_to_initial": 0.04985669119252177,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "D3_UNFILTERED_GOLD_CTRL_69000": {
+   "full": {
+    "total_return": 0.5473168652173914,
+    "cagr": 0.05071341437087895,
+    "max_drawdown": -0.13553976751102936,
+    "sharpe": 0.492193831495716,
+    "calmar": 0.3741589299004236
+   },
+   "is": {
+    "total_return": 0.13682118405797095,
+    "cagr": 0.02164761413432381,
+    "max_drawdown": -0.1334064476601916,
+    "sharpe": 0.2582857025157491,
+    "calmar": 0.16226812507191468
+   },
+   "oos": {
+    "total_return": 0.36109080910519653,
+    "cagr": 0.11481539464190615,
+    "max_drawdown": -0.11344657650832468,
+    "sharpe": 0.8952992646996545,
+    "calmar": 1.0120657509085875
+   },
+   "trade_count": 879,
+   "reject_count": 0,
+   "commission_yuan": 3317.74,
+   "commission_to_initial": 0.04808316907095651,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "D0_BASELINE_511010_100000": {
+   "full": {
+    "total_return": 0.38340028800000003,
+    "cagr": 0.037464083516329794,
+    "max_drawdown": -0.1362784081729198,
+    "sharpe": 0.3881736621723535,
+    "calmar": 0.27490843207379323
+   },
+   "is": {
+    "total_return": 0.04438982999999985,
+    "cagr": 0.007280069808175638,
+    "max_drawdown": -0.1362784081729198,
+    "sharpe": 0.12367381356387225,
+    "calmar": 0.053420566807165545
+   },
+   "oos": {
+    "total_return": 0.3246014546120197,
+    "cagr": 0.10418568703090902,
+    "max_drawdown": -0.12129949102313842,
+    "sharpe": 0.8619946796959723,
+    "calmar": 0.8589128128413592
+   },
+   "trade_count": 845,
+   "reject_count": 0,
+   "commission_yuan": 3527.51,
+   "commission_to_initial": 0.03527512753297999,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "D1_LOW_TICKET_RESERVE_100000": {
+   "full": {
+    "total_return": 0.4302104740000001,
+    "cagr": 0.04138392556275372,
+    "max_drawdown": -0.14707574811695112,
+    "sharpe": 0.41092212352366747,
+    "calmar": 0.2813783107861278
+   },
+   "is": {
+    "total_return": 0.062398152999999956,
+    "cagr": 0.010160151710622456,
+    "max_drawdown": -0.14186447436061644,
+    "sharpe": 0.1497640831150933,
+    "calmar": 0.07161871748663143
+   },
+   "oos": {
+    "total_return": 0.3462094883743647,
+    "cagr": 0.11050287110694845,
+    "max_drawdown": -0.12528099429656459,
+    "sharpe": 0.871890046697589,
+    "calmar": 0.8820401827699944
+   },
+   "trade_count": 874,
+   "reject_count": 0,
+   "commission_yuan": 3768.37,
+   "commission_to_initial": 0.03768367903409002,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "D1B_MMF_IDLE_SWEEP_DIAG_100000": {
+   "full": {
+    "total_return": 0.3422169049999999,
+    "cagr": 0.03391693233568627,
+    "max_drawdown": -0.1618964798766237,
+    "sharpe": 0.34260688285478114,
+    "calmar": 0.209497651595225
+   },
+   "is": {
+    "total_return": 0.001247699000000102,
+    "cagr": 0.00020826951042973718,
+    "max_drawdown": -0.14610913970749073,
+    "sharpe": 0.05893511743500304,
+    "calmar": 0.001425437935276951
+   },
+   "oos": {
+    "total_return": 0.34054430920594814,
+    "cagr": 0.10885302376268546,
+    "max_drawdown": -0.12487476073285575,
+    "sharpe": 0.8328365332928802,
+    "calmar": 0.8716975562063695
+   },
+   "trade_count": 864,
+   "reject_count": 0,
+   "commission_yuan": 3640.19,
+   "commission_to_initial": 0.03640194080543001,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "D2_TREND_DEF_MA40_100000": {
+   "full": {
+    "total_return": 0.4420844719999999,
+    "cagr": 0.042360138759856,
+    "max_drawdown": -0.1465642662750246,
+    "sharpe": 0.41896330066941284,
+    "calmar": 0.2890209178297808
+   },
+   "is": {
+    "total_return": 0.07095176800000003,
+    "cagr": 0.011513914106893175,
+    "max_drawdown": -0.1417143559889883,
+    "sharpe": 0.1621824687817909,
+    "calmar": 0.08124733748067024
+   },
+   "oos": {
+    "total_return": 0.34654474187300655,
+    "cagr": 0.11060036464199796,
+    "max_drawdown": -0.11566372475450781,
+    "sharpe": 0.8724533129951669,
+    "calmar": 0.9562234389108888
+   },
+   "trade_count": 918,
+   "reject_count": 3,
+   "commission_yuan": 4277.8,
+   "commission_to_initial": 0.042778006839679986,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "D2_TREND_DEF_MA60_100000": {
+   "full": {
+    "total_return": 0.43499207900000014,
+    "cagr": 0.04177790331100839,
+    "max_drawdown": -0.15720690328316012,
+    "sharpe": 0.4096718473336762,
+    "calmar": 0.2657510735120727
+   },
+   "is": {
+    "total_return": 0.05643954100000004,
+    "cagr": 0.00921171954709199,
+    "max_drawdown": -0.15363043570480306,
+    "sharpe": 0.14106481249664704,
+    "calmar": 0.059960251397008814
+   },
+   "oos": {
+    "total_return": 0.3583286343501224,
+    "cagr": 0.11401724740803765,
+    "max_drawdown": -0.11570931660260997,
+    "sharpe": 0.8684839462445711,
+    "calmar": 0.9853765518261288
+   },
+   "trade_count": 920,
+   "reject_count": 2,
+   "commission_yuan": 4230.24,
+   "commission_to_initial": 0.042302403458510045,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "D2_TREND_DEF_MA90_100000": {
+   "full": {
+    "total_return": 0.43884295600000023,
+    "cagr": 0.04209434892433239,
+    "max_drawdown": -0.15525105207574952,
+    "sharpe": 0.418284292414963,
+    "calmar": 0.2711372861022151
+   },
+   "is": {
+    "total_return": 0.06942183800000001,
+    "cagr": 0.011272438368831184,
+    "max_drawdown": -0.1503651267403936,
+    "sharpe": 0.16041708653689246,
+    "calmar": 0.07496710582562886
+   },
+   "oos": {
+    "total_return": 0.3454400357962395,
+    "cagr": 0.11027905066871213,
+    "max_drawdown": -0.11986291631584589,
+    "sharpe": 0.8697232787032171,
+    "calmar": 0.9200431130686015
+   },
+   "trade_count": 932,
+   "reject_count": 1,
+   "commission_yuan": 4237.56,
+   "commission_to_initial": 0.04237564393093001,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "D3_UNFILTERED_GOLD_CTRL_100000": {
+   "full": {
+    "total_return": 0.526113746,
+    "cagr": 0.04907173657752928,
+    "max_drawdown": -0.14209695103937525,
+    "sharpe": 0.4752776874597517,
+    "calmar": 0.34533982762185683
+   },
+   "is": {
+    "total_return": 0.10271661300000012,
+    "cagr": 0.01646371933918811,
+    "max_drawdown": -0.13767321416157208,
+    "sharpe": 0.20805245623795873,
+    "calmar": 0.11958549409521618
+   },
+   "oos": {
+    "total_return": 0.3839582427693051,
+    "cagr": 0.12138314967381847,
+    "max_drawdown": -0.11669344639196144,
+    "sharpe": 0.9439159755737536,
+    "calmar": 1.0401882318746916
+   },
+   "trade_count": 927,
+   "reject_count": 0,
+   "commission_yuan": 3897.61,
+   "commission_to_initial": 0.038976144687710025,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  }
+ },
+ "gates": {
+  "order_dates": true,
+  "lots_and_capture": true,
+  "commissions": true
+ },
+ "snapshot_id": "93cfb3e05e49d11e121b687930dc9e5040493e3dbaf23294325040ac468947ec",
+ "verdict": "MARGINAL_OR_MIXED",
+ "finished": "2026-11-26T15:35:42.414862+00:00",
+ "exit_code": 0
+}

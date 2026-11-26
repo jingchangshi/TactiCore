@@ -1,0 +1,464 @@
+{
+ "started": "2026-11-26T15:36:51.060747+00:00",
+ "runner_commit": "b3feb36b2010cc1af80411d55e39b131b7e00801",
+ "versions": {
+  "rqalpha": "6.3.0",
+  "vectorbt": "0.28.5"
+ },
+ "protocol_sha256": "2849601a9a38ad1538ee7c37f2fb002db2e7f58b22a9b682f82e9d89504a3876",
+ "line_10a_vbt": {
+  "10A_CHASSIS_NO_PIONEER": {
+   "events": 199,
+   "full_2018_20261126": {
+    "total_return": 0.43619550086894043,
+    "cagr": 0.04152185066977654,
+    "max_drawdown": -0.09593403999562211,
+    "sharpe": 0.5282003547530114,
+    "calmar": 0.4328166589426585
+   },
+   "is_2018_2023": {
+    "total_return": 0.10548411210066133,
+    "cagr": 0.016889321076744457,
+    "max_drawdown": -0.09593403999562211,
+    "sharpe": 0.25343803163206957,
+    "calmar": 0.17605138986657073
+   },
+   "oos_2024_20261126": {
+    "total_return": 0.299155261616429,
+    "cagr": 0.09409310521868797,
+    "max_drawdown": -0.08164507823417244,
+    "sharpe": 1.0096141219929025,
+    "calmar": 1.1524651240925068
+   }
+  },
+  "10A_TOP1_RET60_MA60": {
+   "events": 219,
+   "full_2018_20261126": {
+    "total_return": 0.637857904176037,
+    "cagr": 0.05701548748272378,
+    "max_drawdown": -0.1913644074407882,
+    "sharpe": 0.46764967599881424,
+    "calmar": 0.2979419644709294
+   },
+   "is_2018_2023": {
+    "total_return": 0.16129599532629646,
+    "cagr": 0.02528851519644726,
+    "max_drawdown": -0.17541882926700803,
+    "sharpe": 0.25927459478003034,
+    "calmar": 0.1441607796729459
+   },
+   "oos_2024_20261126": {
+    "total_return": 0.41037075023740033,
+    "cagr": 0.12541155230628998,
+    "max_drawdown": -0.17638701246733657,
+    "sharpe": 0.8253674429056316,
+    "calmar": 0.7110021908756675
+   }
+  },
+  "10A_TOP1_BLEND_MA60": {
+   "events": 226,
+   "full_2018_20261126": {
+    "total_return": 0.7646696147865877,
+    "cagr": 0.06591155994883202,
+    "max_drawdown": -0.15159445665778093,
+    "sharpe": 0.5285495334069237,
+    "calmar": 0.4347887211840801
+   },
+   "is_2018_2023": {
+    "total_return": 0.21289859520607224,
+    "cagr": 0.03276020542793634,
+    "max_drawdown": -0.14892775216631826,
+    "sharpe": 0.31595275798610245,
+    "calmar": 0.21997381247889028
+   },
+   "oos_2024_20261126": {
+    "total_return": 0.4549193327136878,
+    "cagr": 0.13750140383268517,
+    "max_drawdown": -0.15159445665778093,
+    "sharpe": 0.8926169390945041,
+    "calmar": 0.9070345107874866
+   }
+  },
+  "10A_TOP2_RET60_MA60": {
+   "events": 224,
+   "full_2018_20261126": {
+    "total_return": 0.6834537600730086,
+    "cagr": 0.060282354837011276,
+    "max_drawdown": -0.1643134386291284,
+    "sharpe": 0.5062374149405082,
+    "calmar": 0.3668741603848635
+   },
+   "is_2018_2023": {
+    "total_return": 0.1952110024053837,
+    "cagr": 0.03022951757091419,
+    "max_drawdown": -0.15704835330626588,
+    "sharpe": 0.30628937730199857,
+    "calmar": 0.19248541569845354
+   },
+   "oos_2024_20261126": {
+    "total_return": 0.40849921619281226,
+    "cagr": 0.12489819232980626,
+    "max_drawdown": -0.1643134386291284,
+    "sharpe": 0.8419969207611183,
+    "calmar": 0.7601215906126447
+   }
+  },
+  "10A_TOP2_BLEND_MA60": {
+   "events": 228,
+   "full_2018_20261126": {
+    "total_return": 0.5906512833264954,
+    "cagr": 0.053547028733323065,
+    "max_drawdown": -0.16207557723481125,
+    "sharpe": 0.4566623603802976,
+    "calmar": 0.3303830820589668
+   },
+   "is_2018_2023": {
+    "total_return": 0.18757797602069903,
+    "cagr": 0.029127760704925842,
+    "max_drawdown": -0.15946670722278722,
+    "sharpe": 0.2966791747205503,
+    "calmar": 0.18265731582600578
+   },
+   "oos_2024_20261126": {
+    "total_return": 0.3394078666365994,
+    "cagr": 0.10562445379488117,
+    "max_drawdown": -0.15154929705466613,
+    "sharpe": 0.7255864734698477,
+    "calmar": 0.6969643267746787
+   }
+  },
+  "10A_UNFILTERED_TOP1_CTRL": {
+   "events": 219,
+   "full_2018_20261126": {
+    "total_return": 0.5380203984682206,
+    "cagr": 0.049570615005831264,
+    "max_drawdown": -0.1946920531643065,
+    "sharpe": 0.41751816396096275,
+    "calmar": 0.254610366474471
+   },
+   "is_2018_2023": {
+    "total_return": 0.09050778323917674,
+    "cagr": 0.014575488529878777,
+    "max_drawdown": -0.17881216632239072,
+    "sharpe": 0.1788159880201322,
+    "calmar": 0.08151284574003646
+   },
+   "oos_2024_20261126": {
+    "total_return": 0.41037085851857036,
+    "cagr": 0.1254115819947701,
+    "max_drawdown": -0.17638701246733657,
+    "sharpe": 0.8253676109953538,
+    "calmar": 0.7110023591901012
+   }
+  }
+ },
+ "line_10a_rqa": {
+  "10A_CHASSIS_NO_PIONEER_69000": {
+   "full": {
+    "total_return": 0.30243168405797105,
+    "cagr": 0.030397343908992625,
+    "max_drawdown": -0.09102445373349666,
+    "sharpe": 0.4554331510832234,
+    "calmar": 0.33394700722940474
+   },
+   "oos": {
+    "total_return": 0.21652156414208545,
+    "cagr": 0.07154314749709867,
+    "max_drawdown": -0.07663846869626001,
+    "sharpe": 0.9253918375462726,
+    "calmar": 0.9335148354887473
+   },
+   "commission_yuan": 2455.46,
+   "trade_count": 717,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "10A_TOP1_RET60_MA60_69000": {
+   "full": {
+    "total_return": 0.5886817985507247,
+    "cagr": 0.05385953396842824,
+    "max_drawdown": -0.178729831800988,
+    "sharpe": 0.4718347413737547,
+    "calmar": 0.3013460787475016
+   },
+   "oos": {
+    "total_return": 0.38898610123557487,
+    "cagr": 0.12281776184594984,
+    "max_drawdown": -0.178729831800988,
+    "sharpe": 0.8811815382300932,
+    "calmar": 0.6871699067154323
+   },
+   "commission_yuan": 4157.68,
+   "trade_count": 1132,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "10A_TOP1_BLEND_MA60_69000": {
+   "full": {
+    "total_return": 0.5888129144927536,
+    "cagr": 0.05386939030074278,
+    "max_drawdown": -0.14628970945833708,
+    "sharpe": 0.47022318990548945,
+    "calmar": 0.3682377284103134
+   },
+   "oos": {
+    "total_return": 0.4259860189281317,
+    "cagr": 0.13327304038217935,
+    "max_drawdown": -0.1347867241611478,
+    "sharpe": 0.9421033713139776,
+    "calmar": 0.9887697858347035
+   },
+   "commission_yuan": 4280.99,
+   "trade_count": 1162,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "10A_TOP2_RET60_MA60_69000": {
+   "full": {
+    "total_return": 0.5931872579710147,
+    "cagr": 0.05419780858084833,
+    "max_drawdown": -0.16770904966903732,
+    "sharpe": 0.4867110618417419,
+    "calmar": 0.3231656770329574
+   },
+   "oos": {
+    "total_return": 0.40063452522864473,
+    "cagr": 0.12612856831884334,
+    "max_drawdown": -0.16770904966903732,
+    "sharpe": 0.9187215417954663,
+    "calmar": 0.7520677540523287
+   },
+   "commission_yuan": 4861.43,
+   "trade_count": 1346,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "10A_UNFILTERED_TOP1_CTRL_69000": {
+   "full": {
+    "total_return": 0.35173520289855076,
+    "cagr": 0.03474523812716379,
+    "max_drawdown": -0.19161565230175348,
+    "sharpe": 0.32758173364508775,
+    "calmar": 0.1813277658155374
+   },
+   "oos": {
+    "total_return": 0.29739638218820086,
+    "cagr": 0.09613657508534112,
+    "max_drawdown": -0.17876089102051063,
+    "sharpe": 0.6937628136362625,
+    "calmar": 0.537794226335058
+   },
+   "commission_yuan": 4234.25,
+   "trade_count": 1168,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "10A_CHASSIS_NO_PIONEER_100000": {
+   "full": {
+    "total_return": 0.35674156299999993,
+    "cagr": 0.03517883065773164,
+    "max_drawdown": -0.09837309307390996,
+    "sharpe": 0.48389036288534115,
+    "calmar": 0.3576062270533771
+   },
+   "oos": {
+    "total_return": 0.2516469839407143,
+    "cagr": 0.08235069494208269,
+    "max_drawdown": -0.08048925568687981,
+    "sharpe": 0.9388250043794529,
+    "calmar": 1.0231265557038354
+   },
+   "commission_yuan": 3087.25,
+   "trade_count": 838,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "10A_TOP1_RET60_MA60_100000": {
+   "full": {
+    "total_return": 0.5430398860000001,
+    "cagr": 0.0503838768438416,
+    "max_drawdown": -0.1804282527270783,
+    "sharpe": 0.44411180011706447,
+    "calmar": 0.2792460497860826
+   },
+   "oos": {
+    "total_return": 0.3673129549274543,
+    "cagr": 0.11660948761429935,
+    "max_drawdown": -0.16954572188291428,
+    "sharpe": 0.825807013211278,
+    "calmar": 0.6877760542659289
+   },
+   "commission_yuan": 4866.74,
+   "trade_count": 1187,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "10A_TOP1_BLEND_MA60_100000": {
+   "full": {
+    "total_return": 0.622780192,
+    "cagr": 0.05639882682801445,
+    "max_drawdown": -0.14885159016337668,
+    "sharpe": 0.48707973903010227,
+    "calmar": 0.37889300857392366
+   },
+   "oos": {
+    "total_return": 0.3893975049386844,
+    "cagr": 0.12293499984651834,
+    "max_drawdown": -0.14885159016337668,
+    "sharpe": 0.8454432931312091,
+    "calmar": 0.8258897315882701
+   },
+   "commission_yuan": 5014.35,
+   "trade_count": 1206,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "10A_TOP2_RET60_MA60_100000": {
+   "full": {
+    "total_return": 0.605768273,
+    "cagr": 0.05513793296950942,
+    "max_drawdown": -0.16144055415254555,
+    "sharpe": 0.48907671958542054,
+    "calmar": 0.34153706458049854
+   },
+   "oos": {
+    "total_return": 0.38013427820142875,
+    "cagr": 0.12028978699819359,
+    "max_drawdown": -0.16144055415254555,
+    "sharpe": 0.8489004178241213,
+    "calmar": 0.745102664133149
+   },
+   "commission_yuan": 5604.11,
+   "trade_count": 1424,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "10A_UNFILTERED_TOP1_CTRL_100000": {
+   "full": {
+    "total_return": 0.43077880700000004,
+    "cagr": 0.04143081415677474,
+    "max_drawdown": -0.17996780551909264,
+    "sharpe": 0.3848559935412192,
+    "calmar": 0.23021236513538185
+   },
+   "oos": {
+    "total_return": 0.34209233491339486,
+    "cagr": 0.1093042965776796,
+    "max_drawdown": -0.16803025518376313,
+    "sharpe": 0.8000106836438341,
+    "calmar": 0.6505036635107231
+   },
+   "commission_yuan": 4647.58,
+   "trade_count": 1168,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  }
+ },
+ "line_10b_status": "BOUNDED_SHORT_WINDOW_PRE_STUDY",
+ "line_10b_audit": {
+  "dv_coverage": {
+   "rows": 3804511,
+   "dv_ttm_nonnull_rows": 2593814,
+   "dv_ttm_min_date": "20240102",
+   "dv_ttm_max_date": "20261117",
+   "20261126_dv_ttm_nonnull": 0
+  },
+  "hd_lowvol_stats": {
+   "tech_raw": 90679,
+   "qc_filtered": 56240,
+   "dv_filtered": 26284,
+   "lowvol_filtered": 824,
+   "qualified": 7331
+  },
+  "bp1_stats": {
+   "bp1_tech_raw": 3535,
+   "st_filtered": 20,
+   "qc_filtered": 2145,
+   "circ_mv_filtered": 104,
+   "circ_mv_missing": 0,
+   "qualified_bp1": 1266
+  }
+ },
+ "line_10b_rqa": {
+  "BP1_REF_69000": {
+   "net_metrics": {
+    "total_return": 0.3483026420289854,
+    "cagr": 0.115090772822807,
+    "max_drawdown": -0.16930625485418638,
+    "sharpe": 0.913303272858778,
+    "calmar": 0.679778623193384
+   },
+   "closed_trades": 80,
+   "win_rate": 0.2375,
+   "net_expectancy_pct": 2.441,
+   "total_friction_yuan": 2391.82
+  },
+  "HIGH_DIV_LOWVOL_69000": {
+   "net_metrics": {
+    "total_return": 0.0385013289855074,
+    "cagr": 0.013866365994578356,
+    "max_drawdown": -0.07823609037099089,
+    "sharpe": 0.23756158366325572,
+    "calmar": 0.17723746072720242
+   },
+   "closed_trades": 75,
+   "win_rate": 0.3333,
+   "net_expectancy_pct": -0.024,
+   "total_friction_yuan": 2102.85
+  },
+  "BP1_REF_100000": {
+   "net_metrics": {
+    "total_return": 0.264601034,
+    "cagr": 0.08934187716614406,
+    "max_drawdown": -0.17647027750684063,
+    "sharpe": 0.7063509405799722,
+    "calmar": 0.5062715287149749
+   },
+   "closed_trades": 82,
+   "win_rate": 0.2439,
+   "net_expectancy_pct": 1.764,
+   "total_friction_yuan": 3238.9
+  },
+  "HIGH_DIV_LOWVOL_100000": {
+   "net_metrics": {
+    "total_return": 0.067331794,
+    "cagr": 0.02403721862494068,
+    "max_drawdown": -0.07989265984107063,
+    "sharpe": 0.3765542122033594,
+    "calmar": 0.30086892428863415
+   },
+   "closed_trades": 72,
+   "win_rate": 0.3472,
+   "net_expectancy_pct": 0.286,
+   "total_friction_yuan": 2657.15
+  }
+ },
+ "gates": {
+  "order_dates": true,
+  "lots_and_capture": true,
+  "commissions": true
+ },
+ "verdict": "SECTOR_PIONEER_NO_EDGE_10B_PRE_STUDY",
+ "finished": "2026-11-26T15:40:57.210547+00:00",
+ "exit_code": 0
+}

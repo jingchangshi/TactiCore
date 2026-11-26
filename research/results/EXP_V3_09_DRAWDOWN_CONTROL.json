@@ -1,0 +1,557 @@
+{
+ "started": "2026-11-26T15:35:19.138411+00:00",
+ "runner_commit": "b3feb36b2010cc1af80411d55e39b131b7e00801",
+ "versions": {
+  "rqalpha": "6.3.0",
+  "vectorbt": "0.28.5"
+ },
+ "protocol_sha256": "63a74f57230b2ccf41634978ca4df7fdda94c71013817d7034ca1bee34cf07c2",
+ "chassis_vbt": {
+  "C0_HARD_STEP_LOCK": {
+   "ctrl": {
+    "locks": 1,
+    "relock_loops": 0,
+    "breach_days": 16,
+    "proxy_max_true_dd": 0.16997791454335842
+   },
+   "full_2018_20261126": {
+    "total_return": 0.481468380142285,
+    "cagr": 0.04516100594926953,
+    "max_drawdown": -0.14159075986887348,
+    "sharpe": 0.4268423009797343,
+    "calmar": 0.318954471259939
+   }
+  },
+  "C1_REANCHOR_15D_RAMP10D": {
+   "ctrl": {
+    "locks": 1,
+    "relock_loops": 0,
+    "breach_days": 16,
+    "proxy_max_true_dd": 0.16997791454335842
+   },
+   "full_2018_20261126": {
+    "total_return": 0.4826272860575196,
+    "cagr": 0.04525285932587919,
+    "max_drawdown": -0.14159075986887315,
+    "sharpe": 0.4275762256419307,
+    "calmar": 0.31960319563075834
+   }
+  },
+  "C2_CPPI_F13_M4": {
+   "ctrl": {
+    "locks": 0,
+    "relock_loops": 0,
+    "breach_days": 0,
+    "proxy_max_true_dd": 0.08194517673265855
+   },
+   "full_2018_20261126": {
+    "total_return": 0.3797455853416998,
+    "cagr": 0.03683884194771192,
+    "max_drawdown": -0.09510738631268933,
+    "sharpe": 0.524401198865291,
+    "calmar": 0.3873394420344494
+   }
+  },
+  "C2_CPPI_F13_M5": {
+   "ctrl": {
+    "locks": 0,
+    "relock_loops": 0,
+    "breach_days": 0,
+    "proxy_max_true_dd": 0.09508012920047182
+   },
+   "full_2018_20261126": {
+    "total_return": 0.3492107993728013,
+    "cagr": 0.03423437711113153,
+    "max_drawdown": -0.10751505726156019,
+    "sharpe": 0.4384133652359893,
+    "calmar": 0.3184147223941565
+   }
+  },
+  "C2_CPPI_F15_M4": {
+   "ctrl": {
+    "locks": 0,
+    "relock_loops": 0,
+    "breach_days": 0,
+    "proxy_max_true_dd": 0.09708249314236983
+   },
+   "full_2018_20261126": {
+    "total_return": 0.3690101585832175,
+    "cagr": 0.035929048343097625,
+    "max_drawdown": -0.1073549052173286,
+    "sharpe": 0.4639310614567257,
+    "calmar": 0.33467542326420097
+   }
+  },
+  "C2_CPPI_F15_M5": {
+   "ctrl": {
+    "locks": 0,
+    "relock_loops": 0,
+    "breach_days": 0,
+    "proxy_max_true_dd": 0.11207632345948026
+   },
+   "full_2018_20261126": {
+    "total_return": 0.34760276686891456,
+    "cagr": 0.03409577473476699,
+    "max_drawdown": -0.1192196141776205,
+    "sharpe": 0.4030017507771086,
+    "calmar": 0.2859913192133727
+   }
+  },
+  "C2_CPPI_F15_M6": {
+   "ctrl": {
+    "locks": 0,
+    "relock_loops": 0,
+    "breach_days": 0,
+    "proxy_max_true_dd": 0.12708860903079466
+   },
+   "full_2018_20261126": {
+    "total_return": 0.2767215018315128,
+    "cagr": 0.027835414842930728,
+    "max_drawdown": -0.12560397736388995,
+    "sharpe": 0.3230984012805098,
+    "calmar": 0.22161252714385116
+   }
+  },
+  "C2_CPPI_F17_M5": {
+   "ctrl": {
+    "locks": 0,
+    "relock_loops": 0,
+    "breach_days": 0,
+    "proxy_max_true_dd": 0.1296446577859912
+   },
+   "full_2018_20261126": {
+    "total_return": 0.3227454733903128,
+    "cagr": 0.03193434144566076,
+    "max_drawdown": -0.1269746924446109,
+    "sharpe": 0.35872793943272974,
+    "calmar": 0.25150162470045917
+   }
+  },
+  "C2_CPPI_F17_M6": {
+   "ctrl": {
+    "locks": 0,
+    "relock_loops": 0,
+    "breach_days": 0,
+    "proxy_max_true_dd": 0.1422019362993171
+   },
+   "full_2018_20261126": {
+    "total_return": 0.32200954011141114,
+    "cagr": 0.03186980153680752,
+    "max_drawdown": -0.13141772542434083,
+    "sharpe": 0.34120733063378106,
+    "calmar": 0.2425076330753833
+   }
+  },
+  "C3_TWO_STAGE_GRADUAL": {
+   "ctrl": {
+    "locks": 1,
+    "relock_loops": 0,
+    "breach_days": 0,
+    "proxy_max_true_dd": 0.14580011136001392
+   },
+   "full_2018_20261126": {
+    "total_return": 0.24165108967369764,
+    "cagr": 0.024623013191242826,
+    "max_drawdown": -0.17019061203302777,
+    "sharpe": 0.29438886719066665,
+    "calmar": 0.14467903309769167
+   }
+  }
+ },
+ "chassis_rqa": {
+  "C0_HARD_STEP_LOCK_69000": {
+   "full": {
+    "total_return": 0.3228789246376811,
+    "cagr": 0.03221792836535475,
+    "max_drawdown": -0.15743244206459162,
+    "sharpe": 0.3387274606471491,
+    "calmar": 0.2046460560659812
+   },
+   "commission_yuan": 3129.68,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "C1_REANCHOR_15D_RAMP10D_69000": {
+   "full": {
+    "total_return": 0.32280883623188394,
+    "cagr": 0.03221173056471427,
+    "max_drawdown": -0.1571628719437529,
+    "sharpe": 0.3386743943217925,
+    "calmar": 0.2049576351356225
+   },
+   "commission_yuan": 3154.68,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "C2_CPPI_F15_M5_69000": {
+   "full": {
+    "total_return": 0.2612343420289853,
+    "cagr": 0.0266509015674683,
+    "max_drawdown": -0.10193523561057705,
+    "sharpe": 0.35693062510401596,
+    "calmar": 0.2614493546596849
+   },
+   "commission_yuan": 3533.04,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "C3_TWO_STAGE_GRADUAL_69000": {
+   "full": {
+    "total_return": 0.16013079565217403,
+    "cagr": 0.016975103829162785,
+    "max_drawdown": -0.18063954385791559,
+    "sharpe": 0.22772894060522975,
+    "calmar": 0.09397224697663528
+   },
+   "commission_yuan": 4530.94,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "C0_HARD_STEP_LOCK_100000": {
+   "full": {
+    "total_return": 0.38340028800000003,
+    "cagr": 0.037464083516329794,
+    "max_drawdown": -0.1362784081729198,
+    "sharpe": 0.3881736621723535,
+    "calmar": 0.27490843207379323
+   },
+   "commission_yuan": 3527.51,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "C1_REANCHOR_15D_RAMP10D_100000": {
+   "full": {
+    "total_return": 0.379063736,
+    "cagr": 0.03709501753955413,
+    "max_drawdown": -0.13632785617942134,
+    "sharpe": 0.3851085258628141,
+    "calmar": 0.2721015248030697
+   },
+   "commission_yuan": 3579.6,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "C2_CPPI_F15_M5_100000": {
+   "full": {
+    "total_return": 0.2860750890000001,
+    "cagr": 0.028922646026195542,
+    "max_drawdown": -0.1067010470329417,
+    "sharpe": 0.36931982307135575,
+    "calmar": 0.2710624387525109
+   },
+   "commission_yuan": 4229.46,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  },
+  "C3_TWO_STAGE_GRADUAL_100000": {
+   "full": {
+    "total_return": 0.1883797920000001,
+    "cagr": 0.019751579355977267,
+    "max_drawdown": -0.16510881949825107,
+    "sharpe": 0.26108775390409267,
+    "calmar": 0.11962764567029376
+   },
+   "commission_yuan": 5061.55,
+   "dates_pass": true,
+   "fill_capture_pass": true,
+   "fees_pass": true,
+   "illegal_non_lot_fills": 0
+  }
+ },
+ "account_replay": {
+  "CORE25_69000_C0_HARD_STEP_LOCK": {
+   "metrics": {
+    "total_return": 0.27939557568631757,
+    "cagr": 0.1115437981353864,
+    "max_drawdown": -0.11792341217600977,
+    "sharpe": 0.9376563400000358,
+    "calmar": 0.9459003608960932,
+    "final_nav": 88248.61274499999
+   },
+   "true_max_dd": 0.11792341217600977,
+   "breach_days": 0,
+   "locks": 0,
+   "relock_loops": 0,
+   "locked_days": 0,
+   "commission_yuan": 408.99,
+   "fills": 212
+  },
+  "CORE25_69000_C1_REANCHOR_15D_RAMP10D": {
+   "metrics": {
+    "total_return": 0.27939557568631757,
+    "cagr": 0.1115437981353864,
+    "max_drawdown": -0.11792341217600977,
+    "sharpe": 0.9376563400000358,
+    "calmar": 0.9459003608960932,
+    "final_nav": 88248.61274499999
+   },
+   "true_max_dd": 0.11792341217600977,
+   "breach_days": 0,
+   "locks": 0,
+   "relock_loops": 0,
+   "locked_days": 0,
+   "commission_yuan": 408.99,
+   "fills": 212
+  },
+  "CORE25_69000_C2_CPPI_F15_M5": {
+   "metrics": {
+    "total_return": 0.23067098698402955,
+    "cagr": 0.09317329780127892,
+    "max_drawdown": -0.10887289302629255,
+    "sharpe": 0.8413504618066988,
+    "calmar": 0.8557988605922118,
+    "final_nav": 84887.74653500001
+   },
+   "true_max_dd": 0.10887289302629255,
+   "breach_days": 0,
+   "locks": 0,
+   "relock_loops": 0,
+   "locked_days": 0,
+   "commission_yuan": 608.85,
+   "fills": 323
+  },
+  "CORE25_69000_C3_TWO_STAGE_GRADUAL": {
+   "metrics": {
+    "total_return": 0.24965231367648255,
+    "cagr": 0.10037829315465374,
+    "max_drawdown": -0.11536825769747405,
+    "sharpe": 0.864500414852316,
+    "calmar": 0.8700685540200499,
+    "final_nav": 86197.01771
+   },
+   "true_max_dd": 0.11536825769747405,
+   "breach_days": 0,
+   "locks": 0,
+   "relock_loops": 0,
+   "locked_days": 0,
+   "commission_yuan": 437.58,
+   "fills": 222
+  },
+  "CORE25_100000_C0_HARD_STEP_LOCK": {
+   "metrics": {
+    "total_return": 0.2840360354456619,
+    "cagr": 0.11327239795904065,
+    "max_drawdown": -0.10817495795532972,
+    "sharpe": 0.9484963894263414,
+    "calmar": 1.0471221815109546,
+    "final_nav": 128361.55473499994
+   },
+   "true_max_dd": 0.10817495795532972,
+   "breach_days": 0,
+   "locks": 0,
+   "relock_loops": 0,
+   "locked_days": 0,
+   "commission_yuan": 497.55,
+   "fills": 224
+  },
+  "CORE25_100000_C1_REANCHOR_15D_RAMP10D": {
+   "metrics": {
+    "total_return": 0.2840360354456619,
+    "cagr": 0.11327239795904065,
+    "max_drawdown": -0.10817495795532972,
+    "sharpe": 0.9484963894263414,
+    "calmar": 1.0471221815109546,
+    "final_nav": 128361.55473499994
+   },
+   "true_max_dd": 0.10817495795532972,
+   "breach_days": 0,
+   "locks": 0,
+   "relock_loops": 0,
+   "locked_days": 0,
+   "commission_yuan": 497.55,
+   "fills": 224
+  },
+  "CORE25_100000_C2_CPPI_F15_M5": {
+   "metrics": {
+    "total_return": 0.23794835819116278,
+    "cagr": 0.09594311398131361,
+    "max_drawdown": -0.10738894321670223,
+    "sharpe": 0.8480634515438666,
+    "calmar": 0.8934170605227779,
+    "final_nav": 123754.29625999994
+   },
+   "true_max_dd": 0.10738894321670223,
+   "breach_days": 0,
+   "locks": 0,
+   "relock_loops": 0,
+   "locked_days": 0,
+   "commission_yuan": 592.5,
+   "fills": 282
+  },
+  "CORE25_100000_C3_TWO_STAGE_GRADUAL": {
+   "metrics": {
+    "total_return": 0.2922566952959704,
+    "cagr": 0.1163259122999305,
+    "max_drawdown": -0.10715081047917341,
+    "sharpe": 0.9750545218124075,
+    "calmar": 1.0856279274018223,
+    "final_nav": 129183.35151499991
+   },
+   "true_max_dd": 0.10715081047917341,
+   "breach_days": 0,
+   "locks": 0,
+   "relock_loops": 0,
+   "locked_days": 0,
+   "commission_yuan": 523.75,
+   "fills": 238
+  },
+  "HEAVY70_69000_C0_HARD_STEP_LOCK": {
+   "metrics": {
+    "total_return": 0.27897009992478683,
+    "cagr": 0.11138512681004564,
+    "max_drawdown": -0.11798649646541026,
+    "sharpe": 0.9361511744191179,
+    "calmar": 0.9440497866016394,
+    "final_nav": 88168.01594499999
+   },
+   "true_max_dd": 0.11798649646541026,
+   "breach_days": 0,
+   "locks": 0,
+   "relock_loops": 0,
+   "locked_days": 0,
+   "commission_yuan": 420.48,
+   "fills": 212
+  },
+  "HEAVY70_69000_C1_REANCHOR_15D_RAMP10D": {
+   "metrics": {
+    "total_return": 0.27897009992478683,
+    "cagr": 0.11138512681004564,
+    "max_drawdown": -0.11798649646541026,
+    "sharpe": 0.9361511744191179,
+    "calmar": 0.9440497866016394,
+    "final_nav": 88168.01594499999
+   },
+   "true_max_dd": 0.11798649646541026,
+   "breach_days": 0,
+   "locks": 0,
+   "relock_loops": 0,
+   "locked_days": 0,
+   "commission_yuan": 420.48,
+   "fills": 212
+  },
+  "HEAVY70_69000_C2_CPPI_F15_M5": {
+   "metrics": {
+    "total_return": 0.22990863835524977,
+    "cagr": 0.09288260241498958,
+    "max_drawdown": -0.10968216243618156,
+    "sharpe": 0.839636217377239,
+    "calmar": 0.846834164753391,
+    "final_nav": 84785.87923500003
+   },
+   "true_max_dd": 0.10968216243618156,
+   "breach_days": 0,
+   "locks": 0,
+   "relock_loops": 0,
+   "locked_days": 0,
+   "commission_yuan": 615.32,
+   "fills": 328
+  },
+  "HEAVY70_69000_C3_TWO_STAGE_GRADUAL": {
+   "metrics": {
+    "total_return": 0.24993759103419966,
+    "cagr": 0.10048610152766435,
+    "max_drawdown": -0.11542997508185027,
+    "sharpe": 0.8650355342631975,
+    "calmar": 0.8705373232248438,
+    "final_nav": 86166.60973
+   },
+   "true_max_dd": 0.11542997508185027,
+   "breach_days": 0,
+   "locks": 0,
+   "relock_loops": 0,
+   "locked_days": 0,
+   "commission_yuan": 449.09,
+   "fills": 222
+  },
+  "HEAVY70_100000_C0_HARD_STEP_LOCK": {
+   "metrics": {
+    "total_return": 0.28398784453032766,
+    "cagr": 0.11325446488584068,
+    "max_drawdown": -0.10819070617953475,
+    "sharpe": 0.9484001489805435,
+    "calmar": 1.0468040082657653,
+    "final_nav": 128281.052205
+   },
+   "true_max_dd": 0.10819070617953475,
+   "breach_days": 0,
+   "locks": 0,
+   "relock_loops": 0,
+   "locked_days": 0,
+   "commission_yuan": 517.25,
+   "fills": 224
+  },
+  "HEAVY70_100000_C1_REANCHOR_15D_RAMP10D": {
+   "metrics": {
+    "total_return": 0.28398784453032766,
+    "cagr": 0.11325446488584068,
+    "max_drawdown": -0.10819070617953475,
+    "sharpe": 0.9484001489805435,
+    "calmar": 1.0468040082657653,
+    "final_nav": 128281.052205
+   },
+   "true_max_dd": 0.10819070617953475,
+   "breach_days": 0,
+   "locks": 0,
+   "relock_loops": 0,
+   "locked_days": 0,
+   "commission_yuan": 517.25,
+   "fills": 224
+  },
+  "HEAVY70_100000_C2_CPPI_F15_M5": {
+   "metrics": {
+    "total_return": 0.2381162608596623,
+    "cagr": 0.09600690902467734,
+    "max_drawdown": -0.10725948127469032,
+    "sharpe": 0.8485085966108409,
+    "calmar": 0.895090185815879,
+    "final_nav": 123698.09992499993
+   },
+   "true_max_dd": 0.10725948127469032,
+   "breach_days": 0,
+   "locks": 0,
+   "relock_loops": 0,
+   "locked_days": 0,
+   "commission_yuan": 612.4,
+   "fills": 283
+  },
+  "HEAVY70_100000_C3_TWO_STAGE_GRADUAL": {
+   "metrics": {
+    "total_return": 0.292131101498438,
+    "cagr": 0.11627934477900537,
+    "max_drawdown": -0.10716580216274563,
+    "sharpe": 0.9746189997061627,
+    "calmar": 1.0850415191445084,
+    "final_nav": 129094.631225
+   },
+   "true_max_dd": 0.10716580216274563,
+   "breach_days": 0,
+   "locks": 0,
+   "relock_loops": 0,
+   "locked_days": 0,
+   "commission_yuan": 543.57,
+   "fills": 238
+  }
+ },
+ "gates": {
+  "order_dates": true,
+  "lots_and_capture": true,
+  "commissions": true
+ },
+ "verdict": "DRAWDOWN_CONTROLS_COMPARABLE",
+ "finished": "2026-11-26T15:37:36.995902+00:00",
+ "exit_code": 0
+}

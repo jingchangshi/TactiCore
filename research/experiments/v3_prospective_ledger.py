@@ -231,7 +231,7 @@ def _require_safe_code(value: object, *, label: str) -> str:
     return str(value)
 
 
-MARKET_REGIME_TIERS = frozenset({"OFFENSIVE", "STRUCTURAL", "DEFENSIVE"})
+MARKET_REGIME_TIERS = frozenset({"OFFENSIVE", "STRUCTURAL", "RECOVERY", "DEFENSIVE"})
 MARKET_STYLE_TIERS = frozenset({"GROWTH_LEADING", "VALUE_LEADING", "BALANCED"})
 CIRCUIT_BREAKER_STATUSES = frozenset({"NORMAL", "L1_WARN", "L2_LOCKED"})
 SUB_STRATEGY_STATUSES = frozenset(

@@ -32,16 +32,20 @@ ASHARE_INVESTOR_ROOT = Path("/home/jcshi/workspace/AShareInvestor")
 RELEASE_DIR = TACTICORE_ROOT / "research/ashare/releases"
 FEE_PROFILE_DIR = ASHARE_INVESTOR_ROOT / "docs/v3-offensive-system/fee-profiles"
 
-SUPPORTED_VERSIONS = ("3.1.0", "3.2.0", "3.2.1")
-DEFAULT_VERSION = "3.2.1"
+SUPPORTED_VERSIONS = ("3.1.0", "3.2.0", "3.2.1", "3.3.0")
+DEFAULT_VERSION = "3.3.0"
 
 # 所有者批准记录：以批准当时的 git 提交固定字节（文件末尾之后会追加 v3.2.1 指纹行，
 # 因此不能用工作树当前字节作为证据哈希，否则会形成循环依赖）。
 AMENDMENT_REV = "4979c41dad246a6050fb71d8f2576216dfe60616"
 AMENDMENT_PATH = "docs/v3-offensive-system/POLICY_AMENDMENT_20261124.md"
 AMENDMENT_REFERENCE = f"git:AShareInvestor@{AMENDMENT_REV}:{AMENDMENT_PATH}"
+AMENDMENT_V330_REV = "9c736c2f35a9be73971aacf81440343a491819ca"
+AMENDMENT_V330_PATH = "docs/v3-offensive-system/POLICY_AMENDMENT_20261126_V330.md"
+AMENDMENT_V330_REFERENCE = f"git:AShareInvestor@{AMENDMENT_V330_REV}:{AMENDMENT_V330_PATH}"
 STOCK_SEMANTICS_SCRIPT = "research/ashare/experiments/exp_v3_02_stock_swing_rqalpha.py"
 V320_CONTENT_HASH = "05346a961e01f746055143e0bb5790caa9d6460aa579bb26c085cca20d77b55f"
+V321_CONTENT_HASH = "9869bd0b0ef02336c09fbaab921f5545d069a60039957c6f58b3fa1736e7eb9a"
 
 _EXIT_V31 = (
     "Dual-anchor regime shift, stock -8% hard stop / +15% breakeven / MA20 trailing, "
@@ -188,10 +192,12 @@ def release_filename(version: str) -> str:
     return f"v3_offensive_policy_release_v{version}.json"
 
 
-def _load_assets() -> list[str]:
+def _load_assets(extra: set[str] | None = None) -> list[str]:
     whitelist = json.loads(WHITELIST_PATH.read_text(encoding="utf-8"))
     codes = {str(entry["ts_code"]) for entry in whitelist["entries"]}
     codes.update({"511010.SH", "159558.SZ", "CN_MAINBOARD_QUALITY_SWING_TOP2"})
+    if extra:
+        codes.update(extra)
     return sorted(codes)
 
 
@@ -228,9 +234,209 @@ def _v321_amendment_params(amendment_sha: str) -> tuple[tuple[str, str], ...]:
     )
 
 
+_EXIT_V330 = (
+    "Dual-anchor regime with M2 post-icepoint 40% RECOVERY sleeve, permanent 30% low-vol core, "
+    "159649.SZ->511260.SH reservoir with 10% drift band, 20/60 blend top-1 super sector ETF "
+    "pioneer (<=20%), stock -8% hard stop / +15% breakeven / MA20 trailing (BP1 gated at "
+    ">=100k CNY & non-concentrated), BOTTOM_GRIND_25 for 159558.SZ, and TWO_STAGE_GRADUAL "
+    "drawdown controller (-8%->50%, -11%->25%, -13.5%->lock 10d + unlock work-peak reanchor)"
+)
+_RULES_V330 = (
+    (
+        "Dual-anchor market regime + M2 breadth-thrust recovery overlay routes OFFENSIVE 85% / "
+        "STRUCTURAL 60% / RECOVERY 40% (10d icepoint pct60<15% & pct20<15%, thrust pct20>=45% "
+        "or +30pp/5d with pct20>=40% and amount>=1.15x; stops back on 5d-low break) / DEFENSIVE "
+        "15% (EXP-V3-08 7 triggers, 0 false breakouts)."
+    ),
+    (
+        "Base super-ETF chassis reserves 30% permanent LOW_VOL core (159549.SZ/159207.SZ) across "
+        "OFFENSIVE/STRUCTURAL/RECOVERY and 100% of DEFENSIVE equity, cutting bear-market "
+        "drawdown without monthly ERC refitting churn (EXP-V3-07 R1)."
+    ),
+    (
+        "Idle defensive weight deploys via low-ticket bond reservoir priority "
+        "(159649.SZ -> 511260.SH -> 511010.SH) with 10% periodic drift band and >=5,000 CNY "
+        "minimum active buy ticket (EXP-V3-06 D1)."
+    ),
+    (
+        "Super Sector ETF pioneer enables 20 industry_theme Super ETFs ranked by "
+        "0.5*ret20 + 0.5*ret60 above MA60 (top-1, <=20% weight). Mainboard BP1_PULLBACK stocks "
+        "open only when investable NAV >= 100,000 CNY and not in active deconcentration."
+    ),
+    _RULE_STOCK_V321,
+    _RULE_SECTOR_V32,
+    (
+        "TWO_STAGE_GRADUAL drawdown control caps risk equity at 50% (-8% work DD) / 25% (-11% "
+        "work DD) / 10d lock (-13.5% work DD, 0% concentrated / 10% normal) then re-anchors "
+        "work peak with 10d ramp while keeping all-time true_peak strictly un-reanchored."
+    ),
+)
+_RESULT_EVIDENCE_V330 = (
+    "research/results/V3_COMPLEXITY_HURDLE_V2.json",
+    "research/results/V3_COMPLEXITY_HURDLE_V2.md",
+    "research/results/EXP_V3_05B_ACCOUNT_REPLAY_FULL.json",
+    "research/results/EXP_V3_05B_ACCOUNT_REPLAY_FULL.md",
+    "research/results/EXP_V3_06_DEFENSIVE_ROTATION.json",
+    "research/results/EXP_V3_06_DEFENSIVE_ROTATION.md",
+    "research/results/EXP_V3_07_LOWVOL_RISK_BUDGET.json",
+    "research/results/EXP_V3_07_LOWVOL_RISK_BUDGET.md",
+    "research/results/EXP_V3_08_ICEPOINT_RECOVERY.json",
+    "research/results/EXP_V3_08_ICEPOINT_RECOVERY.md",
+    "research/results/EXP_V3_09_DRAWDOWN_CONTROL_V2.json",
+    "research/results/EXP_V3_09_DRAWDOWN_CONTROL_V2.md",
+    "research/results/EXP_V3_10_PIONEER_ALPHA.json",
+    "research/results/EXP_V3_10_PIONEER_ALPHA.md",
+    "research/results/EXP_V3_11_V330_INTEGRATION.json",
+    "research/results/EXP_V3_11_V330_INTEGRATION.md",
+)
+
+
+def _v330_params(amendment_sha: str, v321_amendment_sha: str) -> dict[str, str]:
+    base = dict(
+        [
+            *_PARAMS_HEAD,
+            *_PARAMS_SECTOR_V32,
+            *_PARAMS_TAIL,
+            *_v321_amendment_params(v321_amendment_sha),
+        ]
+    )
+    base.update(
+        {
+            "defensive_bond_reservoir_etf": "159649.SZ",
+            "defensive_bond_reservoir_fallback_etf": "511260.SH",
+            "defensive_bond_reservoir_tertiary_etf": "511010.SH",
+            "defensive_bond_reservoir_drift_band_bps": "1000",
+            "l1_warn_drawdown_bps": "800",
+            "l2_hard_lifeline_drawdown_bps": "1500",
+            "l2_preemptive_trigger_drawdown_bps": "1200",
+            "l2_normal_post_breaker_equity_bps": "1000",
+            "l2_deconcentration_post_breaker_equity_bps": "0",
+            "l2_lock_trade_days": "10",
+            "recovery_overlay_enabled": "true",
+            "recovery_overlay_mode": "M2_BREADTH_THRUST",
+            "recovery_equity_bps": "4000",
+            "recovery_icepoint_pct_ma60_max_bps": "1500",
+            "recovery_icepoint_pct_ma20_max_bps": "1500",
+            "recovery_icepoint_lookback_days": "10",
+            "recovery_thrust_pct_ma20_min_bps": "4500",
+            "recovery_thrust_5d_jump_min_bps": "3000",
+            "recovery_thrust_floor_pct_ma20_bps": "4000",
+            "recovery_min_amount_vs_ma20_bps": "11500",
+            "recovery_false_breakout_cooldown_days": "10",
+            "lowvol_core_permanent_share_bps": "3000",
+            "drawdown_control_mode": "TWO_STAGE_GRADUAL",
+            "drawdown_stage1_bps": "800",
+            "drawdown_stage1_cap_bps": "5000",
+            "drawdown_stage2_bps": "1100",
+            "drawdown_stage2_cap_bps": "2500",
+            "drawdown_lock_trigger_bps": "1350",
+            "drawdown_normal_post_lock_cap_bps": "1000",
+            "drawdown_conc_post_lock_cap_bps": "0",
+            "drawdown_unlock_reanchor_enabled": "true",
+            "drawdown_unlock_ramp_trade_days": "10",
+            "sector_pioneer_enabled": "true",
+            "sector_pioneer_rank_mode": "BLEND_20_60",
+            "sector_pioneer_top_k": "1",
+            "sector_pioneer_max_weight_bps": "2000",
+            "sector_pioneer_require_above_ma60": "true",
+            "stock_bp1_min_investable_nav_cny": "100000",
+            "stock_bp1_block_during_deconcentration": "true",
+            "policy_amendment_id": "POLICY_AMENDMENT_20261126_V330",
+            "policy_amendment_owner_approval_date": "2026-11-26",
+            "policy_amendment_effective_after": "2026-11-26",
+            "policy_amendment_record_ref": AMENDMENT_V330_REFERENCE,
+            "policy_amendment_record_sha256": amendment_sha,
+            "supersedes_release_version": "3.2.1",
+            "supersedes_release_content_hash": V321_CONTENT_HASH,
+            "integration_study_ref": "research/batches/exp_v3_11_v330_integration/run.py",
+        }
+    )
+    return base
+
+
 def build_v3_release_payload(version: str = DEFAULT_VERSION) -> dict[str, Any]:
     if version not in SUPPORTED_VERSIONS:
         raise ValueError(f"unsupported_release_version:{version}")
+    if version == "3.3.0":
+        from research.ashare import v3_data_202611 as d2611
+
+        impl_path = TACTICORE_ROOT / "research/ashare/v3_data_202611.py"
+        impl_sha = sha256_file(impl_path)
+        snap_manifest = d2611.SNAPSHOT_DIR_202611 / "manifest.json"
+        aux_manifest = d2611.AUX_DIR_202611 / "aux_manifest.json"
+        amendment_v330_sha = git_blob_sha256(
+            ASHARE_INVESTOR_ROOT, AMENDMENT_V330_REV, AMENDMENT_V330_PATH
+        )
+        amendment_v321_sha = git_blob_sha256(ASHARE_INVESTOR_ROOT, AMENDMENT_REV, AMENDMENT_PATH)
+        ev_refs = [*_RESULT_EVIDENCE_V31, *_RESULT_EVIDENCE_V32_ADDED, *_RESULT_EVIDENCE_V330]
+        evidence_v330: list[dict[str, str]] = [
+            {"reference": str(snap_manifest), "sha256": sha256_file(snap_manifest)},
+            {"reference": str(aux_manifest), "sha256": sha256_file(aux_manifest)},
+            {"reference": str(WHITELIST_PATH), "sha256": sha256_file(WHITELIST_PATH)},
+            *[
+                {"reference": ref, "sha256": sha256_file(TACTICORE_ROOT / ref)}
+                for ref in ev_refs
+            ],
+            {"reference": AMENDMENT_V330_REFERENCE, "sha256": amendment_v330_sha},
+            {
+                "reference": "research/batches/exp_v3_11_v330_integration/run.py",
+                "sha256": sha256_file(
+                    TACTICORE_ROOT / "research/batches/exp_v3_11_v330_integration/run.py"
+                ),
+            },
+            {
+                "reference": "research/ashare/v3_data_202611.py",
+                "sha256": impl_sha,
+            },
+        ]
+        payload_v330: dict[str, Any] = {
+            "schema_version": "strategy-release-1",
+            "research_status": "RESEARCH_PUBLISHED",
+            "production_admission": "APPROVED_FOR_ACCOUNT",
+            "strategy": {
+                "id": "V3_OFFENSIVE_LOW_FREQ_SYSTEM",
+                "version": "3.3.0",
+                "implementation_sha256": impl_sha,
+            },
+            "applicability": {
+                "market": "CN_ASHARE_MAINBOARD_AND_EXCHANGE_ETF",
+                "environment": "EASTMONEY_100K_LOW_FREQ_ACCOUNT",
+            },
+            "execution_assumptions": {
+                "signal_timing": "End-of-day PIT close indicators after market close (T)",
+                "earliest_execution": (
+                    "Next trading session T+1 (open_auction for stocks; T+1 ETF rebalance)"
+                ),
+                "exit": _EXIT_V330,
+                "fees": (
+                    "Super ETF 0.5bp commission (min 0 CNY); normal ETF 2.5bp (min 5 CNY); "
+                    "stocks 2.5bp (min 5 CNY) + 5bp sell stamp tax + 0.1bp transfer; 5bp slip"
+                ),
+                "lot_size": (
+                    "100 shares integer board lots; minimum >=8,000 CNY per stock pioneer trade"
+                ),
+            },
+            "inputs": {
+                "source": (
+                    "FinanceMCP research-export PIT snapshot v3_snapshot_20261126 + "
+                    "v3_aux_20261126 + RQAlpha bundle_202611"
+                ),
+                "snapshot": "93cfb3e05e49d11e121b687930dc9e5040493e3dbaf23294325040ac468947ec",
+                "start_date": "2018-01-02",
+                "end_date": "2026-11-26",
+                "assets": _load_assets({"159649.SZ", "511260.SH"}),
+            },
+            "rules": list(_RULES_V330),
+            "parameters": _v330_params(amendment_v330_sha, amendment_v321_sha),
+            "evidence": evidence_v330,
+        }
+        encoded = json.dumps(
+            payload_v330, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        )
+        payload_v330["content_hash"] = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+        validate_strategy_release(payload_v330)
+        return payload_v330
+
     impl_sha = sha256_file(TACTICORE_ROOT / "research/ashare/v3_data.py")
     manifest_path = SNAPSHOT_DIR / "manifest.json"
     evidence: list[dict[str, str]] = [

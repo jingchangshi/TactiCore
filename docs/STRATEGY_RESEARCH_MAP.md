@@ -22,7 +22,12 @@
 | Dual-anchor regime + super ETF | tactical | E3 | GTAA/动量须配合宽度与免五成本实证裁决 | EXP-V3-01 | APPROVED_FOR_ACCOUNT_V3 (`v3.1.0`) | Phase 3 实盘接入；IS 2020-02 滞回已披露 | LOCAL_ADJUDICATION |
 | Main-board quality momentum swing | stock_swing | E3 | 中国高换手个股受5元低消与印花税侵蚀，须分买点裁决 | EXP-V3-02 | BP1_APPROVED_BP2_REJECTED_OOS (`v3.1.0`) | Phase 3 仅上线 BP1_PULLBACK；BP2 永久移除 | LOCAL_ADJUDICATION |
 | Concentrated sector ETF exit | drawdown_control | E4 | 重仓分批退出与 T+1 熔断边界无现成定论 | EXP-V3-03 | APPROVED_PREEMPTIVE_L2_V3 (`v3.1.0`) | 滞后 -15%->15% 已证伪；Phase 3 采用前置 -12%->0% | NEW_HYPOTHESIS |
-| Sector bottom-grind cost reduction | swing_reversion | E4 | 重仓半导体等高波 ETF 降浓留存后，无门控网格与窄止损在磨底期易负期望损耗 | EXP-V3-04 | APPROVED_BOTTOM_GRIND_25_V32 (`v3.2.0`) | 证伪 18% 低位月度强卖、无门控 6% 网格、MA20 波段、10% 窄止损与无 MA60 斜率接飞刀 | NEW_HYPOTHESIS |
+| Sector bottom-grind cost reduction | swing_reversion | E4 | 重仓半导体等高波 ETF 降浓留存后，无门控网格与窄止损在磨底期易负期望损耗 | EXP-V3-04 / 05B / 09 | APPROVED_BOTTOM_GRIND_25_V32 (`v3.2.1` 实盘) | 05B 解锁全账户验证；09 V2 证明 CPPI 可 0 穿 `-15%` 线而两级渐进提升普通夏普 | NEW_HYPOTHESIS |
+| China ETF defensive rotation | defensive_rotation | E4 | 低单手债券减免 5 元低消有效；黄金均线择时反增震荡损耗 | EXP-V3-06 | MARGINAL_OR_MIXED (RL-066) | 未来 `v3.3.0` 仅考虑 `159649/511260` 蓄水池迁移，不采用黄金择时 | NEW_HYPOTHESIS |
+| Low-volatility ETF & risk budget | return_premia | E1/E2 | 30% 常驻红利低波底盘显著增强抗熊；底盘内 ERC 未同时过回撤与卡玛门槛 | EXP-V3-07 | NO_HURDLE_EDGE_OVER_BASELINE (RL-067) | 若未来评估 `v3.3.0`，以静态 30% 低波桶优于复杂月度 ERC 拟合 | TRANSFER_VALIDATE |
+| Post-icepoint breadth-thrust recovery | volatility_tactical | E3 | 极端冰点后 `M2` 5 日宽度推力 7 触 0 假突破并提升 Calmar | EXP-V3-08 | ASYMMETRIC_RECOVERY_NET_POSITIVE (RL-068) | 与 `S3B` 正交；可进入 `v3.3.0` 候选用前瞻评估 | LOCAL_ADJUDICATION |
+| 23 Super Sector ETF & Div Pre-Study | china_local | E4/E3 | `10A` 20/60 混合动量先导 20% 增厚收益/Calmar（`RET60` 未过）；`10B` 个股高股息波段被摩擦吞噬 | EXP-V3-10 | SECTOR_PIONEER_NO_EDGE_10B_PRE_STUDY (RL-070) | 10B 仅限 `2024-02..2026-10` 有界 pre-study，禁止跨周期推广 | NEW_HYPOTHESIS |
+| V3.3.0 五机制联合集成系统 | china_local | E4 | `M2` 复苏 + `30%` 低波 + `159649` 蓄水池 + `20/60` 行业先导 + `BP1` 双门槛 + `TWO_STAGE_GRADUAL` | EXP-V3-11 | V3_3_0_GRADUAL_APPROVED (`v3.3.0`, RL-071) | 跨 `2026-11` 后新前瞻窗口在独立 `v3.3.0` 台账积累观测 | LOCAL_ADJUDICATION |
 
 ## 成熟/已知：不应从零验证存在性
 

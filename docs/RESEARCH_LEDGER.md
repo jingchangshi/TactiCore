@@ -722,3 +722,68 @@
 - 事实：`research/results/experiment_ledger.jsonl` 第 1 行记录 `CONCENTRATION_CAP=0.30`、`cap binding 36.9% of risk months`、`evidence_hash b5c3b235a7db1282e9690277ba4381c887f2ae920cc525c5f9cc4372196ae31e`、`spec_hash c3ac73492fa1bad056136fb71f1263ee58982d6f271e625048c545ddbbdf89c1`。同 spec_hash 的归档 [JSON](../research/results/s4c_r2_concentration_capped_experiment_v1.json) 却声明 `concentration_cap=0.60`、`cap_binding_share=2.0134%`、`identity_hash f168718610f890f7b2fedac6215d8e7a2285575fae711e9c27d57be732be6029`；[comparison CSV](../research/results/s4c_r2_concentration_capped_comparison_v1.csv) 与 [diagnostics CSV](../research/results/s4c_r2_concentration_capped_diagnostics_v1.csv) 同为该 0.60 归档。
 - 裁决：0.60 归档不能作为 0.30 账本条目的可核验证据；0.30 条目当前缺少同身份产物。该归档仅保留为 0.60 的历史产物，**不**据此推断 0.60 从未运行，也**不**把 0.60 结果认证为 0.30 结果。`S4C_R1` 的冻结身份、前瞻观察与 `v3.2.0` 账户准入均不受影响。
 - 重开条件：只有获得可核验的精确运行输入、代码与产物身份，或新的独立预注册研究（不同输出路径）才重开；不得为同一 spec 静默重跑覆盖。
+
+## RL-057 A 工作单：TDX 免费行情与 S2_R1/S4C_R1 等价性裁决
+
+- 研究域：工作单 A（`TactiCore-wt/drop-tushare`，分支 `feat/drop-tushare`，基线 `6bc99b8` → `d3258a2` → `7c670a4` → `920c886` → `2708b60` → `34dcd3e` → `34ba4a8` → `cc509e3`）。
+- 状态：CLOSED（`S2_R1 = EQUIVALENT`；`S4C_R1 = NOT_EQUIVALENT`；独立复核 `PASS`）。日期：2026-11-25。
+- 实证与边界：单次正式试跑 `run_equivalence_v2.py`（主站 `180.153.18.170:7709`）获取 12 只 ETF 截至 `2026-11-25` 的 35,249 个 bar（V2 截断至 `2026-08-31`）：
+  - `S2_R1`：103 行、10 列，`max|Δw| = 4.4444444236e-9 ≤ 1e-8` -> **`EQUIVALENT`**；据此建立独立分支身份 `S2_R1F`，同日仅封存 `vintage`（`observations = 0`，`decide = NOT_MONTH_END`，首个合格月末决策为 `2026-11-30`，严禁提前/补录）；
+  - `S4C_R1`：161 行、12 列权重超差，首差 `2020-03-02` `518880.SS`、最大 `0.001155096731 > 1e-4` -> **`NOT_EQUIVALENT`**，**不建后继**；
+  - 独立复核记录 `ATTEMPT.started_utc < result.started_utc` 严格不等式 FAIL（两者字段同源相等），实际“先占目录后连接”文件创建时间序成立（09:57:37.437 < 09:57:54+），不重跑、不改时间戳；公开 10 项字段边界表约束工单 C。
+- 证据：`v3-work-reports/A_FREE_DATA.md`（SHA-256 `97e355a185b28619c3aaf8010ea5aad53a4a2d88ea126ef92477a337fe4cbabc`）、独立复核 `B_A_REVIEW.md`（SHA-256 `40c1f76f85bec643fdbbf35e55128cbc12ea566975342d67883949357bfa76ff`）。
+- 结论边界：仅证明该 12 只 ETF 在历史等价窗内的目标一致度，不构成全市场完整性或生产准入；`S2_R1` 与 `S4C_R1` 冻结身份未变。
+- 重开条件：仅在新增独立免费源或未来按规程产生真实月末 `DECISION` 时在对应前瞻记录中追加；严禁调整容差或重跑 V2 等价性。
+
+## RL-058 B 工作单：v3.2.1 发布验收与 EXP-V3-04B 折价门消融
+
+- 研究域：工作单 B（`TactiCore-wt/v3e-v321@acaf8be` & `AShareInvestor@77bc63d`；关联隔离复核 `EXP-V3-04B`）。
+- 状态：CLOSED（分支制品与 04B 静态复核 `PASS`；主检出 `3.2.1` 正式入口 **`BLOCKED: signed_release_missing`**；`04B` **`NOT_APPROVED`**）。日期：2026-11-25。
+- 事实与指纹：
+  - 提交链：`TactiCore` `8756906` → `a831188` → `f33efe9` → `acaf8be`；`AShareInvestor` `77bc63d`。双仓 `v3_offensive_policy_release_v3.2.1.json` 均为同一 `9,573 B` Git blob（原始 SHA-256 `9b979fc69817103a84956bc06bf79deb2c500a2d8cfc482168cf8fbe6815a810`，canonical `content_hash` `9869bd0b0ef02336c09fbaab921f5545d069a60039957c6f58b3fa1736e7eb9a`）；隔离双仓 `build_v3_release --check` 3/3 (`v3.1.0`/`v3.2.0`/`v3.2.1`) rc=0，而原主检出布局因 `AShareInvestor@860992f` 尚未合入镜像文件返回 `rc=1`（可达性阻塞，非版本漂移）。
+  - `EXP-V3-04B`（静态复核，`NOT_APPROVED`）：9 个窗口 54 候选日中有 36 次仅因门②折价门被唯一否决（近卖分支 15 + 60 日高点分支 21）；去门后 IS 超额 `+0.47 -> -4.19pp`、IS MDD 差 `+1.415 -> -3.365pp`、OOS 超额 `+3.904 -> +5.546pp`，未满足全部不劣条件，维持预注册裁决 **`GATE2_BINDING_RETAIN`**。
+- 证据：`v3-work-reports/B_ACCEPTANCE.md`（SHA-256 `ffe554dbd36603e784aeb91396a5f6c767def478960d4eadf0af5ad598a37149`）。
+- 重开条件：仅在所有者批准将 `v3.2.1` 合入主树并按运行配置清单部署时解除可达性阻塞；不得以去门 `04B` 覆盖 `v3.2.0`/`v3.2.1`。
+
+## RL-059 C 工作单：FinanceMCP 免费源迁移与 Tushare 移除
+
+- 研究域：工作单 C（`FinanceMCP-wt/drop-tushare`，分支 `feat/drop-tushare`，`2b01a39..dad12ed`）。
+- 状态：CLOSED（盘点与二期实现及独立审计全部 **`PASS`**；Step 4b `bfb68e5` 部署与 Step 6 `AShareInvestor` 4 行 diff 待所有者批复；未部署、未合并）。日期：2026-11-25。
+- 关键实施与校验：
+  - 提交链按序执行：`32da24f`（Step 1 provenance + 反伪造：`vol/amount` 未知写 `null`、`fund_nav.ann_date=null`、`suspend=source_explicit_only`、`price_limit=upstream_explicit_only`）→ `5c623d0`（Step 2 `free` 唯一模式并拒绝 `'tushare'`、18 套件迁移）→ `3dd982e`（Step 3 `weightCaptureCli` 等退出、hotspot `CATALOG_UNAVAILABLE`）→ `61d59da`（Step 4 删除 8 个 Tushare 专用工具及 9 个多源工具的 Tushare 分支）→ `bfb68e5`（Step 4b Stage 2 hotspot 非阻塞化，标明部署前需所有者批准）→ `dad12ed`（Step 5 现行文档/配置同步与残留清理）。
+  - 验证结果：最终单进程 `npm test`（`build + test`）通过，日志 `/tmp/c-freemcp-final-npm-test.log` SHA-256 `01e7dd5819c1c2a47ae414267e33ac5242bce054bcdf48884dcd99e9d96d7fdf`（`tests 1407 / pass 1402 / fail 0 / skipped 5`）；隔离 `cli.js research-export` 经本仓 `research.ashare.data.contract.load_snapshot_manifest(..., verify_content=True)` 验证通过（`14 datasets`, `DEGRADED` 如实披露）；`src/portfolio/actionEngine.ts:598-618` 确认零改动（仅 `:727` 注释更新）。
+  - **跨仓语义风险披露**：生产库 `ashare.sqlite` 既有 `9,384` 行历史 `suspend_d` 仍保持旧启发式，与新写入的 `source_explicit_only` 混合并存；本仓 `research/ashare/data/adapter.py:319-341` 将读取新旧混合语义，禁止宣称已一致，消费端必须同步校验价格可用性。
+- 证据：`C_FREEMCP.md`（`87f494d26442cfe5e77c2a5ef45f1e937f0492a13ef5fbe88d8f36dca95743a8`）、`B_C_INVENTORY_REVIEW.md`（`e06a2d7276089d0f2db671e9d31ea100492d912c3cce69938a7e0a914296b85f`）、`C_FREEMCP_IMPL.md`（`9c1732988111e7b904abdaec08c533e93ea006a59ba52169bc80dcc598fad1e5`）、`B_C_IMPL_REVIEW.md`（`c817f8b1513b7251b2ab047a46a9c1942f44ff6bdda961c40973703e4a04b671`）。
+
+## RL-060 D 工作单：V3 前瞻台账基础设施
+
+- 研究域：工作单 D（`TactiCore-wt/v3e-ledger`，分支 `feat/v3e-prospective-ledger`，冻结基线 → `1a02754` 补遗 2 → 修正链至 HEAD `551d489`）。
+- 状态：CLOSED（最终 `551d489` 独立复核 **`PASS`**，裁决 **`V3_PROSPECTIVE_LEDGER_INFRASTRUCTURE_READY`**）。日期：2026-11-25。
+- 关键事实：冻结文件 `PROTOCOL_V1.md`（`1e7206ee…`）、`AMENDMENT_1_PRE_IMPLEMENTATION.md`（`43062752…`）、`AMENDMENT_2_PRE_IMPLEMENTATION.md`（`0377789b…`）、`COMMIT_RECORD.md`（`c23b41d6…`）字节无改动；修正链闭合上海 15:00 收盘及跨午夜 `flock` 锁内校验、64 落盘键 / 256 次深层投影泄漏检查、30 个上游可空叶子消费（含无计划合法 `live_weight_pct=null`）、严格 `reversed_by IS NULL` 与源 SHA 绑定幂等。验收时账本专项测试 136 passed、全仓 896 passed；默认生产台账目录 `~/.local/share/tacticore-v3-prospective-ledger` **不存在**，真实前瞻观测 = **0**。
+- 证据：`D_FIX.md`（`2e7d57cd84aa2a8accb361a3c2f5d23e570e45d8059ec33d8e951268fa93246b`）、独立终审 `B_D_AMENDMENT2_REVIEW.md`（`a6a8631940f089dba7bc7008d41c95d39182e285a7eb3c49982a1c2b570dc122`）。
+- 结论边界：仅表示代码正确性就绪，不构成生产初始化或运行授权；真实入库须遵守首个合格日 `2026-11-26`、当日真实时钟（15:00–24:00 CST）、先在临时目录彩排、一次性写入及日历截止 `2026-12-25`（之后预计拒入）等 5 道门槛。
+
+## RL-061 E 工作单：V3 同窗口复杂度门槛
+
+- 研究域：工作单 E（`TactiCore-wt/v3e-hurdle`，分支 `feat/v3e-complexity-hurdle`，`c15a086` → `4a4764c` → `d24c126`）。
+- 状态：CLOSED（唯一授权运行判 **`INVALID_RUN`**，不重跑；独立验收 **`PASS`（接受 `INVALID_RUN`） / §8 经济裁决 `BLOCKED`**）。日期：2026-11-25。
+- 实证与裁决：9/9 原生 RQAlpha 6.3.0 回放全部完成（退出码 1）；§6 六项数据/复现/下单日/分层佣金检查 **6/6 PASS**。runner 追加的 `lots_and_capture` 整手 veto 被 **7 笔** `510500.XSHG`（因 2022-08-29 折算因子 `1.14539` 留存零股）一次性全仓卖出触发（无任何非整百买入）；按预注册规则接受 `INVALID_RUN`，不对 §8 经济门槛作裁决，不放宽 veto、不重跑。
+- 证据：`E_HURDLE.md`（`f750a0610b92474a3b9037f03f28a70ad99724f4ad5a66ede9ebac9495de4fe1`）、`B_E_REVIEW.md`（`a8983e38abb953f9a8cb3e5f4fb5b504b8799bfb0d6c0906acd5791fab4d3d4e`）。
+
+## RL-062 F 工作单：EXP-V3-02B 个股 BP1 稳健性预注册协议
+
+- 研究域：工作单 F（`TactiCore-wt/v3e-02b`，分支 `feat/v3e-exp-v3-02b`，`578a792` → `69c136f`）。
+- 状态：**STOPPED / `BLOCKED_DATA`**（仅预注册协议 `PROTOCOL_V1.md` 独立复核 5/5 `PASS`；**0 项新评估、未运行、未回填**）。日期：2026-11-25。
+- 阻断证据：
+  1. **OOS（70K / 100K 分臂）`BLOCKED_DATA`**：原 `exp_v3_02_stock_swing_rqalpha.py` 仅将 15 行汇总与整数 `closed_trades` 落盘，全工作区/归档未检出既有平仓逐笔记录；协议明确禁止擅自重跑或从汇总反推。
+  2. **IS `BLOCKED_DATA`**：冻结快照 `v3_snapshot_20261113/financial_indicator.csv` 仅含 `20240120..20261113` 公告（2017–2023 为 0）；工单 C 核实东财虽有真实 `NOTICE_DATE` 但系最新修订值而非历史当次公告版（且 `ocf_to_profit` 口径不同），本轮明确不授权历史财务回填或报告期替代。
+- 证据：`F_02B.md`（`52ac66ce688cdd5d97f0c84ef7f978c1f7f417f1de062c091baa42b92cd9f666`）、`B_F_PROTOCOL_REVIEW.md`（`8a3d1b78bf7ee2d2e041f42199142a290a95465ce7ec7ae73adcbb675b19ee57`）。
+
+## RL-063 G 工作单：EXP-V3-05 单账户组合回放
+
+- 研究域：工作单 G（`TactiCore-wt/v3e-05`，分支 `feat/v3e-account-replay`，`95de509` → `91a5a87` → `99f249a`）。
+- 状态：CLOSED（独立验收 **`REDLINE_BREACHED / PARTIAL_DATA`**；未部署、未修改 `v3.2.0`/`v3.2.1`）。日期：2026-11-25。
+- 实证与边界：单次唯一授权运行完成 12 格原生 RQAlpha 6.3.0 回放（2,480 笔成交、10,052 条日终记录逐笔核对通过）。因缺少 PIT 流通市值（非缺少本机 ST 文件：`bundle` 含 `st_stock_days.h5`），事前禁用个股新仓且历史 159558 战术槽零实际买入，故评价范围严格限定为 **ETF-only `PARTIAL_DATA`**（不得推广为完整 V3 结论）：
+  - **OOS 重仓 70% LOCK（69K / 100K）**：期末 `¥71,005.23 / ¥103,044.29`，最大回撤 **`15.808%` / `15.743%`**，穿 `-15%` 红线 **`49` / `45` 日**，各触发（含再锁）`5` 次 / 锁定 `80` 个收盘日；同路径先于 **2024-09-24** 开盘清仓 159558（`51,200 / 74,200` 份），于 **2025-04-07** 持有其他资产时首次穿线；同路径 `NEVER_L2` 期末高 `¥59,558.21 / ¥85,895.13`（不可外推“应当关锁”）；
+  - **IS 与 OOS 核心 25%**：两模式均未触发锁，锁定代价**不可识别**（非“零代价”）。
+- 证据：`G_REPLAY.md`（`160657231f16bd914c2f3b622d9cdf29c6075b406b7cf8a96c25df4b5e913489`）、`B_G_REVIEW.md`（`dce72b4dd03897cdb60f1157a61b59548ffc626733f4a2c28f916e52b04ffd16`）。

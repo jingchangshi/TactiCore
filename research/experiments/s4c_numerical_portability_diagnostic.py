@@ -431,9 +431,7 @@ def contract_compliance(committed: pd.DataFrame, derived: pd.DataFrame) -> dict[
     evidence["nonfinite_elements"] = nonfinite
     evidence["contract_error"] = contract_error
     evidence["within_contract"] = (
-        contract_error is None
-        and nonfinite == 0
-        and evidence["elements_exceeding_tolerance"] == 0
+        contract_error is None and nonfinite == 0 and evidence["elements_exceeding_tolerance"] == 0
     )
     return evidence
 

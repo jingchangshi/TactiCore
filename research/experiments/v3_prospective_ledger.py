@@ -414,9 +414,7 @@ CONCENTRATION_TOP_POSITION_TYPES: dict[str, str] = {
 # message_zh: string|null}；账本只落 lag_trade_days/needs_reminder，
 # message_zh 识别但丢弃并披露。
 VALUATION_RECONCILIATION_KEYS = frozenset({"lag_trade_days", "needs_reminder"})
-RECONCILIATION_UPSTREAM_KEYS = frozenset(
-    {"lag_trade_days", "needs_reminder", "message_zh"}
-)
+RECONCILIATION_UPSTREAM_KEYS = frozenset({"lag_trade_days", "needs_reminder", "message_zh"})
 RECONCILIATION_TYPES: dict[str, tuple[str, frozenset[str] | None]] = {
     "lag_trade_days": ("int?", None),
     "needs_reminder": ("bool", None),
@@ -560,9 +558,7 @@ def _verify_hex64(value: object, *, label: str) -> str:
     return value
 
 
-def content_hash(
-    record_type: str, content: Mapping[str, Any], source_sha256: str
-) -> str:
+def content_hash(record_type: str, content: Mapping[str, Any], source_sha256: str) -> str:
     """语义内容哈希：payload **加**源字节 SHA，绑定幂等性（补遗 2 §3 / B D1）。
 
     同一自然键下源字节任何变化（包括仅多一个换行）都会改变 content_hash，
@@ -1094,10 +1090,7 @@ VALUATION_TIER_DROPPED_KEYS = frozenset({"detail"})
 
 def _project_missing_field_codes(value: object, *, label: str) -> list[str]:
     items = _require_sequence(value, label=label)
-    return [
-        _require_safe_code(item, label=f"{label}[{index}]")
-        for index, item in enumerate(items)
-    ]
+    return [_require_safe_code(item, label=f"{label}[{index}]") for index, item in enumerate(items)]
 
 
 def _project_data_quality(
@@ -1203,8 +1196,10 @@ def _project_valuation_data_quality(
             projected_tiers: dict[str, Any] = {}
             for name in sorted(tiers):
                 tier = _require_mapping(tiers[name], label=f"data_quality.tiers.{name}")
-                unknown_tier = set(tier).difference(VALUATION_TIER_TYPES).difference(
-                    VALUATION_TIER_DROPPED_KEYS
+                unknown_tier = (
+                    set(tier)
+                    .difference(VALUATION_TIER_TYPES)
+                    .difference(VALUATION_TIER_DROPPED_KEYS)
                 )
                 if unknown_tier:
                     raise LedgerRefusal(
@@ -1241,9 +1236,7 @@ def _project_closed_block(
     for key in sorted(payload):
         kind, enum = types[str(key)]
         if kind == "codes":
-            projected[str(key)] = _project_missing_field_codes(
-                payload[key], label=f"{label}.{key}"
-            )
+            projected[str(key)] = _project_missing_field_codes(payload[key], label=f"{label}.{key}")
         else:
             projected[str(key)] = _project_typed_value(
                 payload[key], label=f"{label}.{key}", kind=kind, enum=enum
@@ -1260,9 +1253,7 @@ def _validate_valuation_data_quality(data_quality: Mapping[str, Any]) -> None:
             _project_missing_field_codes(value, label=f"VALUATION.data_quality.{key}")
         elif key in DATA_QUALITY_TYPES:
             kind, enum = DATA_QUALITY_TYPES[key]
-            _project_typed_value(
-                value, label=f"VALUATION.data_quality.{key}", kind=kind, enum=enum
-            )
+            _project_typed_value(value, label=f"VALUATION.data_quality.{key}", kind=kind, enum=enum)
         elif key == "quotes":
             quotes = _require_mapping(value, label="VALUATION data_quality.quotes")
             unknown_quotes = set(quotes).difference(VALUATION_QUOTES_KEYS)
@@ -1271,17 +1262,17 @@ def _validate_valuation_data_quality(data_quality: Mapping[str, Any]) -> None:
                     f"VALUATION data_quality.quotes 含未批准字段: {sorted(unknown_quotes)}"
                 )
             for name, codes in quotes.items():
-                _project_missing_field_codes(
-                    codes, label=f"VALUATION.data_quality.quotes.{name}"
-                )
+                _project_missing_field_codes(codes, label=f"VALUATION.data_quality.quotes.{name}")
         elif key == "market_report":
             _validate_closed_block(
-                value, label="VALUATION data_quality.market_report",
+                value,
+                label="VALUATION data_quality.market_report",
                 types=VALUATION_MARKET_REPORT_TYPES,
             )
         elif key == "screening":
             _validate_closed_block(
-                value, label="VALUATION data_quality.screening",
+                value,
+                label="VALUATION data_quality.screening",
                 types=VALUATION_SCREENING_TYPES,
             )
         else:  # tiers
@@ -1296,8 +1287,7 @@ def _validate_valuation_data_quality(data_quality: Mapping[str, Any]) -> None:
                 unknown_tier = set(payload).difference(VALUATION_TIER_TYPES)
                 if unknown_tier:
                     raise LedgerCorruption(
-                        f"VALUATION data_quality.tiers.{name} 含未批准字段: "
-                        f"{sorted(unknown_tier)}"
+                        f"VALUATION data_quality.tiers.{name} 含未批准字段: {sorted(unknown_tier)}"
                     )
                 for field, item in payload.items():
                     kind, enum = VALUATION_TIER_TYPES[field]
@@ -1466,9 +1456,7 @@ def _project_action(action: object) -> dict[str, Any]:
     for key in payload:
         if key in FORBIDDEN_RECOMMENDATION_KEYS:
             raise LedgerRefusal(f"recommendation 不得混入成交字段: {key}")
-    unknown = set(payload).difference(ACTION_ALLOWED_KEYS).difference(
-        ACTION_STRIPPED_UPSTREAM_KEYS
-    )
+    unknown = set(payload).difference(ACTION_ALLOWED_KEYS).difference(ACTION_STRIPPED_UPSTREAM_KEYS)
     if unknown:
         raise LedgerRefusal(
             f"action 含未批准字段: {sorted(unknown)}；RECOMMENDATION 只允许 "
@@ -1481,9 +1469,7 @@ def _project_action(action: object) -> dict[str, Any]:
         for key in leg:
             if key in FORBIDDEN_RECOMMENDATION_KEYS:
                 raise LedgerRefusal(f"recommendation leg 不得混入成交字段: {key}")
-        unknown_leg = set(leg).difference(LEG_ALLOWED_KEYS).difference(
-            LEG_STRIPPED_UPSTREAM_KEYS
-        )
+        unknown_leg = set(leg).difference(LEG_ALLOWED_KEYS).difference(LEG_STRIPPED_UPSTREAM_KEYS)
         if unknown_leg:
             raise LedgerRefusal(
                 f"action.legs[{index}] 含未批准字段: {sorted(unknown_leg)}；"
@@ -1663,9 +1649,7 @@ def _validate_holding(holding: object, *, index: int, missing: list[str]) -> Map
         if value is None:
             continue
         try:
-            _project_holding_leaf(
-                value, label=f"holdings[{index}].{field}", kind=kind, field=field
-            )
+            _project_holding_leaf(value, label=f"holdings[{index}].{field}", kind=kind, field=field)
         except LedgerRefusal as error:
             raise LedgerCorruption(f"VALUATION {error}") from error
     for field in HOLDING_EXPECTED_FIELDS:
@@ -2058,9 +2042,7 @@ def _append_drafts(
         _verify_policy_baseline_consistency(resolved, events_by_type)
         if precheck is not None:
             precheck(events_by_type)
-        _apply_policy_gate(
-            resolved, policy=policy, existing_signals=events_by_type["SIGNAL"]
-        )
+        _apply_policy_gate(resolved, policy=policy, existing_signals=events_by_type["SIGNAL"])
         ordered = _sort_drafts(drafts)
         existing_by_key: dict[str, Mapping[str, Any]] = {}
         for events in events_by_type.values():
@@ -2073,9 +2055,7 @@ def _append_drafts(
             _parse_ymd(draft.as_of_trade_date, label="draft.as_of_trade_date")
             _validate_source(draft.source)
             draft_status = (
-                draft.content.get("status")
-                if isinstance(draft.content, Mapping)
-                else None
+                draft.content.get("status") if isinstance(draft.content, Mapping) else None
             )
             policy_required = draft.record_type in {"RECOMMENDATION", "VALUATION"} or (
                 draft.record_type == "SIGNAL" and draft_status != "DATA_INSUFFICIENT"
@@ -2531,9 +2511,7 @@ def _recommendation_drafts(
     return drafts
 
 
-def _project_concentration(
-    concentration: object, *, missing: list[str]
-) -> dict[str, Any] | None:
+def _project_concentration(concentration: object, *, missing: list[str]) -> dict[str, Any] | None:
     """concentration：键白名单 + 显式叶类型，未知键丢弃并逐个披露。
 
     上游类型（dailyReport.ts:629-636）五个数值字段与 top_position 均可为 null；
@@ -2583,9 +2561,7 @@ def _validate_concentration(concentration: object) -> None:
     payload = _require_mapping(concentration, label="VALUATION concentration")
     unknown = set(payload).difference(VALUATION_CONCENTRATION_KEYS)
     if unknown:
-        raise LedgerCorruption(
-            f"VALUATION concentration 含未批准字段: {sorted(unknown)}"
-        )
+        raise LedgerCorruption(f"VALUATION concentration 含未批准字段: {sorted(unknown)}")
     for key, value in payload.items():
         if key == "top_position":
             if value is None:
@@ -2610,14 +2586,10 @@ def _validate_concentration(concentration: object) -> None:
 def _validate_concentration_top(top: Mapping[str, Any]) -> None:
     for name, kind in CONCENTRATION_TOP_POSITION_TYPES.items():
         if name in top:
-            _project_typed_value(
-                top[name], label=f"concentration.top_position.{name}", kind=kind
-            )
+            _project_typed_value(top[name], label=f"concentration.top_position.{name}", kind=kind)
 
 
-def _project_reconciliation(
-    reminder: object, *, missing: list[str]
-) -> dict[str, Any] | None:
+def _project_reconciliation(reminder: object, *, missing: list[str]) -> dict[str, Any] | None:
     """reconciliation：只落 lag_trade_days/needs_reminder；message_zh 识别但披露不落盘。"""
     if reminder is None:
         return None
@@ -2646,9 +2618,7 @@ def _validate_reconciliation(reminder: object) -> None:
     payload = _require_mapping(reminder, label="VALUATION reconciliation_reminder")
     unknown = set(payload).difference(RECONCILIATION_TYPES)
     if unknown:
-        raise LedgerCorruption(
-            f"VALUATION reconciliation_reminder 含未批准字段: {sorted(unknown)}"
-        )
+        raise LedgerCorruption(f"VALUATION reconciliation_reminder 含未批准字段: {sorted(unknown)}")
     for key, value in payload.items():
         kind, enum = RECONCILIATION_TYPES[str(key)]
         _project_typed_value(value, label=f"reconciliation_reminder.{key}", kind=kind, enum=enum)
@@ -2715,9 +2685,7 @@ def _valuation_content(validated: Mapping[str, Any]) -> tuple[dict[str, Any], li
         "principal": projected_principal,
         "holdings": copy.deepcopy(holdings),
         "concentration": (
-            copy.deepcopy(projected_concentration)
-            if projected_concentration is not None
-            else None
+            copy.deepcopy(projected_concentration) if projected_concentration is not None else None
         ),
         "reconciliation_reminder": (
             copy.deepcopy(projected_reconciliation)
@@ -2798,6 +2766,7 @@ def ingest_brief(
                 missing_fields=tuple(valuation_missing),
             )
         )
+
     def _locked_clock_recheck(moment: datetime) -> None:
         """锁内、真正追加前用实际时钟重校窗口（等待锁到次日即整批拒绝）。"""
         _validate_close_window(
@@ -2987,8 +2956,7 @@ def ingest_confirmed_fills(
         ) -> None:
             """锁内复核：已导入成交在源库不得被撤销或消失（只读查询）。"""
             imported = [
-                str(event["content"]["event_id"])
-                for event in events_by_type["CONFIRMED_FILL"]
+                str(event["content"]["event_id"]) for event in events_by_type["CONFIRMED_FILL"]
             ]
             reversed_imported = _reversed_imported_fill_ids(connection, imported)
             if reversed_imported:
@@ -3131,8 +3099,7 @@ def _verify_policy_baseline_consistency(
         for key in ("strategy_id", "version", "content_hash"):
             if str(policy.get(key)) != baseline[key]:
                 raise LedgerCorruption(
-                    f"SIGNAL {signal['as_of_trade_date']} policy.{key} 与 "
-                    "policy_baseline 不一致"
+                    f"SIGNAL {signal['as_of_trade_date']} policy.{key} 与 policy_baseline 不一致"
                 )
     return baseline
 
@@ -3307,9 +3274,7 @@ def status_report(
         executable_indices = [
             index for index, leg in enumerate(recommendation.legs) if leg["executable"]
         ]
-        coincident_legs = [
-            index for index in executable_indices if index in coincident_by_leg
-        ]
+        coincident_legs = [index for index in executable_indices if index in coincident_by_leg]
         # 补遗 2 §2：同日同码同向只是"候选重合"，不自动判 MATCHED，也不是执行证明。
         if expected is None:
             match_status = "NO_EXPECTED_DATE"
@@ -3500,9 +3465,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "init":
             _print(init_ledger(root))
         elif args.command == "ingest-brief":
-            _print(
-                ingest_brief(args.brief, root=root, calendar_db=args.calendar_db)
-            )
+            _print(ingest_brief(args.brief, root=root, calendar_db=args.calendar_db))
         elif args.command == "ingest-fills":
             _print(
                 ingest_confirmed_fills(

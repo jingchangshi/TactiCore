@@ -521,9 +521,7 @@ def test_locked_clock_recheck_uses_the_clock_after_acquiring_the_flock(
 
     def waiter() -> None:
         try:
-            result = ledger.ingest_brief(
-                brief_path, root=root, calendar_db=calendar_db
-            )
+            result = ledger.ingest_brief(brief_path, root=root, calendar_db=calendar_db)
             results.append(result)
         except BaseException as error:  # noqa: BLE001 - 线程异常留作断言
             errors.append(error)
@@ -607,9 +605,7 @@ def test_unexecuted_reason_cannot_be_derived_from_matching_fills(
     report = ledger.status_report(root)
     recommendation_id = report["recommendation_review"][0]["recommendation_event_id"]
     assert recommendation_id in report["unresolved_recommendation_event_ids"]
-    assert (
-        report["recommendation_review"][0]["unexecuted_reason_event_id"] is None
-    )
+    assert report["recommendation_review"][0]["unexecuted_reason_event_id"] is None
 
 
 def test_brief_imported_after_midnight_is_rejected(
@@ -675,9 +671,7 @@ def test_explicitly_reversed_calendar_row_is_rejected(tmp_path: Path) -> None:
     brief = make_brief()
     closed = make_calendar_db(tmp_path, [NEXT_DAY], closed=[AS_OF])
     with pytest.raises(ledger.LedgerRefusal, match="开市日"):
-        ledger._validate_brief(
-            brief, account_id="real-main", now=NOW, calendar_db=closed
-        )
+        ledger._validate_brief(brief, account_id="real-main", now=NOW, calendar_db=closed)
 
 
 # --------------------------------------------------------------------------------------
@@ -715,8 +709,15 @@ def test_signal_rejects_leg_quantity_price_and_fill_fields(tmp_path: Path) -> No
     signal = ledger.read_events(root, "SIGNAL")[0]
     deconcentration = signal["content"]["deconcentration_state"]
     assert set(deconcentration) <= ledger.SIGNAL_DECONCENTRATION_KEYS
-    for forbidden in ("legs", "recommended_sell_shares", "recommended_buy_shares", "quantity",
-                      "price_milli", "fees_cents", "executable"):
+    for forbidden in (
+        "legs",
+        "recommended_sell_shares",
+        "recommended_buy_shares",
+        "quantity",
+        "price_milli",
+        "fees_cents",
+        "executable",
+    ):
         assert forbidden not in json.dumps(signal["content"], ensure_ascii=False)
     # 已落盘的 SIGNAL content 若被篡改为携带成交字段，verify 必须拒绝。
     forged = copy.deepcopy(signal["content"])
@@ -911,13 +912,18 @@ def test_concentration_rejects_nested_sell_hints_and_legs(tmp_path: Path) -> Non
         ingest(tmp_path, make_brief(concentration=concentration))
     assert counts(root) == {record_type: 0 for record_type in ledger.RECORD_FILES}
     # 未知顶层键（sell_note / recommended_sell_shares）是开类型：丢弃并披露，不落盘。
-    ingest(tmp_path, make_brief(concentration={
-        "hhi": 0.2,
-        "effective_positions": 4.0,
-        "top_position": {"ts_code": "159558.SZ", "weight": 0.4},
-        "sell_note": "建议卖出超额 1000 份",
-        "recommended_sell_shares": 1000,
-    }))
+    ingest(
+        tmp_path,
+        make_brief(
+            concentration={
+                "hhi": 0.2,
+                "effective_positions": 4.0,
+                "top_position": {"ts_code": "159558.SZ", "weight": 0.4},
+                "sell_note": "建议卖出超额 1000 份",
+                "recommended_sell_shares": 1000,
+            }
+        ),
+    )
     valuation = ledger.read_events(root, "VALUATION")[0]
     stored = valuation["content"]["concentration"]
     assert stored == {
@@ -934,9 +940,7 @@ def test_concentration_rejects_nested_sell_hints_and_legs(tmp_path: Path) -> Non
     forged = copy.deepcopy(valuation["content"])
     forged["concentration"]["sell_note"] = "卖出 500 份"
     with pytest.raises(ledger.LedgerCorruption):
-        ledger._validate_valuation_content(
-            forged, tuple(valuation["missing_fields"])
-        )
+        ledger._validate_valuation_content(forged, tuple(valuation["missing_fields"]))
 
 
 def test_no_action_reason_with_order_semantics_is_not_projected(tmp_path: Path) -> None:
@@ -992,9 +996,7 @@ def test_real_upstream_data_quality_shape_is_accepted_but_trimmed(tmp_path: Path
             "freshness": "same_day",
         },
         "screening": {"status": "READY", "missing_tables": []},
-        "tiers": {
-            "etf_price": {"status": "READY", "ready": ["511010.SH"], "not_ready": []}
-        },
+        "tiers": {"etf_price": {"status": "READY", "ready": ["511010.SH"], "not_ready": []}},
         "notes": ["合成质量说明"],
     }
     result = ingest(tmp_path, brief)
@@ -1564,12 +1566,8 @@ def test_fill_source_sha_covers_only_the_native_sql_columns(
     db = make_account_db(tmp_path)
     ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
     fill = ledger.read_events(root, "CONFIRMED_FILL")[0]
-    native = {
-        column: fill["content"][column] for column in ledger.ACCOUNT_EVENT_COLUMNS
-    }
-    expected = hashlib.sha256(
-        ledger.canonical_json(native).encode("utf-8")
-    ).hexdigest()
+    native = {column: fill["content"][column] for column in ledger.ACCOUNT_EVENT_COLUMNS}
+    expected = hashlib.sha256(ledger.canonical_json(native).encode("utf-8")).hexdigest()
     assert fill["source"]["sha256"] == expected
     assert "schema" not in native
     assert fill["content"]["schema"] == "financemcp.account_event/1.0"
@@ -1765,9 +1763,10 @@ def test_fill_a_then_a_plus_b_only_appends_b_and_keeps_a_byte_identical(
     result = ledger.ingest_confirmed_fills(portfolio_db=db, root=root)
     assert result["appended"]["CONFIRMED_FILL"] == 1
     assert result["skipped_idempotent"]["CONFIRMED_FILL"] == 1
-    rows = [json.loads(line) for line in (root / "confirmed_fills.jsonl").read_text(
-        encoding="utf-8"
-    ).splitlines()]
+    rows = [
+        json.loads(line)
+        for line in (root / "confirmed_fills.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
     assert len(rows) == 2
     assert rows[0] == json.loads(first_row.splitlines()[0])  # A 原行逐字节等价
     assert rows[0]["content_hash"] == first_event["content_hash"]
@@ -1902,9 +1901,7 @@ def test_verify_detects_a_batch_count_mismatch(tmp_path: Path) -> None:
     line = json.loads(path.read_text(encoding="utf-8"))
     line["ingest_batch"]["count"] = 99
     material = {key: value for key, value in line.items() if key != "event_hash"}
-    line["event_hash"] = hashlib.sha256(
-        ledger.canonical_json(material).encode("utf-8")
-    ).hexdigest()
+    line["event_hash"] = hashlib.sha256(ledger.canonical_json(material).encode("utf-8")).hexdigest()
     path.write_text(ledger.canonical_json(line) + "\n", encoding="utf-8")
     with pytest.raises(ledger.LedgerCorruption, match="不完整|count"):
         ledger.verify_ledger(root)
@@ -2105,9 +2102,7 @@ def test_status_reports_partial_leg_coincidence_without_attribution(
 ) -> None:
     root = init(tmp_path)
     action = _action()
-    action["legs"].append(
-        _leg(side="SELL", ts_code="159558.SZ", quantity=100, executable=True)
-    )
+    action["legs"].append(_leg(side="SELL", ts_code="159558.SZ", quantity=100, executable=True))
     ingest(tmp_path, make_brief(actions=[action]))
     db = make_account_db(tmp_path)
     monkeypatch.setattr(
@@ -2267,9 +2262,7 @@ def test_cli_end_to_end_ingest_verify_and_status(
     assert status_output["counts"]["CONFIRMED_FILL"] == 1
 
 
-def test_cli_ingest_brief_without_calendar_is_refused(
-    tmp_path: Path, capsys
-) -> None:
+def test_cli_ingest_brief_without_calendar_is_refused(tmp_path: Path, capsys) -> None:
     root = init(tmp_path)
     path = write_json(tmp_path / "brief.json", make_brief())
     exit_code = ledger.main(["--ledger-root", str(root), "ingest-brief", "--brief", str(path)])
@@ -2341,9 +2334,7 @@ def test_english_order_text_in_state_block_never_reaches_signal(tmp_path: Path) 
     """B 终判 #1：`SELL 777 shares @ 1.234` 这类英文自由文本不得进入 SIGNAL。"""
     root = init(tmp_path)
     brief = make_brief()
-    brief["v3_cockpit"]["router"]["sub_strategies"]["s_stock_swing"] = (
-        "SELL 777 shares @ 1.234"
-    )
+    brief["v3_cockpit"]["router"]["sub_strategies"]["s_stock_swing"] = "SELL 777 shares @ 1.234"
     with pytest.raises(ledger.LedgerRefusal, match="封闭枚举"):
         ingest(tmp_path, brief)
     assert ledger.read_events(root, "SIGNAL") == []
@@ -2440,9 +2431,7 @@ def test_chinese_free_text_in_router_sub_strategies_is_refused(tmp_path: Path) -
     """
     root = init(tmp_path)
     brief = make_brief()
-    brief["v3_cockpit"]["router"]["sub_strategies"] = {
-        "foo": "减仓三百股，限价一元二角"
-    }
+    brief["v3_cockpit"]["router"]["sub_strategies"] = {"foo": "减仓三百股，限价一元二角"}
     with pytest.raises(ledger.LedgerRefusal):
         ingest(tmp_path, brief)
     assert ledger.read_events(root, "SIGNAL") == []
@@ -2453,9 +2442,7 @@ def test_chinese_free_text_as_known_sub_strategy_status_is_refused(tmp_path: Pat
     """终判 #4-a：即便键名合法（s_stock_swing），中文自由文本也不是枚举值。"""
     root = init(tmp_path)
     brief = make_brief()
-    brief["v3_cockpit"]["router"]["sub_strategies"]["s_stock_swing"] = (
-        "减仓三百股，限价一元二角"
-    )
+    brief["v3_cockpit"]["router"]["sub_strategies"]["s_stock_swing"] = "减仓三百股，限价一元二角"
     with pytest.raises(ledger.LedgerRefusal, match="封闭枚举"):
         ingest(tmp_path, brief)
     assert ledger.read_events(root, "SIGNAL") == []
@@ -2747,9 +2734,7 @@ def test_every_holding_key_attack_is_refused_or_nulled(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("key", ["lag_trade_days", "needs_reminder"])
-def test_reconciliation_declared_keys_reject_container_payload(
-    tmp_path: Path, key: str
-) -> None:
+def test_reconciliation_declared_keys_reject_container_payload(tmp_path: Path, key: str) -> None:
     for index in range(1):
         case = _isolated_case(tmp_path, f"recon_{key}_{index}")
         init(case)
@@ -2994,12 +2979,8 @@ def test_real_shaped_brief_ingests_end_to_end(tmp_path: Path) -> None:
     for token in ("8200", "份", "proposed_exit", "side", "legs"):
         assert token not in valuation_text
     # holdings 的 quantity/price_milli 是估值事实；质量块与集中度不得含这些键。
-    assert "price_milli" not in json.dumps(
-        valuation["content"]["data_quality"], ensure_ascii=False
-    )
-    assert "quantity" not in json.dumps(
-        valuation["content"]["concentration"], ensure_ascii=False
-    )
+    assert "price_milli" not in json.dumps(valuation["content"]["data_quality"], ensure_ascii=False)
+    assert "quantity" not in json.dumps(valuation["content"]["concentration"], ensure_ascii=False)
     # 允许集的 20 个 deconcentration 键保留；被丢的 19 个逐个披露。
     dec = signal["content"]["deconcentration_state"]
     assert dec["active_trigger_reason"] == "BREAKDOWN_SUPPORT_FLOOR"
@@ -3017,9 +2998,7 @@ def test_real_shaped_brief_ingests_end_to_end(tmp_path: Path) -> None:
     assert "market_regime.regime_label_zh_unprojected" in signal["missing_fields"]
     # VALUATION 侧：真实中文持仓名保留，质量闭类型保留，自由文本披露。
     assert valuation["content"]["holdings"][0]["name"] == "半导体设备ETF 易方达"
-    assert valuation["content"]["concentration"]["top_position"]["name"] == (
-        "半导体设备ETF 易方达"
-    )
+    assert valuation["content"]["concentration"]["top_position"]["name"] == ("半导体设备ETF 易方达")
     assert "reconciliation_reminder.message_zh_unprojected" in valuation["missing_fields"]
     assert "data_quality.notes_unprojected" in valuation["missing_fields"]
 
@@ -3036,18 +3015,12 @@ def test_handwritten_illegal_holding_with_valid_hash_chain_is_corrupt(tmp_path: 
     valuation = ledger.read_events(root, "VALUATION")[0]
     forged = copy.deepcopy(valuation)
     forged["content"]["holdings"][0]["cost_basis"] = copy.deepcopy(_ATTACK_LEG)
-    new_hash = ledger.content_hash(
-        "VALUATION", forged["content"], forged["source"]["sha256"]
-    )
+    new_hash = ledger.content_hash("VALUATION", forged["content"], forged["source"]["sha256"])
     forged["content_hash"] = new_hash
     forged["event_id"] = ledger.event_id_for(new_hash)
     line = {key: value for key, value in forged.items() if key != "event_hash"}
-    forged["event_hash"] = hashlib.sha256(
-        ledger.canonical_json(line).encode("utf-8")
-    ).hexdigest()
-    (root / "valuations.jsonl").write_text(
-        ledger.canonical_json(forged) + "\n", encoding="utf-8"
-    )
+    forged["event_hash"] = hashlib.sha256(ledger.canonical_json(line).encode("utf-8")).hexdigest()
+    (root / "valuations.jsonl").write_text(ledger.canonical_json(forged) + "\n", encoding="utf-8")
     with pytest.raises(ledger.LedgerCorruption):
         ledger.verify_ledger(root)
 

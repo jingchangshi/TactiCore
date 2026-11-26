@@ -1,0 +1,597 @@
+{
+  "experiment_id": "EXP-V3-04B",
+  "strategy_id": "V3_SECTOR_BOTTOM_GRIND_COST_REDUCTION",
+  "protocol": "research/batches/exp_v3_04b/PROTOCOL_V1.md",
+  "snapshot_id": "ca43f6393393056d6b318bba792c3f6c70c7c5d786f72a7ec6beab366d5b5a78",
+  "verdict": "GATE2_BINDING_RETAIN",
+  "verdict_reason": "gate 2 binding; pre-registered not-worse test applied",
+  "production_admission": "NOT_APPROVED",
+  "binding_count_total": 36,
+  "repro_identical_all_windows": true,
+  "vbt_ablation_identical_all_windows": false,
+  "rqalpha_ablation_identical_all_windows": false,
+  "summary": [
+    {
+      "arm": "v32",
+      "is_excess_pp": 0.46999999999999925,
+      "is_mdd_diff_pp": 1.4150000000000003,
+      "oos_excess_pp": 3.9040000000000004,
+      "oos_mdd_diff_pp": 7.732000000000001,
+      "rt_wins": 15,
+      "rt_losses": 0,
+      "trades": 38
+    },
+    {
+      "arm": "v32_no_gate2",
+      "is_excess_pp": -4.19,
+      "is_mdd_diff_pp": -3.3649999999999998,
+      "oos_excess_pp": 5.545999999999999,
+      "oos_mdd_diff_pp": 7.502000000000001,
+      "rt_wins": 21,
+      "rt_losses": 2,
+      "trades": 54
+    }
+  ],
+  "window_rows": [
+    {
+      "window_name": "IS_512480_19_23",
+      "split": "IS",
+      "etf_code": "512480.SH",
+      "static25": {
+        "total_return": 0.1884,
+        "max_drawdown": -0.2137,
+        "sharpe": 0.39,
+        "trades": 0,
+        "rt_wins": 0,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0
+      },
+      "v32": {
+        "total_return": 0.2486,
+        "max_drawdown": -0.1271,
+        "sharpe": 0.59,
+        "trades": 6,
+        "rt_wins": 2,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0375
+      },
+      "v32_repro": {
+        "total_return": 0.2486,
+        "max_drawdown": -0.1271,
+        "sharpe": 0.59,
+        "trades": 6,
+        "rt_wins": 2,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0375
+      },
+      "v32_no_gate2": {
+        "total_return": 0.2049,
+        "max_drawdown": -0.166,
+        "sharpe": 0.48,
+        "trades": 7,
+        "rt_wins": 3,
+        "rt_losses": 0,
+        "avg_rt_return": 0.1016
+      },
+      "repro_identical": true,
+      "ablation_weights_identical": false,
+      "ablation_metrics_identical": false,
+      "diagnostics_v32_path": {
+        "evaluation_days": 785,
+        "candidate_days": 11,
+        "binding_count": 8,
+        "binding_recent_sell_branch": 3,
+        "binding_high60_branch": 5,
+        "gate2_fail_days_any": 563,
+        "entries": 3
+      },
+      "ablation_entries": 4
+    },
+    {
+      "window_name": "IS_512480_BEAR",
+      "split": "IS",
+      "etf_code": "512480.SH",
+      "static25": {
+        "total_return": -0.0666,
+        "max_drawdown": -0.1034,
+        "sharpe": -0.49,
+        "trades": 0,
+        "rt_wins": 0,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0
+      },
+      "v32": {
+        "total_return": -0.0932,
+        "max_drawdown": -0.1088,
+        "sharpe": -0.52,
+        "trades": 3,
+        "rt_wins": 1,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0361
+      },
+      "v32_repro": {
+        "total_return": -0.0932,
+        "max_drawdown": -0.1088,
+        "sharpe": -0.52,
+        "trades": 3,
+        "rt_wins": 1,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0361
+      },
+      "v32_no_gate2": {
+        "total_return": -0.1211,
+        "max_drawdown": -0.1562,
+        "sharpe": -0.6,
+        "trades": 1,
+        "rt_wins": 0,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0
+      },
+      "repro_identical": true,
+      "ablation_weights_identical": false,
+      "ablation_metrics_identical": false,
+      "diagnostics_v32_path": {
+        "evaluation_days": 366,
+        "candidate_days": 6,
+        "binding_count": 4,
+        "binding_recent_sell_branch": 0,
+        "binding_high60_branch": 4,
+        "gate2_fail_days_any": 217,
+        "entries": 2
+      },
+      "ablation_entries": 1
+    },
+    {
+      "window_name": "IS_515790_BEAR",
+      "split": "IS",
+      "etf_code": "515790.SH",
+      "static25": {
+        "total_return": -0.1021,
+        "max_drawdown": -0.1304,
+        "sharpe": -1.39,
+        "trades": 0,
+        "rt_wins": 0,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0
+      },
+      "v32": {
+        "total_return": -0.1028,
+        "max_drawdown": -0.1323,
+        "sharpe": -1.19,
+        "trades": 2,
+        "rt_wins": 1,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0691
+      },
+      "v32_repro": {
+        "total_return": -0.1028,
+        "max_drawdown": -0.1323,
+        "sharpe": -1.19,
+        "trades": 2,
+        "rt_wins": 1,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0691
+      },
+      "v32_no_gate2": {
+        "total_return": -0.1573,
+        "max_drawdown": -0.1905,
+        "sharpe": -1.53,
+        "trades": 1,
+        "rt_wins": 0,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0
+      },
+      "repro_identical": true,
+      "ablation_weights_identical": false,
+      "ablation_metrics_identical": false,
+      "diagnostics_v32_path": {
+        "evaluation_days": 306,
+        "candidate_days": 3,
+        "binding_count": 2,
+        "binding_recent_sell_branch": 0,
+        "binding_high60_branch": 2,
+        "gate2_fail_days_any": 110,
+        "entries": 1
+      },
+      "ablation_entries": 1
+    },
+    {
+      "window_name": "IS_512170_BEAR",
+      "split": "IS",
+      "etf_code": "512170.SH",
+      "static25": {
+        "total_return": -0.0875,
+        "max_drawdown": -0.1015,
+        "sharpe": -0.8,
+        "trades": 0,
+        "rt_wins": 0,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0
+      },
+      "v32": {
+        "total_return": -0.1016,
+        "max_drawdown": -0.1242,
+        "sharpe": -0.67,
+        "trades": 2,
+        "rt_wins": 1,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0727
+      },
+      "v32_repro": {
+        "total_return": -0.1016,
+        "max_drawdown": -0.1242,
+        "sharpe": -0.67,
+        "trades": 2,
+        "rt_wins": 1,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0727
+      },
+      "v32_no_gate2": {
+        "total_return": -0.1619,
+        "max_drawdown": -0.1709,
+        "sharpe": -1.0,
+        "trades": 1,
+        "rt_wins": 0,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0
+      },
+      "repro_identical": true,
+      "ablation_weights_identical": false,
+      "ablation_metrics_identical": false,
+      "diagnostics_v32_path": {
+        "evaluation_days": 503,
+        "candidate_days": 4,
+        "binding_count": 3,
+        "binding_recent_sell_branch": 0,
+        "binding_high60_branch": 3,
+        "gate2_fail_days_any": 300,
+        "entries": 1
+      },
+      "ablation_entries": 1
+    },
+    {
+      "window_name": "OOS_512480_24_26",
+      "split": "OOS",
+      "etf_code": "512480.SH",
+      "static25": {
+        "total_return": 0.3211,
+        "max_drawdown": -0.2837,
+        "sharpe": 0.73,
+        "trades": 0,
+        "rt_wins": 0,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0
+      },
+      "v32": {
+        "total_return": 0.3446,
+        "max_drawdown": -0.187,
+        "sharpe": 0.96,
+        "trades": 6,
+        "rt_wins": 2,
+        "rt_losses": 0,
+        "avg_rt_return": 0.2147
+      },
+      "v32_repro": {
+        "total_return": 0.3446,
+        "max_drawdown": -0.187,
+        "sharpe": 0.96,
+        "trades": 6,
+        "rt_wins": 2,
+        "rt_losses": 0,
+        "avg_rt_return": 0.2147
+      },
+      "v32_no_gate2": {
+        "total_return": 0.38,
+        "max_drawdown": -0.2024,
+        "sharpe": 1.02,
+        "trades": 11,
+        "rt_wins": 5,
+        "rt_losses": 0,
+        "avg_rt_return": 0.169
+      },
+      "repro_identical": true,
+      "ablation_weights_identical": false,
+      "ablation_metrics_identical": false,
+      "diagnostics_v32_path": {
+        "evaluation_days": 502,
+        "candidate_days": 6,
+        "binding_count": 3,
+        "binding_recent_sell_branch": 2,
+        "binding_high60_branch": 1,
+        "gate2_fail_days_any": 439,
+        "entries": 3
+      },
+      "ablation_entries": 6
+    },
+    {
+      "window_name": "OOS_159558_24_26",
+      "split": "OOS",
+      "etf_code": "159558.SZ",
+      "static25": {
+        "total_return": 0.4271,
+        "max_drawdown": -0.3345,
+        "sharpe": 0.89,
+        "trades": 0,
+        "rt_wins": 0,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0
+      },
+      "v32": {
+        "total_return": 0.491,
+        "max_drawdown": -0.1446,
+        "sharpe": 1.45,
+        "trades": 10,
+        "rt_wins": 4,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0871
+      },
+      "v32_repro": {
+        "total_return": 0.491,
+        "max_drawdown": -0.1446,
+        "sharpe": 1.45,
+        "trades": 10,
+        "rt_wins": 4,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0871
+      },
+      "v32_no_gate2": {
+        "total_return": 0.5053,
+        "max_drawdown": -0.1449,
+        "sharpe": 1.46,
+        "trades": 14,
+        "rt_wins": 5,
+        "rt_losses": 1,
+        "avg_rt_return": 0.0876
+      },
+      "repro_identical": true,
+      "ablation_weights_identical": false,
+      "ablation_metrics_identical": false,
+      "diagnostics_v32_path": {
+        "evaluation_days": 518,
+        "candidate_days": 10,
+        "binding_count": 6,
+        "binding_recent_sell_branch": 6,
+        "binding_high60_branch": 0,
+        "gate2_fail_days_any": 438,
+        "entries": 4
+      },
+      "ablation_entries": 6
+    },
+    {
+      "window_name": "OOS_159558_2026",
+      "split": "OOS",
+      "etf_code": "159558.SZ",
+      "static25": {
+        "total_return": 0.0897,
+        "max_drawdown": -0.2449,
+        "sharpe": 0.61,
+        "trades": 0,
+        "rt_wins": 0,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0
+      },
+      "v32": {
+        "total_return": 0.177,
+        "max_drawdown": -0.1446,
+        "sharpe": 1.32,
+        "trades": 7,
+        "rt_wins": 3,
+        "rt_losses": 0,
+        "avg_rt_return": 0.092
+      },
+      "v32_repro": {
+        "total_return": 0.177,
+        "max_drawdown": -0.1446,
+        "sharpe": 1.32,
+        "trades": 7,
+        "rt_wins": 3,
+        "rt_losses": 0,
+        "avg_rt_return": 0.092
+      },
+      "v32_no_gate2": {
+        "total_return": 0.1726,
+        "max_drawdown": -0.1449,
+        "sharpe": 1.27,
+        "trades": 9,
+        "rt_wins": 3,
+        "rt_losses": 1,
+        "avg_rt_return": 0.0616
+      },
+      "repro_identical": true,
+      "ablation_weights_identical": false,
+      "ablation_metrics_identical": false,
+      "diagnostics_v32_path": {
+        "evaluation_days": 178,
+        "candidate_days": 7,
+        "binding_count": 4,
+        "binding_recent_sell_branch": 3,
+        "binding_high60_branch": 1,
+        "gate2_fail_days_any": 122,
+        "entries": 3
+      },
+      "ablation_entries": 4
+    },
+    {
+      "window_name": "OOS_515790_24_26",
+      "split": "OOS",
+      "etf_code": "515790.SH",
+      "static25": {
+        "total_return": 0.0192,
+        "max_drawdown": -0.1169,
+        "sharpe": 0.13,
+        "trades": 0,
+        "rt_wins": 0,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0
+      },
+      "v32": {
+        "total_return": 0.0397,
+        "max_drawdown": -0.1172,
+        "sharpe": 0.2,
+        "trades": 2,
+        "rt_wins": 1,
+        "rt_losses": 0,
+        "avg_rt_return": 0.1685
+      },
+      "v32_repro": {
+        "total_return": 0.0397,
+        "max_drawdown": -0.1172,
+        "sharpe": 0.2,
+        "trades": 2,
+        "rt_wins": 1,
+        "rt_losses": 0,
+        "avg_rt_return": 0.1685
+      },
+      "v32_no_gate2": {
+        "total_return": 0.0665,
+        "max_drawdown": -0.0993,
+        "sharpe": 0.31,
+        "trades": 6,
+        "rt_wins": 3,
+        "rt_losses": 0,
+        "avg_rt_return": 0.1067
+      },
+      "repro_identical": true,
+      "ablation_weights_identical": false,
+      "ablation_metrics_identical": false,
+      "diagnostics_v32_path": {
+        "evaluation_days": 500,
+        "candidate_days": 3,
+        "binding_count": 2,
+        "binding_recent_sell_branch": 1,
+        "binding_high60_branch": 1,
+        "gate2_fail_days_any": 336,
+        "entries": 1
+      },
+      "ablation_entries": 3
+    },
+    {
+      "window_name": "OOS_512170_24_26",
+      "split": "OOS",
+      "etf_code": "512170.SH",
+      "static25": {
+        "total_return": 0.0386,
+        "max_drawdown": -0.0536,
+        "sharpe": 0.27,
+        "trades": 0,
+        "rt_wins": 0,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0
+      },
+      "v32": {
+        "total_return": 0.0386,
+        "max_drawdown": -0.0536,
+        "sharpe": 0.27,
+        "trades": 0,
+        "rt_wins": 0,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0
+      },
+      "v32_repro": {
+        "total_return": 0.0386,
+        "max_drawdown": -0.0536,
+        "sharpe": 0.27,
+        "trades": 0,
+        "rt_wins": 0,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0
+      },
+      "v32_no_gate2": {
+        "total_return": 0.0486,
+        "max_drawdown": -0.067,
+        "sharpe": 0.3,
+        "trades": 4,
+        "rt_wins": 2,
+        "rt_losses": 0,
+        "avg_rt_return": 0.0403
+      },
+      "repro_identical": true,
+      "ablation_weights_identical": false,
+      "ablation_metrics_identical": false,
+      "diagnostics_v32_path": {
+        "evaluation_days": 691,
+        "candidate_days": 4,
+        "binding_count": 4,
+        "binding_recent_sell_branch": 0,
+        "binding_high60_branch": 4,
+        "gate2_fail_days_any": 608,
+        "entries": 0
+      },
+      "ablation_entries": 2
+    }
+  ],
+  "rqalpha_native_checks": [
+    {
+      "window_name": "IS_512480_19_23",
+      "etf_code": "512480.SH",
+      "rq_window": "2019-09-02..2023-12-29",
+      "v32_min0_ret": 0.2694,
+      "v32_min0_mdd": -0.128,
+      "v32_min0_rejects": 0,
+      "v32_min5_ret": 0.2693,
+      "v32_min5_mdd": -0.128,
+      "v32_min5_rejects": 0,
+      "abl_min0_ret": 0.1944,
+      "abl_min0_mdd": -0.1583,
+      "abl_min0_rejects": 0,
+      "abl_min5_ret": 0.1942,
+      "abl_min5_mdd": -0.1583,
+      "abl_min5_rejects": 0,
+      "identical": false
+    },
+    {
+      "window_name": "OOS_512480_24_26",
+      "etf_code": "512480.SH",
+      "rq_window": "2024-01-02..2026-08-31 (partial, bundle cutoff 2026-08-31)",
+      "v32_min0_ret": 0.4624,
+      "v32_min0_mdd": -0.1088,
+      "v32_min0_rejects": 0,
+      "v32_min5_ret": 0.4623,
+      "v32_min5_mdd": -0.1089,
+      "v32_min5_rejects": 0,
+      "abl_min0_ret": 0.4482,
+      "abl_min0_mdd": -0.1244,
+      "abl_min0_rejects": 0,
+      "abl_min5_ret": 0.448,
+      "abl_min5_mdd": -0.1243,
+      "abl_min5_rejects": 0,
+      "identical": false
+    },
+    {
+      "window_name": "OOS_159558_24_26",
+      "etf_code": "159558.SZ",
+      "rq_window": "2024-07-16..2026-08-31 (partial, bundle cutoff 2026-08-31)",
+      "v32_min0_ret": 0.5578,
+      "v32_min0_mdd": -0.1107,
+      "v32_min0_rejects": 0,
+      "v32_min5_ret": 0.5576,
+      "v32_min5_mdd": -0.1107,
+      "v32_min5_rejects": 0,
+      "abl_min0_ret": 0.564,
+      "abl_min0_mdd": -0.1148,
+      "abl_min0_rejects": 0,
+      "abl_min5_ret": 0.5619,
+      "abl_min5_mdd": -0.1143,
+      "abl_min5_rejects": 0,
+      "identical": false
+    },
+    {
+      "window_name": "OOS_159558_2026",
+      "etf_code": "159558.SZ",
+      "rq_window": "2026-01-05..2026-08-31 (partial, bundle cutoff 2026-08-31)",
+      "v32_min0_ret": 0.2357,
+      "v32_min0_mdd": -0.1115,
+      "v32_min0_rejects": 0,
+      "v32_min5_ret": 0.2355,
+      "v32_min5_mdd": -0.1115,
+      "v32_min5_rejects": 0,
+      "abl_min0_ret": 0.2327,
+      "abl_min0_mdd": -0.1143,
+      "abl_min0_rejects": 0,
+      "abl_min5_ret": 0.2325,
+      "abl_min5_mdd": -0.1143,
+      "abl_min5_rejects": 0,
+      "identical": false
+    }
+  ]
+}

@@ -864,3 +864,15 @@
 ## 实盘运行补充记录（Stage 0 前瞻台账日度入库）
 
 - **2026-11-26（Stage 0 真实首日）**：已于 `~/.local/share/tacticore-v3-prospective-ledger` 初始化生产台账（经 `/tmp` 彩排 `PASS`），并按批 `BATCH-42ba86692d5298962d62abca` 写入 `20261126.json`（4 条事件：1 `SIGNAL`、2 `RECOMMENDATION`、1 `VALUATION`，基线 `v3.2.1` `9869bd0b0ef02336c09fbaab921f5545d069a60039957c6f58b3fa1736e7eb9a`），`verify` / `status` 返回 `rc=0`、`status=OK`、`pause.recommended=false`。后续若启用 `v3.3.0` 实盘日报，须新建独立台账根目录（例如 `~/.local/share/tacticore-v3-prospective-ledger-v330`），不混入并保持 `v3.2.1` 台账只读可核。
+
+## RL-072 `EXP-V3-12` V1/R2：`v3.3.1` 执行架构 2.0 联合验证与条件签发
+
+- 研究域：`research/batches/exp_v3_12_v331_architecture/`（`PROTOCOL_V1.md`、`run.py`、`PROTOCOL_V2.md`、`run_r2.py`、`decision_parity.py`）。验证 `v3.3.1` 执行架构 2.0：关闭行业先导并回免五底盘核心（`sector_pioneer_enabled=false`）、取消 `159558.SZ` `BOTTOM_GRIND_25` 降浓计划（`deconcentration_plan_enabled=false`）、无条件 `1+1+2` 底盘 + 只向高优先级粘性选标、双向目标对齐 + 无状态 35%/日两日收敛、`P0+P3-SELL` 共享 `max(P0, glide)` 额度、`P1` 仅限 `SECTOR_PIONEER`（`-8%` 硬止损仅限个股）、以及 `M2` 提前解锁开关检验（`l2_lock_allow_m2_early_release` 实证 `0` 触发后整键移除）。另按 `@coordinator` `#21` 裁决在 `decision_parity.py` 中明确：`buy_headroom` 采用 **P3-SELL 之后**的持仓（支持同日先卖后买轮动如 `STRUCTURAL_STYLE_ROTATION`、Day-2 清遗留后同日建 `LOW_VOL`，已落盘 `EXP-V3-12` R2 产物保持原样不动）。
+- 状态：CLOSED（V1 机裁 `V3_3_1_CLEAN_APPROVED`；R2 严格单开关消融机裁 `V3_3_1_NEEDS_REVIEW` + `@coordinator` / `@architect-opus` 联合人工有条件批准签发 **`v3.3.1`** `29ad8fa8e2123df838f0c53630d77e9351dd60ee0ba8ac323e77480da2f9bb50`，仅适用于净值 `< ¥100,000`，当净值回升至 `>= ¥95,000` 时须在首笔主板个股委托前重检 `BP1`；4/4 完整性门槛全 `True`、`0` 违规）。日期：2026-11-27。
+- 实证与裁决：
+  - **V1 全窗 VBT 与底盘 RQAlpha（`2018-01-02..2026-11-26 / 10-30`）**：`V3_3_1_CLEAN_NO_PIONEER` VBT 全窗 CAGR `5.07%` / MaxDD `-12.88%` / Calmar `0.394`（OOS CAGR `9.58%` / MaxDD `-10.38%` / Calmar `0.923`、2026 H2 `+0.01%`），显著稳健于静态四桶 `SHADOW_B_STATIC_4SLEEVE`（MaxDD `-21.91%`、2026 H2 `-17.42%`）；`V3_3_1_M2_EARLY_RELEASE` 全口径与对照完全重合（`0` 触发），故不引入该分支；底盘 RQAlpha `¥69k` CAGR `4.70%` / MaxDD `-11.46%` / Sharpe `0.541`（1165 笔、`¥4,523.01`），`¥100k` CAGR `4.65%` / MaxDD `-12.51%` / Calmar `0.371`。
+  - **R2 统一账户严格单开关消融（`2024-02/07..2026-10-30`，含 5bp 滑点）**：
+    - `¥69k` 三组（实盘 6.3 万资金域、`BP1` 休眠）`V3_3_1_CLEAN_UPWARD_STICKY` **3/3 在 Calmar 与摩擦上全面胜出**：`OOS_CASH_69000` CAGR `9.54%` / MaxDD `-9.05%` / Calmar `1.053`（vs `v3.3.0` `0.932`、先导消融 `0.303` / 摩擦 `¥565.02 vs ¥726.37 / ¥1,002.56`）、`CORE25_69000` `10.15%` / `-9.00%` / Calmar `1.128`（vs `v3.3.0` `1.118`）、`LEGACY70_69000` `9.99%` / `-9.00%` / Calmar `1.109`（vs `v3.3.0` `0.863`）。
+    - 全 6 组真实峰值回撤 `6/6` 优于 `v3.3.0`（`LEGACY70_100k` `-16.82% vs -17.09%`）；`LEGACY70_100000` 因 `BP1` 71 笔净亏 `-¥4,986.44` 触发 45 天穿 `-15%` 线致 R2 机器标记 `V3_3_1_NEEDS_REVIEW`（已如实保留），对应实施 `< ¥100k` 适用与 `>= ¥95k` 重检治理约束。
+- 证据：`research/results/EXP_V3_12_V331_ARCHITECTURE.{md,json}`、`research/results/EXP_V3_12_V331_ARCHITECTURE_R2.{md,json}`、`AShareInvestor/docs/v3-offensive-system/POLICY_AMENDMENT_20261127_V331.md`（提交 `f91cfe1c622025cd7a846843d48232ddba04a740`）、`AShareInvestor/docs/v3-offensive-system/conformance/parity_fixtures_v331.json`、[v3_offensive_policy_release_v3.3.1.json](../research/ashare/releases/v3_offensive_policy_release_v3.3.1.json)。
+

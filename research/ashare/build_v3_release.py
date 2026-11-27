@@ -32,8 +32,8 @@ ASHARE_INVESTOR_ROOT = Path("/home/jcshi/workspace/AShareInvestor")
 RELEASE_DIR = TACTICORE_ROOT / "research/ashare/releases"
 FEE_PROFILE_DIR = ASHARE_INVESTOR_ROOT / "docs/v3-offensive-system/fee-profiles"
 
-SUPPORTED_VERSIONS = ("3.1.0", "3.2.0", "3.2.1", "3.3.0")
-DEFAULT_VERSION = "3.3.0"
+SUPPORTED_VERSIONS = ("3.1.0", "3.2.0", "3.2.1", "3.3.0", "3.3.1")
+DEFAULT_VERSION = "3.3.1"
 
 # 所有者批准记录：以批准当时的 git 提交固定字节（文件末尾之后会追加 v3.2.1 指纹行，
 # 因此不能用工作树当前字节作为证据哈希，否则会形成循环依赖）。
@@ -43,9 +43,13 @@ AMENDMENT_REFERENCE = f"git:AShareInvestor@{AMENDMENT_REV}:{AMENDMENT_PATH}"
 AMENDMENT_V330_REV = "9c736c2f35a9be73971aacf81440343a491819ca"
 AMENDMENT_V330_PATH = "docs/v3-offensive-system/POLICY_AMENDMENT_20261126_V330.md"
 AMENDMENT_V330_REFERENCE = f"git:AShareInvestor@{AMENDMENT_V330_REV}:{AMENDMENT_V330_PATH}"
+AMENDMENT_V331_REV = "f91cfe1c622025cd7a846843d48232ddba04a740"
+AMENDMENT_V331_PATH = "docs/v3-offensive-system/POLICY_AMENDMENT_20261127_V331.md"
+AMENDMENT_V331_REFERENCE = f"git:AShareInvestor@{AMENDMENT_V331_REV}:{AMENDMENT_V331_PATH}"
 STOCK_SEMANTICS_SCRIPT = "research/ashare/experiments/exp_v3_02_stock_swing_rqalpha.py"
 V320_CONTENT_HASH = "05346a961e01f746055143e0bb5790caa9d6460aa579bb26c085cca20d77b55f"
 V321_CONTENT_HASH = "9869bd0b0ef02336c09fbaab921f5545d069a60039957c6f58b3fa1736e7eb9a"
+V330_CONTENT_HASH = "e192ffc764f2bcf5ccd020e62254d1e1b518a6ab7a9074acd1d91c74a5462051"
 
 _EXIT_V31 = (
     "Dual-anchor regime shift, stock -8% hard stop / +15% breakeven / MA20 trailing, "
@@ -354,10 +358,108 @@ def _v330_params(amendment_sha: str, v321_amendment_sha: str) -> dict[str, str]:
     return base
 
 
+_EXIT_V331 = (
+    "Execution Architecture v2: dual-anchor regime with M2 post-icepoint 40% RECOVERY sleeve, "
+    "unconditional <=4-ETF chassis (1 VALUE + 1 GROWTH + 2 LOW_VOL) with upward-only sticky "
+    "selection, sector_pioneer disabled, 159649.SZ->511260.SH->511010.SH bond reservoir (10% "
+    "drift band), bidirectional target alignment with stateless 35%/d 2-day glide convergence, "
+    "P1 trailing scoped to SECTOR_PIONEER only, stock-only -8% hard stop / +15% breakeven / MA20 "
+    "trailing (BP1 gated at >=100k CNY, manual re-verification >=95k CNY), deconcentration "
+    "cancelled, and TWO_STAGE_GRADUAL drawdown control (-8%->50%, -11%->25%, -13.5%->10% 10d "
+    "lock + unlock work-peak reanchor)"
+)
+_RULES_V331 = (
+    (
+        "Dual-anchor market regime + M2 breadth-thrust recovery overlay routes OFFENSIVE 85% / "
+        "STRUCTURAL 60% / RECOVERY 40% (10d icepoint pct60<15% & pct20<15%, thrust pct20>=45% "
+        "or +30pp/5d with pct20>=40% and amount>=1.15x; stops back on 5d-low break) / DEFENSIVE "
+        "15% (EXP-V3-08 7 triggers, 0 false breakouts)."
+    ),
+    (
+        "Unconditional 1+1+2 (<=4 ETFs) chassis across all NAV tiers (1 VALUE: "
+        "159330.SZ>530050.SH>510140.SH; 1 GROWTH: 159205.SZ>159337.SZ>589850.SH>159290.SZ>"
+        "589060.SH>589330.SH; 2 LOW_VOL: 159549.SZ+159207.SZ) with 30% permanent LOW_VOL core "
+        "and upward-only sticky member retention (EXP-V3-12 R2)."
+    ),
+    (
+        "Sector ETF pioneer is disabled (sector_pioneer_enabled=false; 20% budget merged back "
+        "into base super-ETF chassis) and 159558.SZ BOTTOM_GRIND_25 deconcentration plan is "
+        "cancelled (deconcentration_plan_enabled=false; treated as UNMANAGED_LEGACY target=0)."
+    ),
+    (
+        "Stateless bidirectional target alignment (regime_target_enforced_on_existing_holdings"
+        "=true, equity_align_drift_band_bps=500, align_glide_carryover_bps=3500): excess<=37% "
+        "clears in 1d else max(35%, excess-35%); P0+P3-SELL share max(P0, glide) with legacy "
+        "sold first and <2% non-target tail clean-sweep; P3-BUY strictly enforces "
+        "post_buy_total_risk<=router_effective_cap."
+    ),
+    (
+        "Idle defensive weight deploys via bond reservoir priority (159649.SZ normal ETF -> "
+        "511260.SH -> 511010.SH) with 10% drift band and >=5,000 CNY normal-ETF / >=1,000 CNY "
+        "super-ETF min buy tickets (100-share integer lots)."
+    ),
+    (
+        "Mainboard BP1_PULLBACK stocks open only when investable NAV >= 100,000 CNY (conditional "
+        "owner governance: re-verify BP1 leg before first stock order once NAV >= 95,000 CNY); "
+        "-8% hard stop applies strictly to STOCK_BP1, while P1 ETF trailing covers "
+        "SECTOR_PIONEER only (EXP-V3-02 & EXP-V3-12)."
+    ),
+    (
+        "TWO_STAGE_GRADUAL drawdown control caps risk equity at 50% (-8% work DD) / 25% (-11% "
+        "work DD) / 10d lock (-13.5% work DD, 10% normal cap) then re-anchors work peak with "
+        "10d ramp while keeping all-time true_peak strictly un-reanchored."
+    ),
+)
+_RESULT_EVIDENCE_V331 = (
+    "research/results/EXP_V3_12_V331_ARCHITECTURE.json",
+    "research/results/EXP_V3_12_V331_ARCHITECTURE.md",
+    "research/results/EXP_V3_12_V331_ARCHITECTURE_R2.json",
+    "research/results/EXP_V3_12_V331_ARCHITECTURE_R2.md",
+)
+
+
+def _v331_params(
+    amendment_v331_sha: str, amendment_v330_sha: str, v321_amendment_sha: str
+) -> dict[str, str]:
+    params = _v330_params(amendment_v330_sha, v321_amendment_sha)
+    params.update(
+        {
+            "deconcentration_plan_enabled": "false",
+            "deconcentration_mode": "BOTTOM_GRIND_25",
+            "sector_pioneer_enabled": "false",
+            "regime_target_enforced_on_existing_holdings": "true",
+            "align_glide_carryover_bps": "3500",
+            "equity_align_drift_band_bps": "500",
+            "chassis_single_etf_per_style_bucket": "true",
+            "p1_etf_trailing_sleeves": "SECTOR_PIONEER",
+            "l1_warn_drawdown_bps": "800",
+            "drawdown_stage1_bps": "800",
+            "l2_normal_trigger_drawdown_bps": "1350",
+            "l2_hard_lifeline_drawdown_bps": "1350",
+            "drawdown_lock_trigger_bps": "1350",
+            "l2_normal_post_breaker_equity_bps": "1000",
+            "drawdown_normal_post_lock_cap_bps": "1000",
+            "l2_deconcentration_post_breaker_equity_bps": "0",
+            "drawdown_conc_post_lock_cap_bps": "0",
+            "l2_lock_trade_days": "10",
+            "policy_amendment_id": "POLICY_AMENDMENT_20261127_V331",
+            "policy_amendment_owner_approval_date": "2026-11-27",
+            "policy_amendment_effective_after": "2026-11-27",
+            "policy_amendment_record_ref": AMENDMENT_V331_REFERENCE,
+            "policy_amendment_record_sha256": amendment_v331_sha,
+            "supersedes_release_version": "3.3.0",
+            "supersedes_release_content_hash": V330_CONTENT_HASH,
+            "integration_study_ref": "research/batches/exp_v3_12_v331_architecture/run_r2.py",
+        }
+    )
+    params.pop("l2_lock_allow_m2_early_release", None)
+    return params
+
+
 def build_v3_release_payload(version: str = DEFAULT_VERSION) -> dict[str, Any]:
     if version not in SUPPORTED_VERSIONS:
         raise ValueError(f"unsupported_release_version:{version}")
-    if version == "3.3.0":
+    if version in {"3.3.0", "3.3.1"}:
         from research.ashare import v3_data_202611 as d2611
 
         impl_path = TACTICORE_ROOT / "research/ashare/v3_data_202611.py"
@@ -369,7 +471,9 @@ def build_v3_release_payload(version: str = DEFAULT_VERSION) -> dict[str, Any]:
         )
         amendment_v321_sha = git_blob_sha256(ASHARE_INVESTOR_ROOT, AMENDMENT_REV, AMENDMENT_PATH)
         ev_refs = [*_RESULT_EVIDENCE_V31, *_RESULT_EVIDENCE_V32_ADDED, *_RESULT_EVIDENCE_V330]
-        evidence_v330: list[dict[str, str]] = [
+        if version == "3.3.1":
+            ev_refs.extend(_RESULT_EVIDENCE_V331)
+        evidence_v33x: list[dict[str, str]] = [
             {"reference": str(snap_manifest), "sha256": sha256_file(snap_manifest)},
             {"reference": str(aux_manifest), "sha256": sha256_file(aux_manifest)},
             {"reference": str(WHITELIST_PATH), "sha256": sha256_file(WHITELIST_PATH)},
@@ -389,13 +493,44 @@ def build_v3_release_payload(version: str = DEFAULT_VERSION) -> dict[str, Any]:
                 "sha256": impl_sha,
             },
         ]
-        payload_v330: dict[str, Any] = {
+        if version == "3.3.1":
+            amendment_v331_sha = git_blob_sha256(
+                ASHARE_INVESTOR_ROOT, AMENDMENT_V331_REV, AMENDMENT_V331_PATH
+            )
+            evidence_v33x.append(
+                {"reference": AMENDMENT_V331_REFERENCE, "sha256": amendment_v331_sha}
+            )
+            for ref in (
+                "research/batches/exp_v3_12_v331_architecture/PROTOCOL_V1.md",
+                "research/batches/exp_v3_12_v331_architecture/PROTOCOL_V2.md",
+                "research/batches/exp_v3_12_v331_architecture/run.py",
+                "research/batches/exp_v3_12_v331_architecture/run_r2.py",
+            ):
+                evidence_v33x.append(
+                    {"reference": ref, "sha256": sha256_file(TACTICORE_ROOT / ref)}
+                )
+            exit_v33x = _EXIT_V331
+            rules_v33x = list(_RULES_V331)
+            params_v33x = _v331_params(amendment_v331_sha, amendment_v330_sha, amendment_v321_sha)
+            lot_size_v33x = (
+                "100 shares integer board lots; >=1,000 CNY Super ETF / >=5,000 CNY Normal ETF; "
+                ">=8,000 CNY per stock pioneer trade"
+            )
+        else:
+            exit_v33x = _EXIT_V330
+            rules_v33x = list(_RULES_V330)
+            params_v33x = _v330_params(amendment_v330_sha, amendment_v321_sha)
+            lot_size_v33x = (
+                "100 shares integer board lots; minimum >=8,000 CNY per stock pioneer trade"
+            )
+
+        payload_v33x: dict[str, Any] = {
             "schema_version": "strategy-release-1",
             "research_status": "RESEARCH_PUBLISHED",
             "production_admission": "APPROVED_FOR_ACCOUNT",
             "strategy": {
                 "id": "V3_OFFENSIVE_LOW_FREQ_SYSTEM",
-                "version": "3.3.0",
+                "version": version,
                 "implementation_sha256": impl_sha,
             },
             "applicability": {
@@ -407,14 +542,12 @@ def build_v3_release_payload(version: str = DEFAULT_VERSION) -> dict[str, Any]:
                 "earliest_execution": (
                     "Next trading session T+1 (open_auction for stocks; T+1 ETF rebalance)"
                 ),
-                "exit": _EXIT_V330,
+                "exit": exit_v33x,
                 "fees": (
                     "Super ETF 0.5bp commission (min 0 CNY); normal ETF 2.5bp (min 5 CNY); "
                     "stocks 2.5bp (min 5 CNY) + 5bp sell stamp tax + 0.1bp transfer; 5bp slip"
                 ),
-                "lot_size": (
-                    "100 shares integer board lots; minimum >=8,000 CNY per stock pioneer trade"
-                ),
+                "lot_size": lot_size_v33x,
             },
             "inputs": {
                 "source": (
@@ -426,16 +559,16 @@ def build_v3_release_payload(version: str = DEFAULT_VERSION) -> dict[str, Any]:
                 "end_date": "2026-11-26",
                 "assets": _load_assets({"159649.SZ", "511260.SH"}),
             },
-            "rules": list(_RULES_V330),
-            "parameters": _v330_params(amendment_v330_sha, amendment_v321_sha),
-            "evidence": evidence_v330,
+            "rules": rules_v33x,
+            "parameters": params_v33x,
+            "evidence": evidence_v33x,
         }
         encoded = json.dumps(
-            payload_v330, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            payload_v33x, ensure_ascii=False, sort_keys=True, separators=(",", ":")
         )
-        payload_v330["content_hash"] = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
-        validate_strategy_release(payload_v330)
-        return payload_v330
+        payload_v33x["content_hash"] = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+        validate_strategy_release(payload_v33x)
+        return payload_v33x
 
     impl_sha = sha256_file(TACTICORE_ROOT / "research/ashare/v3_data.py")
     manifest_path = SNAPSHOT_DIR / "manifest.json"

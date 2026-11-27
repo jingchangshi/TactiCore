@@ -876,3 +876,22 @@
     - 全 6 组真实峰值回撤 `6/6` 优于 `v3.3.0`（`LEGACY70_100k` `-16.82% vs -17.09%`）；`LEGACY70_100000` 因 `BP1` 71 笔净亏 `-¥4,986.44` 触发 45 天穿 `-15%` 线致 R2 机器标记 `V3_3_1_NEEDS_REVIEW`（已如实保留），对应实施 `< ¥100k` 适用与 `>= ¥95k` 重检治理约束。
 - 证据：`research/results/EXP_V3_12_V331_ARCHITECTURE.{md,json}`、`research/results/EXP_V3_12_V331_ARCHITECTURE_R2.{md,json}`、`AShareInvestor/docs/v3-offensive-system/POLICY_AMENDMENT_20261127_V331.md`（提交 `f91cfe1c622025cd7a846843d48232ddba04a740`）、`AShareInvestor/docs/v3-offensive-system/conformance/parity_fixtures_v331.json`、[v3_offensive_policy_release_v3.3.1.json](../research/ashare/releases/v3_offensive_policy_release_v3.3.1.json)。
 
+## RL-073 `EXP-V3-13` & `EXP-V3-14`：`v3.4.0` Tri-Pillar（`CORE_40` + `B1` PIT `ERP/B/P` 包络 + `QualityCore v2` + 纯标量 `FVO`）有条件签发与 `B2` / `B1_G5_DIAG` 证伪
+
+- 研究域：`research/ashare/pit_fundamental_builder.py`、`research/ashare/exp_v3_13_backtest.py`、`research/ashare/exp_v3_14_backtest.py`、`tacticore/v34_reference_engine.py`。数据源：东财 40 季 PIT 财报底座（`2016Q4..2026Q3` `203,604` 行 / `5,667` 只 A 股，严格 `ann_date<=T` + 纯送转 `split_factor`，与 `2024–2026` `daily_basic_pit.csv` 交叉核验 `E/P r=0.998433`、`B/P r=0.999025`、`DV_TTM_PIT r=0.997850`）+ `bundle_20261126_root`（`2018-01-02..2026-11-26`）。
+- 状态：CLOSED（`Carbon High` 只读独立终审裁决 **`CONDITIONAL_APPROVAL_V3_4_0`**；签发 **`v3.4.0`** `de6879a2ea178453a7772bd51dbf0e4418380ff7d4f8f4bfd4d4904c9f128ebb`，保留 `< ¥100,000` `BP1` 休眠与 `>= ¥95,000` 解锁前复核门控，锁定 3 个月参数冻结期 `2026-11-30..2027-02-28`；`0` 违规、`integrity_ok=True`）。日期：2026-11-27。
+- 实证与裁决：
+  - **`EXP-V3-13` 正交阶梯**：`A3`（单用股息利差 `DV - y10Y`）因十年期国债利率单边下行触发 `1,070/2,159` 天（`49.6%`）导致过频高配而拉低 `69k` 统一账户；`B1`（756d `ERP+B/P` 双重确认 + `5%` 滞回）将极值触发健康收敛至低估 `531` 天（`24.6%`）/ 泡沫 `95` 天（`4.4%`）。
+  - **`EXP-V3-14` 主臂表现（`B1_PIT_ERP_BP_ENVELOPE` + `B3_BP1_QUALITY_V2_100K`）**：
+    - 全窗 VBT：`6.00% / -10.99% / Calmar 0.546`（IS `3.14%`、OOS `12.13% / -6.52% / Calmar 1.859`、`2026H2 -1.06% / -2.98%`）；
+    - 全窗原生 RQAlpha `69k`：`5.58% / -8.66% / Calmar 0.645`（IS `3.05%`、OOS `10.97%`、`2026H2 -0.95% / -2.74%`、LOYO 去 2025 `0.521 vs 0.415`、6 窗 WF `4/6`、`18` 组 `±5%` 高原最小保留 `90.01%` / 中位 `100.75%`，佣金较 `A0` 降 `-29.3%` 至 `¥3,199.95`）；
+    - 统一账户（`2024-02/07..2026-11-26`）：`69k` 3 组 CAGR `10.82% / 11.05% / 10.55%`（`TrueDD -5.92% / -6.10% / -6.12%`，Calmar `1.828 / 1.812 / 1.724`，`0` 笔 `BP1`）；`100k` 3 组经 `QualityCore v2`（`roe_dt>6%`, `eps>0`, `ocf_to_profit>=50%`, `bps>0`, `ann_date<=T`）后 `OOS_CASH_100k` `-9.72%`（Calmar `0.948`）、`CORE25_100k` `-8.65%`（Calmar `1.161`），均显著优于 `B1` 无质检版；
+    - 累积多重检验（`N_cum=44`）：`DSR_prob_cum = 0.9516`；双口径 CSCV `PBO`（`S=16`）：`PBO_distinct = 0.1287`（`N=7`）、`PBO_with_perturb = 0.4543`（`N=25`）。
+  - **奥卡姆剔除与证伪**：
+    - **`B2_IMPLIED_EXPECTATION_TILT` 正式踢出**：`B1 -> B2` 令 `R69k` 全窗 `ΔCalmar = -0.0363`、IS/OOS CAGR 双降（`-0.196pp / -0.289pp`）、交易笔数暴增 `+32.9%`（`1,058 vs 796`）、佣金 `+31.5%`（`¥4,207.82 vs ¥3,199.95`），彻底移出自动交易链与 Schema（`strategy_release.py` 显式拒收 `b2_*` / `implied_expectation_tilt`），仅作飞书三栏只读观测；
+    - **`B1_G5_DIAG`（5% 黄金）彻底证伪**：`R69k` `ΔCalmar = -0.2310`、IS CAGR 腰斩至 `1.23%`、`2026H2` 恶化至 `-2.64%`，永久锁定 `CORE_40`（`15%` 红利低波 + `10%` 黄金 `518880.SH` `±400bps` + `15%` 国债 `159649.SZ`）；
+    - **`FVO` 去膨胀**：保留纯标量 `equity_delta_bps`（默认 `0`、`±1000bps`、`TTL<=20d`、`P0>=8%`/泡沫正向归零、60d 归因 `<=-150bps` 减半至 `±500bps`），砍掉 `style_tilt`。
+  - **两处边界残差豁免披露**：① **残差 A**（`RQA 69k IS CAGR 3.05% vs A0 3.22%`，`-0.17pp`）系 `A0_69k` 旧底盘高单价国债整手向下截断在 2020 年形成的偶然红利（VBT `3.14% > 2.95%`、RQA `100k 2.91% > 2.54%`，且 `B1_69k` IS Calmar 提升 `+25.6%`），严禁回溯调参；② **残差 B**（`LEGACY70_100000` `True Peak DD = -12.80%`、净回撤 `-13.01%`）系期初强注 70% 单一半导体 ETF 的历史不可达极端初值冲击（已压降 `A0` `-16.82%` / 45 天穿 `-15%` 至 `0` 天穿线、`0` L2 锁），因该单元 `stock_bp1` 已实现盈亏 `-¥1,126.41`（`PF=0.958`，总归因 `+¥3,990.17`），强制保留 `NAV >= ¥95,000` 解锁前复核门控。
+- 证据：`research/ashare/reports/exp_v3_13_report.{md,json}`、`research/ashare/reports/exp_v3_14_report.{md,json}`、`AShareInvestor/docs/v3-offensive-system/POLICY_AMENDMENT_20261128_V340.md`（提交 `8d177ec97305be932af4f13d8914b462a75972e2`）、`AShareInvestor/docs/v3-offensive-system/conformance/parity_fixtures_v340.json`、[v3_offensive_policy_release_v3.4.0.json](../research/ashare/releases/v3_offensive_policy_release_v3.4.0.json)。
+
+

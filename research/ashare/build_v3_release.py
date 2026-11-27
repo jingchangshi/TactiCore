@@ -32,8 +32,8 @@ ASHARE_INVESTOR_ROOT = Path("/home/jcshi/workspace/AShareInvestor")
 RELEASE_DIR = TACTICORE_ROOT / "research/ashare/releases"
 FEE_PROFILE_DIR = ASHARE_INVESTOR_ROOT / "docs/v3-offensive-system/fee-profiles"
 
-SUPPORTED_VERSIONS = ("3.1.0", "3.2.0", "3.2.1", "3.3.0", "3.3.1")
-DEFAULT_VERSION = "3.3.1"
+SUPPORTED_VERSIONS = ("3.1.0", "3.2.0", "3.2.1", "3.3.0", "3.3.1", "3.4.0")
+DEFAULT_VERSION = "3.4.0"
 
 # 所有者批准记录：以批准当时的 git 提交固定字节（文件末尾之后会追加 v3.2.1 指纹行，
 # 因此不能用工作树当前字节作为证据哈希，否则会形成循环依赖）。
@@ -46,10 +46,14 @@ AMENDMENT_V330_REFERENCE = f"git:AShareInvestor@{AMENDMENT_V330_REV}:{AMENDMENT_
 AMENDMENT_V331_REV = "f91cfe1c622025cd7a846843d48232ddba04a740"
 AMENDMENT_V331_PATH = "docs/v3-offensive-system/POLICY_AMENDMENT_20261127_V331.md"
 AMENDMENT_V331_REFERENCE = f"git:AShareInvestor@{AMENDMENT_V331_REV}:{AMENDMENT_V331_PATH}"
+AMENDMENT_V340_REV = "8d177ec97305be932af4f13d8914b462a75972e2"
+AMENDMENT_V340_PATH = "docs/v3-offensive-system/POLICY_AMENDMENT_20261128_V340.md"
+AMENDMENT_V340_REFERENCE = f"git:AShareInvestor@{AMENDMENT_V340_REV}:{AMENDMENT_V340_PATH}"
 STOCK_SEMANTICS_SCRIPT = "research/ashare/experiments/exp_v3_02_stock_swing_rqalpha.py"
 V320_CONTENT_HASH = "05346a961e01f746055143e0bb5790caa9d6460aa579bb26c085cca20d77b55f"
 V321_CONTENT_HASH = "9869bd0b0ef02336c09fbaab921f5545d069a60039957c6f58b3fa1736e7eb9a"
 V330_CONTENT_HASH = "e192ffc764f2bcf5ccd020e62254d1e1b518a6ab7a9074acd1d91c74a5462051"
+V331_CONTENT_HASH = "29ad8fa8e2123df838f0c53630d77e9351dd60ee0ba8ac323e77480da2f9bb50"
 
 _EXIT_V31 = (
     "Dual-anchor regime shift, stock -8% hard stop / +15% breakeven / MA20 trailing, "
@@ -456,10 +460,153 @@ def _v331_params(
     return params
 
 
+_EXIT_V340 = (
+    "V3.4 Tri-Pillar: CORE_40 all-weather core (15% 159549/159207 + 10% 518880.SH ±400bps "
+    "wide band [6%,14%] & >=5,000 CNY + 15% 159649.SZ ±1000bps) + 60% dynamic satellite "
+    "(1 VALUE + 1 GROWTH upward-sticky), ICE_10 15d 35% floor (disabled under P0 L2), "
+    "B1 756d ERP+B/P dual envelope (5% hysteresis, normal DEFENSIVE=25%), REGIME_ONLY "
+    "low-turnover execution (10% satellite drift band), QualityCore v2 BP1 (>=100k, re-verify "
+    ">=95k), and scalar-only FVO (default 0, ±1000bps, TTL<=20d, zero positive on L1/bubble)"
+)
+_RULES_V340 = (
+    (
+        "CORE_40 all-weather strategic core (15% no-min-5 LOW_VOL 159549.SZ+159207.SZ, "
+        "10% physical gold 518880.SH with ±400bps wide band [6%,14%] & >=5,000 CNY single-leg "
+        "active rebalance, and 15% strategic treasury bond 159649.SZ ±1000bps band) paired with "
+        "60% dynamic 1 VALUE + 1 GROWTH upward-sticky satellite (B1_G5_DIAG 5% gold rejected)."
+    ),
+    (
+        "Dual-anchor market regime + M2 40% RECOVERY + ICE_10 15d 35% damping floor "
+        "(pct_above_ma60 < 10% triggers 15-trade-day window; disabled under P0 L2 lock which "
+        "enforces 10% hard lifeline; normal DEFENSIVE strictly stays 25%)."
+    ),
+    (
+        "B1 756d strictly causal ERP+B/P dual-confirmed envelope with 5% hysteresis: "
+        "EXTREME_UNDERVAL (erp>=80% & bp>=70%, exit <75% or <65%) lifts ICE_10 42.5% / "
+        "RECOVERY 50% / STRUCTURAL 65%; EXTREME_BUBBLE (erp<=15% & bp<=15%, exit >20% or >20%) "
+        "caps OFFENSIVE 70% / STRUCTURAL 50% without lifting ICE_10; normal DEFENSIVE=25%. "
+        "B2 implied expectation tilt is dropped from trading and schema-rejected."
+    ),
+    (
+        "REGIME_ONLY low-turnover execution with stateless bidirectional alignment "
+        "(align_glide_carryover_bps=3500, <2% dust clean-sweep, post-P3-SELL buy_headroom): "
+        "style flips without regime/budget change stay silent when satellite drift <10% "
+        "(gold within ±4%, bond within ±10%)."
+    ),
+    (
+        "Mainboard BP1_PULLBACK stocks require investable NAV >= 100,000 CNY (re-verify before "
+        "first stock order at NAV >= 95,000 CNY), non-target <=30%, and 40-quarter PIT "
+        "QualityCore v2 (annualized roe_dt>6%, basic_eps>0, ocf_to_profit>=50%, bps>0, "
+        "ann_date<=T, age<=550d); -8% hard stop / +15% breakeven / MA20 trailing."
+    ),
+    (
+        "Bounded scalar-only Forward View Overlay (FVO): default equity_delta_bps=0, "
+        "capped at ±1000bps, TTL<=20 trade days, positive FVO forced to 0 on P0>=8% (L1) or "
+        "EXTREME_BUBBLE, halved to ±500bps when 60d attribution <=-150bps, clamped to "
+        "[Floor, Cap]; no style_tilt."
+    ),
+    (
+        "TWO_STAGE_GRADUAL drawdown control (-8%->50%, -11%->25%, -13.5%->10% 10d lock + "
+        "unlock work-peak reanchor with 10d ramp; true_peak never re-anchored) and 3-month "
+        "parameter freeze 2026-11-30..2027-02-28."
+    ),
+)
+_RESULT_EVIDENCE_V340 = (
+    "research/ashare/pit_fundamental_builder.py",
+    "research/ashare/exp_v3_13_backtest.py",
+    "research/ashare/exp_v3_14_backtest.py",
+    "research/ashare/reports/exp_v3_13_report.md",
+    "research/ashare/reports/exp_v3_13_summary.json",
+    "research/ashare/reports/exp_v3_14_report.md",
+    "research/ashare/reports/exp_v3_14_summary.json",
+)
+
+
+def _v340_params(
+    amendment_v340_sha: str,
+    amendment_v331_sha: str,
+    amendment_v330_sha: str,
+    v321_amendment_sha: str,
+) -> dict[str, str]:
+    params = _v331_params(amendment_v331_sha, amendment_v330_sha, v321_amendment_sha)
+    params.update(
+        {
+            "defensive_equity_bps": "2500",
+            "lowvol_core_mode": "CORE_40",
+            "lowvol_core_permanent_share_bps": "1500",
+            "gold_core_etf": "518880.SH",
+            "gold_core_share_bps": "1000",
+            "gold_core_drift_band_bps": "400",
+            "gold_core_min_trade_cny": "5000",
+            "strategic_bond_core_share_bps": "1500",
+            "defensive_bond_reservoir_min_trade_cny": "5000",
+            "satellite_max_share_bps": "6000",
+            "ice10_floor_enabled": "true",
+            "ice10_pct_ma60_max_bps": "1000",
+            "ice10_window_trade_days": "15",
+            "ice10_equity_bps": "3500",
+            "ice10_disable_on_p0_lock": "true",
+            "fundamental_envelope_enabled": "true",
+            "fundamental_envelope_mode": "B1_PIT_ERP_BP_DUAL_756D",
+            "fundamental_envelope_lookback_days": "756",
+            "fundamental_hysteresis_bps": "500",
+            "fundamental_underval_erp_enter_bps": "8000",
+            "fundamental_underval_erp_exit_bps": "7500",
+            "fundamental_underval_bp_enter_bps": "7000",
+            "fundamental_underval_bp_exit_bps": "6500",
+            "fundamental_bubble_erp_enter_bps": "1500",
+            "fundamental_bubble_erp_exit_bps": "2000",
+            "fundamental_bubble_bp_enter_bps": "1500",
+            "fundamental_bubble_bp_exit_bps": "2000",
+            "fundamental_underval_offensive_bps": "8500",
+            "fundamental_underval_structural_bps": "6500",
+            "fundamental_underval_recovery_bps": "5000",
+            "fundamental_underval_ice10_bps": "4250",
+            "fundamental_underval_defensive_bps": "2500",
+            "fundamental_bubble_offensive_bps": "7000",
+            "fundamental_bubble_structural_bps": "5000",
+            "fundamental_bubble_recovery_bps": "4000",
+            "fundamental_bubble_ice10_bps": "3500",
+            "fundamental_bubble_defensive_bps": "2500",
+            "align_trigger_mode": "REGIME_ONLY",
+            "equity_align_drift_band_bps": "1000",
+            "satellite_align_drift_band_bps": "1000",
+            "quality_core_version": "v2",
+            "quality_core_roe_dt_ann_min_bps": "600",
+            "quality_core_eps_min": "0",
+            "quality_core_ocf_to_profit_min_bps": "5000",
+            "quality_core_bps_min": "0",
+            "quality_core_strict_ann_date": "true",
+            "stock_bp1_reverify_nav_cny": "95000",
+            "fvo_enabled": "true",
+            "fvo_scalar_only": "true",
+            "fvo_equity_delta_default_bps": "0",
+            "fvo_max_abs_delta_bps": "1000",
+            "fvo_max_ttl_trade_days": "20",
+            "fvo_zero_positive_on_l1_or_bubble": "true",
+            "fvo_l1_drawdown_bps": "800",
+            "fvo_60d_attribution_halve_trigger_bps": "-150",
+            "fvo_60d_attribution_halved_cap_bps": "500",
+            "policy_amendment_id": "POLICY_AMENDMENT_20261128_V340",
+            "policy_amendment_owner_approval_date": "2026-11-28",
+            "policy_amendment_effective_after": "2026-11-28",
+            "policy_amendment_record_ref": AMENDMENT_V340_REFERENCE,
+            "policy_amendment_record_sha256": amendment_v340_sha,
+            "policy_freeze_start_date": "2026-11-30",
+            "policy_freeze_end_date": "2027-02-28",
+            "supersedes_release_version": "3.3.1",
+            "supersedes_release_content_hash": V331_CONTENT_HASH,
+            "integration_study_ref": "research/ashare/exp_v3_14_backtest.py",
+        }
+    )
+    params.pop("l2_lock_allow_m2_early_release", None)
+    return params
+
+
 def build_v3_release_payload(version: str = DEFAULT_VERSION) -> dict[str, Any]:
     if version not in SUPPORTED_VERSIONS:
         raise ValueError(f"unsupported_release_version:{version}")
-    if version in {"3.3.0", "3.3.1"}:
+    if version in {"3.3.0", "3.3.1", "3.4.0"}:
         from research.ashare import v3_data_202611 as d2611
 
         impl_path = TACTICORE_ROOT / "research/ashare/v3_data_202611.py"
@@ -471,16 +618,15 @@ def build_v3_release_payload(version: str = DEFAULT_VERSION) -> dict[str, Any]:
         )
         amendment_v321_sha = git_blob_sha256(ASHARE_INVESTOR_ROOT, AMENDMENT_REV, AMENDMENT_PATH)
         ev_refs = [*_RESULT_EVIDENCE_V31, *_RESULT_EVIDENCE_V32_ADDED, *_RESULT_EVIDENCE_V330]
-        if version == "3.3.1":
+        if version in {"3.3.1", "3.4.0"}:
             ev_refs.extend(_RESULT_EVIDENCE_V331)
+        if version == "3.4.0":
+            ev_refs.extend(_RESULT_EVIDENCE_V340)
         evidence_v33x: list[dict[str, str]] = [
             {"reference": str(snap_manifest), "sha256": sha256_file(snap_manifest)},
             {"reference": str(aux_manifest), "sha256": sha256_file(aux_manifest)},
             {"reference": str(WHITELIST_PATH), "sha256": sha256_file(WHITELIST_PATH)},
-            *[
-                {"reference": ref, "sha256": sha256_file(TACTICORE_ROOT / ref)}
-                for ref in ev_refs
-            ],
+            *[{"reference": ref, "sha256": sha256_file(TACTICORE_ROOT / ref)} for ref in ev_refs],
             {"reference": AMENDMENT_V330_REFERENCE, "sha256": amendment_v330_sha},
             {
                 "reference": "research/batches/exp_v3_11_v330_integration/run.py",
@@ -493,7 +639,8 @@ def build_v3_release_payload(version: str = DEFAULT_VERSION) -> dict[str, Any]:
                 "sha256": impl_sha,
             },
         ]
-        if version == "3.3.1":
+        extra_assets = {"159649.SZ", "511260.SH"}
+        if version in {"3.3.1", "3.4.0"}:
             amendment_v331_sha = git_blob_sha256(
                 ASHARE_INVESTOR_ROOT, AMENDMENT_V331_REV, AMENDMENT_V331_PATH
             )
@@ -509,6 +656,24 @@ def build_v3_release_payload(version: str = DEFAULT_VERSION) -> dict[str, Any]:
                 evidence_v33x.append(
                     {"reference": ref, "sha256": sha256_file(TACTICORE_ROOT / ref)}
                 )
+        if version == "3.4.0":
+            amendment_v340_sha = git_blob_sha256(
+                ASHARE_INVESTOR_ROOT, AMENDMENT_V340_REV, AMENDMENT_V340_PATH
+            )
+            evidence_v33x.append(
+                {"reference": AMENDMENT_V340_REFERENCE, "sha256": amendment_v340_sha}
+            )
+            extra_assets.add("518880.SH")
+            exit_v33x = _EXIT_V340
+            rules_v33x = list(_RULES_V340)
+            params_v33x = _v340_params(
+                amendment_v340_sha, amendment_v331_sha, amendment_v330_sha, amendment_v321_sha
+            )
+            lot_size_v33x = (
+                "100 shares integer board lots; >=1,000 CNY Super ETF / >=5,000 CNY Normal ETF "
+                "(including 518880.SH & 159649.SZ); >=8,000 CNY per stock pioneer trade"
+            )
+        elif version == "3.3.1":
             exit_v33x = _EXIT_V331
             rules_v33x = list(_RULES_V331)
             params_v33x = _v331_params(amendment_v331_sha, amendment_v330_sha, amendment_v321_sha)
@@ -557,7 +722,7 @@ def build_v3_release_payload(version: str = DEFAULT_VERSION) -> dict[str, Any]:
                 "snapshot": "93cfb3e05e49d11e121b687930dc9e5040493e3dbaf23294325040ac468947ec",
                 "start_date": "2018-01-02",
                 "end_date": "2026-11-26",
-                "assets": _load_assets({"159649.SZ", "511260.SH"}),
+                "assets": _load_assets(extra_assets),
             },
             "rules": rules_v33x,
             "parameters": params_v33x,

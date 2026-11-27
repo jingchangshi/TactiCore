@@ -49,6 +49,45 @@ def _list(value: Any) -> list[Any]:
     return value
 
 
+def _validate_v340_parameters(parameters: dict[str, str]) -> None:
+    """Enforce v3.4.0 Tri-Pillar schema invariants and reject B2/style_tilt regressions."""
+    for key in parameters:
+        if "style_tilt" in key.lower():
+            _fail()
+    required = {
+        "lowvol_core_mode": "CORE_40",
+        "lowvol_core_permanent_share_bps": "1500",
+        "gold_core_etf": "518880.SH",
+        "gold_core_share_bps": "1000",
+        "gold_core_drift_band_bps": "400",
+        "gold_core_min_trade_cny": "5000",
+        "strategic_bond_core_share_bps": "1500",
+        "defensive_bond_reservoir_etf": "159649.SZ",
+        "defensive_bond_reservoir_drift_band_bps": "1000",
+        "defensive_equity_bps": "2500",
+        "ice10_floor_enabled": "true",
+        "ice10_equity_bps": "3500",
+        "ice10_window_trade_days": "15",
+        "ice10_disable_on_p0_lock": "true",
+        "fundamental_envelope_enabled": "true",
+        "fundamental_envelope_mode": "B1_PIT_ERP_BP_DUAL_756D",
+        "align_trigger_mode": "REGIME_ONLY",
+        "equity_align_drift_band_bps": "1000",
+        "quality_core_version": "v2",
+        "fvo_enabled": "true",
+        "fvo_scalar_only": "true",
+        "fvo_equity_delta_default_bps": "0",
+        "fvo_max_abs_delta_bps": "1000",
+        "fvo_max_ttl_trade_days": "20",
+        "fvo_zero_positive_on_l1_or_bubble": "true",
+        "fvo_60d_attribution_halve_trigger_bps": "-150",
+        "fvo_60d_attribution_halved_cap_bps": "500",
+    }
+    for key, expected in required.items():
+        if parameters.get(key) != expected:
+            _fail()
+
+
 def validate_strategy_release(value: Any) -> str:
     """Check every field and the canonical content hash; raise ValueError on failure."""
     root = _object(
@@ -112,7 +151,16 @@ def validate_strategy_release(value: Any) -> str:
     for key, val in parameters.items():
         if not isinstance(key, str) or not _KEY.fullmatch(key):
             _fail()
+        key_lower = key.lower()
+        if (
+            key_lower == "implied_expectation_tilt"
+            or key_lower.startswith("b2_")
+            or key_lower == "l2_lock_allow_m2_early_release"
+        ):
+            _fail()
         _text(val)
+    if strategy["version"] == "3.4.0":
+        _validate_v340_parameters(parameters)
     for item in _list(root["evidence"]):
         evidence = _object(item, {"reference", "sha256"})
         _text(evidence["reference"])

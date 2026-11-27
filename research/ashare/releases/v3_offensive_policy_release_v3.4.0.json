@@ -1,0 +1,419 @@
+{
+  "schema_version": "strategy-release-1",
+  "research_status": "RESEARCH_PUBLISHED",
+  "production_admission": "APPROVED_FOR_ACCOUNT",
+  "strategy": {
+    "id": "V3_OFFENSIVE_LOW_FREQ_SYSTEM",
+    "version": "3.4.0",
+    "implementation_sha256": "0b8655c6f09fff49a8c8af10b0780c98477e2a4cc4095390e354fac8525ffd6e"
+  },
+  "applicability": {
+    "market": "CN_ASHARE_MAINBOARD_AND_EXCHANGE_ETF",
+    "environment": "EASTMONEY_100K_LOW_FREQ_ACCOUNT"
+  },
+  "execution_assumptions": {
+    "signal_timing": "End-of-day PIT close indicators after market close (T)",
+    "earliest_execution": "Next trading session T+1 (open_auction for stocks; T+1 ETF rebalance)",
+    "exit": "V3.4 Tri-Pillar: CORE_40 all-weather core (15% 159549/159207 + 10% 518880.SH ±400bps wide band [6%,14%] & >=5,000 CNY + 15% 159649.SZ ±1000bps) + 60% dynamic satellite (1 VALUE + 1 GROWTH upward-sticky), ICE_10 15d 35% floor (disabled under P0 L2), B1 756d ERP+B/P dual envelope (5% hysteresis, normal DEFENSIVE=25%), REGIME_ONLY low-turnover execution (10% satellite drift band), QualityCore v2 BP1 (>=100k, re-verify >=95k), and scalar-only FVO (default 0, ±1000bps, TTL<=20d, zero positive on L1/bubble)",
+    "fees": "Super ETF 0.5bp commission (min 0 CNY); normal ETF 2.5bp (min 5 CNY); stocks 2.5bp (min 5 CNY) + 5bp sell stamp tax + 0.1bp transfer; 5bp slip",
+    "lot_size": "100 shares integer board lots; >=1,000 CNY Super ETF / >=5,000 CNY Normal ETF (including 518880.SH & 159649.SZ); >=8,000 CNY per stock pioneer trade"
+  },
+  "inputs": {
+    "source": "FinanceMCP research-export PIT snapshot v3_snapshot_20261126 + v3_aux_20261126 + RQAlpha bundle_202611",
+    "snapshot": "93cfb3e05e49d11e121b687930dc9e5040493e3dbaf23294325040ac468947ec",
+    "start_date": "2018-01-02",
+    "end_date": "2026-11-26",
+    "assets": [
+      "158049.SZ",
+      "159045.SZ",
+      "159052.SZ",
+      "159107.SZ",
+      "159153.SZ",
+      "159160.SZ",
+      "159161.SZ",
+      "159205.SZ",
+      "159207.SZ",
+      "159241.SZ",
+      "159278.SZ",
+      "159290.SZ",
+      "159321.SZ",
+      "159330.SZ",
+      "159337.SZ",
+      "159380.SZ",
+      "159549.SZ",
+      "159550.SZ",
+      "159558.SZ",
+      "159599.SZ",
+      "159622.SZ",
+      "159637.SZ",
+      "159649.SZ",
+      "159692.SZ",
+      "159994.SZ",
+      "510140.SH",
+      "510170.SH",
+      "511010.SH",
+      "511260.SH",
+      "515040.SH",
+      "516150.SH",
+      "518880.SH",
+      "530050.SH",
+      "560480.SH",
+      "588750.SH",
+      "589060.SH",
+      "589330.SH",
+      "589850.SH",
+      "CN_MAINBOARD_QUALITY_SWING_TOP2"
+    ]
+  },
+  "rules": [
+    "CORE_40 all-weather strategic core (15% no-min-5 LOW_VOL 159549.SZ+159207.SZ, 10% physical gold 518880.SH with ±400bps wide band [6%,14%] & >=5,000 CNY single-leg active rebalance, and 15% strategic treasury bond 159649.SZ ±1000bps band) paired with 60% dynamic 1 VALUE + 1 GROWTH upward-sticky satellite (B1_G5_DIAG 5% gold rejected).",
+    "Dual-anchor market regime + M2 40% RECOVERY + ICE_10 15d 35% damping floor (pct_above_ma60 < 10% triggers 15-trade-day window; disabled under P0 L2 lock which enforces 10% hard lifeline; normal DEFENSIVE strictly stays 25%).",
+    "B1 756d strictly causal ERP+B/P dual-confirmed envelope with 5% hysteresis: EXTREME_UNDERVAL (erp>=80% & bp>=70%, exit <75% or <65%) lifts ICE_10 42.5% / RECOVERY 50% / STRUCTURAL 65%; EXTREME_BUBBLE (erp<=15% & bp<=15%, exit >20% or >20%) caps OFFENSIVE 70% / STRUCTURAL 50% without lifting ICE_10; normal DEFENSIVE=25%. B2 implied expectation tilt is dropped from trading and schema-rejected.",
+    "REGIME_ONLY low-turnover execution with stateless bidirectional alignment (align_glide_carryover_bps=3500, <2% dust clean-sweep, post-P3-SELL buy_headroom): style flips without regime/budget change stay silent when satellite drift <10% (gold within ±4%, bond within ±10%).",
+    "Mainboard BP1_PULLBACK stocks require investable NAV >= 100,000 CNY (re-verify before first stock order at NAV >= 95,000 CNY), non-target <=30%, and 40-quarter PIT QualityCore v2 (annualized roe_dt>6%, basic_eps>0, ocf_to_profit>=50%, bps>0, ann_date<=T, age<=550d); -8% hard stop / +15% breakeven / MA20 trailing.",
+    "Bounded scalar-only Forward View Overlay (FVO): default equity_delta_bps=0, capped at ±1000bps, TTL<=20 trade days, positive FVO forced to 0 on P0>=8% (L1) or EXTREME_BUBBLE, halved to ±500bps when 60d attribution <=-150bps, clamped to [Floor, Cap]; no style_tilt.",
+    "TWO_STAGE_GRADUAL drawdown control (-8%->50%, -11%->25%, -13.5%->10% 10d lock + unlock work-peak reanchor with 10d ramp; true_peak never re-anchored) and 3-month parameter freeze 2026-11-30..2027-02-28."
+  ],
+  "parameters": {
+    "offensive_equity_bps": "8500",
+    "structural_equity_bps": "6000",
+    "defensive_equity_bps": "2500",
+    "defensive_bond_reservoir_etf": "159649.SZ",
+    "super_etf_commission_rate": "0.00005",
+    "super_etf_min_commission_cents": "0",
+    "cross_border_max_premium_bps": "250",
+    "bp1_pullback_status": "ENABLED",
+    "bp1_oos_100k_net_expectancy_pct": "+2.329",
+    "bp1_oos_70k_net_expectancy_pct": "+0.592",
+    "bp2_breakout_status": "DROPPED_NEGATIVE_OOS",
+    "bp2_oos_100k_net_expectancy_pct": "-0.187",
+    "bp2_oos_70k_net_expectancy_pct": "-0.001",
+    "stock_hard_stop_max_loss_bps": "800",
+    "stock_breakeven_arm_gain_bps": "1500",
+    "stock_max_positions": "2",
+    "stock_max_single_weight_bps": "1800",
+    "stock_risk_budget_per_trade_bps": "130",
+    "deconcentration_mode": "BOTTOM_GRIND_25",
+    "deconcentration_tranches": "4",
+    "deconcentration_keep_weight_bps": "2500",
+    "deconcentration_rebound_trigger_bps": "800",
+    "deconcentration_monthly_min_gap_days": "12",
+    "deconcentration_monthly_rule_enabled": "false",
+    "deconcentration_support_breakdown_confirm_days": "2",
+    "grind_tactical_slot_bps": "1000",
+    "grind_reload_min_discount_bps": "700",
+    "grind_reload_ma60_slope10_min_bps": "0",
+    "grind_reload_rsi14_max": "36",
+    "grind_reload_bias20_max_bps": "-650",
+    "grind_take_profit_bps": "750",
+    "grind_drift_harvest_trigger_bps": "3400",
+    "l1_warn_drawdown_bps": "800",
+    "l2_hard_lifeline_drawdown_bps": "1350",
+    "l2_preemptive_trigger_drawdown_bps": "1200",
+    "l2_deconcentration_post_breaker_equity_bps": "0",
+    "l2_lock_trade_days": "10",
+    "stock_industry_top30_gate_default": "false",
+    "stock_industry_top30_gate_research_switch": "requireIndustryTop30",
+    "stock_ma20_exit_mode": "UNCONDITIONAL_CLOSE_BELOW_MA20_NEXT_SESSION",
+    "stock_ma20_exit_requires_breakeven_arm": "false",
+    "stock_breakeven_arm_effect": "RAISE_STOP_TO_COST_ONLY",
+    "etf_trailing_ma20_requires_arm": "true",
+    "etf_trailing_ma20_arm_gain_bps": "1500",
+    "policy_amendment_id": "POLICY_AMENDMENT_20261128_V340",
+    "policy_amendment_owner_approval_date": "2026-11-28",
+    "policy_amendment_effective_after": "2026-11-28",
+    "policy_amendment_record_ref": "git:AShareInvestor@8d177ec97305be932af4f13d8914b462a75972e2:docs/v3-offensive-system/POLICY_AMENDMENT_20261128_V340.md",
+    "policy_amendment_record_sha256": "1264a119cdb50bc6ae9e231f9e6e13aff6b9bed4a071d09e09c51a40581f3219",
+    "supersedes_release_version": "3.3.1",
+    "supersedes_release_content_hash": "29ad8fa8e2123df838f0c53630d77e9351dd60ee0ba8ac323e77480da2f9bb50",
+    "stock_semantics_reference": "research/ashare/experiments/exp_v3_02_stock_swing_rqalpha.py",
+    "implementation_sha256_basis": "research/ashare/v3_data.py unchanged since v3.1.0 and v3.2.0; the amended stock semantics are the defaults already implemented in research/ashare/experiments/exp_v3_02_stock_swing_rqalpha.py",
+    "defensive_bond_reservoir_fallback_etf": "511260.SH",
+    "defensive_bond_reservoir_tertiary_etf": "511010.SH",
+    "defensive_bond_reservoir_drift_band_bps": "1000",
+    "l2_normal_post_breaker_equity_bps": "1000",
+    "recovery_overlay_enabled": "true",
+    "recovery_overlay_mode": "M2_BREADTH_THRUST",
+    "recovery_equity_bps": "4000",
+    "recovery_icepoint_pct_ma60_max_bps": "1500",
+    "recovery_icepoint_pct_ma20_max_bps": "1500",
+    "recovery_icepoint_lookback_days": "10",
+    "recovery_thrust_pct_ma20_min_bps": "4500",
+    "recovery_thrust_5d_jump_min_bps": "3000",
+    "recovery_thrust_floor_pct_ma20_bps": "4000",
+    "recovery_min_amount_vs_ma20_bps": "11500",
+    "recovery_false_breakout_cooldown_days": "10",
+    "lowvol_core_permanent_share_bps": "1500",
+    "drawdown_control_mode": "TWO_STAGE_GRADUAL",
+    "drawdown_stage1_bps": "800",
+    "drawdown_stage1_cap_bps": "5000",
+    "drawdown_stage2_bps": "1100",
+    "drawdown_stage2_cap_bps": "2500",
+    "drawdown_lock_trigger_bps": "1350",
+    "drawdown_normal_post_lock_cap_bps": "1000",
+    "drawdown_conc_post_lock_cap_bps": "0",
+    "drawdown_unlock_reanchor_enabled": "true",
+    "drawdown_unlock_ramp_trade_days": "10",
+    "sector_pioneer_enabled": "false",
+    "sector_pioneer_rank_mode": "BLEND_20_60",
+    "sector_pioneer_top_k": "1",
+    "sector_pioneer_max_weight_bps": "2000",
+    "sector_pioneer_require_above_ma60": "true",
+    "stock_bp1_min_investable_nav_cny": "100000",
+    "stock_bp1_block_during_deconcentration": "true",
+    "integration_study_ref": "research/ashare/exp_v3_14_backtest.py",
+    "deconcentration_plan_enabled": "false",
+    "regime_target_enforced_on_existing_holdings": "true",
+    "align_glide_carryover_bps": "3500",
+    "equity_align_drift_band_bps": "1000",
+    "chassis_single_etf_per_style_bucket": "true",
+    "p1_etf_trailing_sleeves": "SECTOR_PIONEER",
+    "l2_normal_trigger_drawdown_bps": "1350",
+    "lowvol_core_mode": "CORE_40",
+    "gold_core_etf": "518880.SH",
+    "gold_core_share_bps": "1000",
+    "gold_core_drift_band_bps": "400",
+    "gold_core_min_trade_cny": "5000",
+    "strategic_bond_core_share_bps": "1500",
+    "defensive_bond_reservoir_min_trade_cny": "5000",
+    "satellite_max_share_bps": "6000",
+    "ice10_floor_enabled": "true",
+    "ice10_pct_ma60_max_bps": "1000",
+    "ice10_window_trade_days": "15",
+    "ice10_equity_bps": "3500",
+    "ice10_disable_on_p0_lock": "true",
+    "fundamental_envelope_enabled": "true",
+    "fundamental_envelope_mode": "B1_PIT_ERP_BP_DUAL_756D",
+    "fundamental_envelope_lookback_days": "756",
+    "fundamental_hysteresis_bps": "500",
+    "fundamental_underval_erp_enter_bps": "8000",
+    "fundamental_underval_erp_exit_bps": "7500",
+    "fundamental_underval_bp_enter_bps": "7000",
+    "fundamental_underval_bp_exit_bps": "6500",
+    "fundamental_bubble_erp_enter_bps": "1500",
+    "fundamental_bubble_erp_exit_bps": "2000",
+    "fundamental_bubble_bp_enter_bps": "1500",
+    "fundamental_bubble_bp_exit_bps": "2000",
+    "fundamental_underval_offensive_bps": "8500",
+    "fundamental_underval_structural_bps": "6500",
+    "fundamental_underval_recovery_bps": "5000",
+    "fundamental_underval_ice10_bps": "4250",
+    "fundamental_underval_defensive_bps": "2500",
+    "fundamental_bubble_offensive_bps": "7000",
+    "fundamental_bubble_structural_bps": "5000",
+    "fundamental_bubble_recovery_bps": "4000",
+    "fundamental_bubble_ice10_bps": "3500",
+    "fundamental_bubble_defensive_bps": "2500",
+    "align_trigger_mode": "REGIME_ONLY",
+    "satellite_align_drift_band_bps": "1000",
+    "quality_core_version": "v2",
+    "quality_core_roe_dt_ann_min_bps": "600",
+    "quality_core_eps_min": "0",
+    "quality_core_ocf_to_profit_min_bps": "5000",
+    "quality_core_bps_min": "0",
+    "quality_core_strict_ann_date": "true",
+    "stock_bp1_reverify_nav_cny": "95000",
+    "fvo_enabled": "true",
+    "fvo_scalar_only": "true",
+    "fvo_equity_delta_default_bps": "0",
+    "fvo_max_abs_delta_bps": "1000",
+    "fvo_max_ttl_trade_days": "20",
+    "fvo_zero_positive_on_l1_or_bubble": "true",
+    "fvo_l1_drawdown_bps": "800",
+    "fvo_60d_attribution_halve_trigger_bps": "-150",
+    "fvo_60d_attribution_halved_cap_bps": "500",
+    "policy_freeze_start_date": "2026-11-30",
+    "policy_freeze_end_date": "2027-02-28"
+  },
+  "evidence": [
+    {
+      "reference": "/home/jcshi/.local/share/finance-mcp-ashare/exports/v3_snapshot_20261126/manifest.json",
+      "sha256": "8940d33f4a92069055cded5d8478797f001133bd984084a9b03fe2a348e01128"
+    },
+    {
+      "reference": "/home/jcshi/.local/share/finance-mcp-ashare/exports/v3_aux_20261126/aux_manifest.json",
+      "sha256": "56fe920abb7c5b74c5078b3671386b68a4eecc63c5a02e922b399eb911b1b410"
+    },
+    {
+      "reference": "/home/jcshi/workspace/AShareInvestor/docs/v3-offensive-system/fee-profiles/super_etf_whitelist_20261115.json",
+      "sha256": "d0c30ecc2c4f18de21827b02bff1db78cc29b853fe40481a17ad8d9facbb07c0"
+    },
+    {
+      "reference": "research/results/EXP_V3_01_REGIME_SUPER_ETF.json",
+      "sha256": "edd66100d80783becebcae27c70361852141608ca4c85b40839413c79dbbdb7e"
+    },
+    {
+      "reference": "research/results/EXP_V3_01_REGIME_SUPER_ETF.md",
+      "sha256": "cb8257d154678e4c558db1a0ca6e48cb9df20cdddbb1f2f58b57d5db7e73c14c"
+    },
+    {
+      "reference": "research/results/EXP_V3_02_MAINBOARD_STOCK_SWING.json",
+      "sha256": "41e435226e92e2f399fd5b0e4dddea5a6632a9dd21577461faa229a62f2243e3"
+    },
+    {
+      "reference": "research/results/EXP_V3_02_MAINBOARD_STOCK_SWING.md",
+      "sha256": "e0f12a4ab9df7f5ee423a48470435e90db91be44c31eb81f714e2709290271f1"
+    },
+    {
+      "reference": "research/results/EXP_V3_03_DECONCENTRATION_PATHS.json",
+      "sha256": "adf652843c2d4a0699193ab748ef5fd92199345f81619c1d61bd18304e3c9fbc"
+    },
+    {
+      "reference": "research/results/EXP_V3_03_DECONCENTRATION_PATHS.md",
+      "sha256": "53c274a2c6bef219ad44b67de758f41d2b3a04962622129bfaba7c532ad3138b"
+    },
+    {
+      "reference": "research/results/EXP_V3_04_BOTTOM_GRIND_COST_REDUCTION.json",
+      "sha256": "d8551f1321b4f8c21a624714a00539a7810ccaef9f694053b0e740e2926a0234"
+    },
+    {
+      "reference": "research/results/EXP_V3_04_BOTTOM_GRIND_COST_REDUCTION.md",
+      "sha256": "673a7f3cd31c51fbd638b1df2b97533b2ec500ee8f59e121ebb6ae42ffa617ee"
+    },
+    {
+      "reference": "research/results/V3_COMPLEXITY_HURDLE_V2.json",
+      "sha256": "fc2d56fe49d12a0e31b118e138f4ad419238c798b53da6d5ac596dd1a368a712"
+    },
+    {
+      "reference": "research/results/V3_COMPLEXITY_HURDLE_V2.md",
+      "sha256": "88a1bef60a3a887a26c43182fb8350c1a1762babfb85dc78287988f7d036afb1"
+    },
+    {
+      "reference": "research/results/EXP_V3_05B_ACCOUNT_REPLAY_FULL.json",
+      "sha256": "b4818043467934c91878c6d49afb321fab9cea9522fff230c70589356e668e70"
+    },
+    {
+      "reference": "research/results/EXP_V3_05B_ACCOUNT_REPLAY_FULL.md",
+      "sha256": "2d81decd6840873a59ee902f1f53e7f20574a77fa128674648f141800b96f704"
+    },
+    {
+      "reference": "research/results/EXP_V3_06_DEFENSIVE_ROTATION.json",
+      "sha256": "95807c0fcd2338d3bda0ee947deee2ba375e630b2371af23244b1640f81730ae"
+    },
+    {
+      "reference": "research/results/EXP_V3_06_DEFENSIVE_ROTATION.md",
+      "sha256": "62ac3dde5d3ee1015450cf79a3117aeb172ffae29345bab7bc9f2f71bec588b9"
+    },
+    {
+      "reference": "research/results/EXP_V3_07_LOWVOL_RISK_BUDGET.json",
+      "sha256": "2c3e93084f3756a4f500932d95f180e3841d6fa78a0795a097cc50ee9ecf20dc"
+    },
+    {
+      "reference": "research/results/EXP_V3_07_LOWVOL_RISK_BUDGET.md",
+      "sha256": "8364e2f4e21de6d91bddccf2320f7730fadda6c9e6190f1fbfa6a6615c3572df"
+    },
+    {
+      "reference": "research/results/EXP_V3_08_ICEPOINT_RECOVERY.json",
+      "sha256": "ce7521b6a6d5718007324a31d5e09fb4f0f835218782452018f6e30bcd6264e0"
+    },
+    {
+      "reference": "research/results/EXP_V3_08_ICEPOINT_RECOVERY.md",
+      "sha256": "cfe69e7397562b1efdf75f039c67121e2fa631e7a99fa74c2b63c549166e03bf"
+    },
+    {
+      "reference": "research/results/EXP_V3_09_DRAWDOWN_CONTROL_V2.json",
+      "sha256": "55f9bb3aa1e56077073093d6949cd4fcc1fa674b434194de85514ec109f35b2b"
+    },
+    {
+      "reference": "research/results/EXP_V3_09_DRAWDOWN_CONTROL_V2.md",
+      "sha256": "148b148e9c29e6ea951c96aa49e3af6d6a34a004ebecca1158348435cbd9625f"
+    },
+    {
+      "reference": "research/results/EXP_V3_10_PIONEER_ALPHA.json",
+      "sha256": "9b3cd4ad89b61461fbb9ef9606c47c180f9912ef0fa49b7eb279f71ba4831c0e"
+    },
+    {
+      "reference": "research/results/EXP_V3_10_PIONEER_ALPHA.md",
+      "sha256": "bb51643e2a7edf315855dbf068306182e627b0a6b40112d9402e4a1b353d2487"
+    },
+    {
+      "reference": "research/results/EXP_V3_11_V330_INTEGRATION.json",
+      "sha256": "4aa549ba3d3e0d779a0c0e2921e4f333db7fb44954470be56defc1381e20fbf3"
+    },
+    {
+      "reference": "research/results/EXP_V3_11_V330_INTEGRATION.md",
+      "sha256": "9941d7de8af494211e7f61fdd9e9e6ae8ce8d27481c22d0d1ab42fc06c8fa50b"
+    },
+    {
+      "reference": "research/results/EXP_V3_12_V331_ARCHITECTURE.json",
+      "sha256": "884779dcb319b1555ff779573572d909f1a5792b25cba15415624167da09e2f6"
+    },
+    {
+      "reference": "research/results/EXP_V3_12_V331_ARCHITECTURE.md",
+      "sha256": "6cd9a64b935d4c47126b25d82918ee0ae197dad85d393416662fb73c7cee3ceb"
+    },
+    {
+      "reference": "research/results/EXP_V3_12_V331_ARCHITECTURE_R2.json",
+      "sha256": "041b73213dd338a956699b941cc04acd0f2d57dcb662b741758efffe8849764f"
+    },
+    {
+      "reference": "research/results/EXP_V3_12_V331_ARCHITECTURE_R2.md",
+      "sha256": "a95f84cff16429bdebc021aff935c8b98d70fa98f63228cc0dee6b67e548868a"
+    },
+    {
+      "reference": "research/ashare/pit_fundamental_builder.py",
+      "sha256": "38439da8187ea5e60946d722b7be818db9e010667441e781381b115305e15b8d"
+    },
+    {
+      "reference": "research/ashare/exp_v3_13_backtest.py",
+      "sha256": "2c9919913e336e354f31dd10399a243c9e10f68d7aad9752176c58095cd70b95"
+    },
+    {
+      "reference": "research/ashare/exp_v3_14_backtest.py",
+      "sha256": "c1f700c8755c217d629886ee0331b2f0bc16367ad41a4fbb3afe6025180444a6"
+    },
+    {
+      "reference": "research/ashare/reports/exp_v3_13_report.md",
+      "sha256": "6a3016d6e99948cc25cfeabf4d7cc7b83fb9e8b2f4386ad5f8f576dd89f1138f"
+    },
+    {
+      "reference": "research/ashare/reports/exp_v3_13_summary.json",
+      "sha256": "04425b262d504844b991458674d436026fef0db774db03f7ea5051e0485b8c6d"
+    },
+    {
+      "reference": "research/ashare/reports/exp_v3_14_report.md",
+      "sha256": "508df8692400bc877a3ab1fa48b24103cd30b8ef628fb5e2f7e623b062912dc7"
+    },
+    {
+      "reference": "research/ashare/reports/exp_v3_14_summary.json",
+      "sha256": "f606e156741a303418f398ba789cc75fb1be684c79d81442fc0acac241b5cd50"
+    },
+    {
+      "reference": "git:AShareInvestor@9c736c2f35a9be73971aacf81440343a491819ca:docs/v3-offensive-system/POLICY_AMENDMENT_20261126_V330.md",
+      "sha256": "f25e48279a59d1c71978cd239d5de4d4d7d142b18f8d4a7ff7de5411a606e034"
+    },
+    {
+      "reference": "research/batches/exp_v3_11_v330_integration/run.py",
+      "sha256": "58672c9a0cfa74abf4d7d6420abc4588f38bb090047b133772951c4dc74afb26"
+    },
+    {
+      "reference": "research/ashare/v3_data_202611.py",
+      "sha256": "0b8655c6f09fff49a8c8af10b0780c98477e2a4cc4095390e354fac8525ffd6e"
+    },
+    {
+      "reference": "git:AShareInvestor@f91cfe1c622025cd7a846843d48232ddba04a740:docs/v3-offensive-system/POLICY_AMENDMENT_20261127_V331.md",
+      "sha256": "c1f5f0a466046a51da98ff6b0c28ab37b5652e3e2c06377e2151411c3a9e4888"
+    },
+    {
+      "reference": "research/batches/exp_v3_12_v331_architecture/PROTOCOL_V1.md",
+      "sha256": "355ba448a1707ac4543ee5012f10939a973a7425643fb27decc37fcfac48df1e"
+    },
+    {
+      "reference": "research/batches/exp_v3_12_v331_architecture/PROTOCOL_V2.md",
+      "sha256": "25e534f88a56bde86945ea649e00fbb015925ae041a2ba7128b166c3d00e873b"
+    },
+    {
+      "reference": "research/batches/exp_v3_12_v331_architecture/run.py",
+      "sha256": "d355845c00765ac2971c3e75a2d4923aab22e303be850a31e5c0b1280c6bf085"
+    },
+    {
+      "reference": "research/batches/exp_v3_12_v331_architecture/run_r2.py",
+      "sha256": "d577ed4d51836b1b3c5d7328cdab81a7f8761eb576edcdee97d8b7afca1d6173"
+    },
+    {
+      "reference": "git:AShareInvestor@8d177ec97305be932af4f13d8914b462a75972e2:docs/v3-offensive-system/POLICY_AMENDMENT_20261128_V340.md",
+      "sha256": "1264a119cdb50bc6ae9e231f9e6e13aff6b9bed4a071d09e09c51a40581f3219"
+    }
+  ],
+  "content_hash": "de6879a2ea178453a7772bd51dbf0e4418380ff7d4f8f4bfd4d4904c9f128ebb"
+}
